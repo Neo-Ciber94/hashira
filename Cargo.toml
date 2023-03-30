@@ -1,8 +1,9 @@
 [package]
 name = "hashira"
-description = "A library for server side rendering with Yew"
+description = "A server side rendering framework build on top of Yew"
 version = "0.0.1"
 edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
+license = "MIT"
 
 [dependencies]
