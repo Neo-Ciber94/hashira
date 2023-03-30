@@ -1,0 +1,7 @@
+[package]
+name = "hashira"
+description = "A library for server side rendering with Yew"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
