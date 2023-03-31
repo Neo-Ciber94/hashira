@@ -41,7 +41,7 @@ where
     // The base layout
     let mut result_html = layout;
 
-    if result_html.contains(HASHIRA_ROOT) {
+    if !result_html.contains(HASHIRA_ROOT) {
         return Err(RenderError::NoRoot);
     }
 
@@ -72,12 +72,19 @@ where
 }
 
 fn insert_metadata(html: &mut String, metadata: Metadata) {
-    let tags_html = metadata
+    let mut tags_html = metadata
         .meta_tags()
         .map(|meta| meta.to_string())
         .collect::<Vec<_>>();
 
+    // Add <title> from <meta name="title" ...>
+    if let Some(meta) = metadata.meta_tags().find(|x| x.name() == "title") {
+        let content = meta.attrs().get("content").unwrap();
+        tags_html.push(format!("<title>{}</title>", content));
+    }
+
     let tags = tags_html.join("\n");
+
     *html = html.replace(HASHIRA_META_MARKER, &tags);
 }
 

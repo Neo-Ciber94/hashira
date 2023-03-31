@@ -21,6 +21,14 @@ impl MetaTag {
         MetaTag { name, attrs }
     }
 
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    pub fn attrs(&self) -> &BTreeMap<String, String> {
+        &self.attrs
+    }
+
     pub fn with_content(name: impl Into<String>, content: impl Into<String>) -> Self {
         let name = name.into();
         let attrs = BTreeMap::from_iter([("content".to_owned(), content.into())]);
