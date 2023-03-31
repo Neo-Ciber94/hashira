@@ -1,6 +1,6 @@
 use super::{Metadata, PageLinks, PageScripts};
 use crate::server::{render_page_to_html, render_to_string, DefaultLayout, RenderPageOptions};
-use route_recognizer::Router;
+use route_recognizer::{Params, Router};
 use std::{
     future::Future,
     pin::Pin,
@@ -25,13 +25,14 @@ struct AppContextInner {
 }
 
 pub struct AppContext<Req, Res> {
-    layout: Option<RenderLayout<Req, Res>>,
     request: Req,
+    params: Params,
+    layout: Option<RenderLayout<Req, Res>>,
     inner: Arc<Mutex<AppContextInner>>,
 }
 
 impl<Req, Res> AppContext<Req, Res> {
-    pub fn new(request: Req, layout: RenderLayout<Req, Res>) -> Self {
+    pub fn new(request: Req, layout: RenderLayout<Req, Res>, params: Params) -> Self {
         let inner = AppContextInner {
             metadata: Metadata::default(),
             links: PageLinks::default(),
@@ -39,6 +40,7 @@ impl<Req, Res> AppContext<Req, Res> {
         };
 
         AppContext {
+            params,
             request,
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
@@ -63,6 +65,10 @@ impl<Req, Res> AppContext<Req, Res> {
         &self.request
     }
 
+    pub fn params(&self) -> &Params {
+        &self.params
+    }
+
     pub async fn render<COMP>(self) -> String
     where
         COMP: BaseComponent,
@@ -81,11 +87,13 @@ impl<Req, Res> AppContext<Req, Res> {
             layout,
             request,
             inner,
+            params,
             ..
         } = self;
 
         let render_layout = layout.unwrap();
         let ctx = AppContext {
+            params,
             request,
             layout: None,
             inner: inner.clone(),
@@ -183,9 +191,9 @@ pub struct AppService<Req, Res> {
 }
 
 impl<Req, Res> AppService<Req, Res> {
-    pub fn create_context(&self, request: Req) -> AppContext<Req, Res> {
+    pub fn create_context(&self, request: Req, params: Params) -> AppContext<Req, Res> {
         let layout = self.inner.layout.clone();
-        AppContext::new(request, layout)
+        AppContext::new(request, layout, params)
     }
 
     pub fn router(&self) -> &Router<PageHandler<Req, Res>> {

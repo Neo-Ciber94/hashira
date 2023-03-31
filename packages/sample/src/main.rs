@@ -1,5 +1,5 @@
 use ::hashira::server::{App as HashiraApp, Metadata};
-use actix_web::{get, web::Path, App, FromRequest, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{get, App, HttpRequest, HttpResponse, HttpServer};
 use yew::Properties;
 
 #[yew::function_component]
@@ -37,12 +37,11 @@ async fn main() -> std::io::Result<()> {
                 HttpResponse::Ok().body(html)
             })
             .page("/hello/:name", |mut ctx| async {
-                let request = ctx.request();
-                let name = Path::<String>::extract(request).await.unwrap().into_inner();
+                let name = ctx.params().find("name").unwrap().to_owned();
                 ctx.add_metadata(
                     Metadata::new()
                         .viewport("width=device-width, initial-scale=1.0")
-                        .title("Cool app")
+                        .title("Cool app | hello")
                         .description("This is a really cool app"),
                 );
 

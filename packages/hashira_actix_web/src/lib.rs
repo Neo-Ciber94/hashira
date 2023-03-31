@@ -7,9 +7,10 @@ pub async fn handle_request(req: HttpRequest) -> actix_web::Result<HttpResponse>
         .app_data::<AppService<HttpRequest, HttpResponse>>()
         .cloned()
         .expect("Unable to find hashira `AppService`");
-    
-    let page = service.router().recognize(&path).expect("not found"); // TODO: Return 404
-    let ctx = service.create_context(req);
-    let res = page.handler().call(ctx).await;
+
+    let page_match = service.router().recognize(&path).expect("not found"); // TODO: Return 404
+    let params = page_match.params().clone();
+    let ctx = service.create_context(req, params);
+    let res = page_match.handler().call(ctx).await;
     Ok(res)
 }
