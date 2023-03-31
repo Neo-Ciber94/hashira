@@ -28,7 +28,7 @@ impl Display for LinkTag {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct PageLinks {
     tags: Vec<LinkTag>,
 }
@@ -45,5 +45,9 @@ impl PageLinks {
     pub fn add(mut self, link: LinkTag) -> Self {
         self.tags.push(link);
         self
+    }
+
+    pub fn extend(&mut self, other: PageLinks) {
+        self.tags.extend(other.tags);
     }
 }

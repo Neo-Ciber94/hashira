@@ -114,6 +114,11 @@ impl Metadata {
         self.tags.insert("og:image".to_owned(), meta);
         self
     }
+
+    /// Merge all the meta tags with the other meta tags.
+    pub fn extend(&mut self, other: Metadata) {
+        self.tags.extend(other.tags);
+    }
 }
 
 pub trait IntoMetaTag {

@@ -1,25 +1,29 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::components::{
-    AppPage, AppPageProps, Content, Links, Meta, Scripts, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
-    HASHIRA_META_MARKER, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER, RenderFn,
+    AppPage, AppPageProps, Content, Links, Meta, RenderFn, Scripts, HASHIRA_CONTENT_MARKER,
+    HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
 };
-use yew::{function_component, BaseComponent, Html, ServerRenderer};
+use yew::{
+    function_component,
+    html::{ChildrenProps, ChildrenRenderer},
+    BaseComponent, Html, LocalServerRenderer, ServerRenderer,
+};
 
 pub struct RenderPageOptions {
     // Represents the shell where the page will be rendered
-    layout: String,
+    pub(crate) layout: String,
 
     // The `<meta>` tags of the page to render
-    metadata: Metadata,
+    pub(crate) metadata: Metadata,
 
     // the <link> tags of the page to render
-    links: PageLinks,
+    pub(crate) links: PageLinks,
 
     // the <script> tags of the page to render
-    scripts: PageScripts,
+    pub(crate) scripts: PageScripts,
 }
 
-pub async fn render_page_to_html<Layout, COMP>(
+pub async fn render_page_to_html<COMP>(
     props: COMP::Properties,
     options: RenderPageOptions,
 ) -> Result<String, RenderError>
@@ -94,7 +98,7 @@ fn insert_scripts(html: &mut String, scripts: PageScripts) {
 }
 
 #[function_component]
-fn DefaultLayout() -> Html {
+pub fn DefaultLayout() -> Html {
     yew::html! {
         <html lang={"en"}>
             <head>
@@ -107,4 +111,22 @@ fn DefaultLayout() -> Html {
             </body>
         </html>
     }
+}
+
+pub async fn render_to_string<F>(f: F) -> String
+where
+    F: FnOnce() -> Html + 'static,
+{
+    #[function_component]
+    fn Dummy(props: &ChildrenProps) -> Html {
+        yew::html! {
+            <>{for props.children.iter()}</>
+        }
+    }
+
+    let renderer = LocalServerRenderer::<Dummy>::with_props(ChildrenProps {
+        children: ChildrenRenderer::new(vec![f()]),
+    });
+
+    renderer.hydratable(false).render().await
 }

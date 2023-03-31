@@ -38,7 +38,7 @@ impl Display for ScriptTag {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct PageScripts {
     tags: Vec<ScriptTag>,
 }
@@ -55,5 +55,9 @@ impl PageScripts {
     pub fn add(mut self, script: ScriptTag) -> Self {
         self.tags.push(script);
         self
+    }
+
+    pub fn extend(&mut self, other: PageScripts) {
+        self.tags.extend(other.tags);
     }
 }
