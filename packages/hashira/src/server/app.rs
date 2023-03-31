@@ -113,6 +113,12 @@ impl<Req, Res> AppContext<Req, Res> {
 
 pub struct PageHandler<Req, Res>(Box<dyn Fn(AppContext<Req, Res>) -> LocalBoxFuture<Res>>);
 
+impl<Req, Res> PageHandler<Req, Res> {
+    pub fn call(&self, ctx: AppContext<Req, Res>) -> LocalBoxFuture<Res> {
+        (self.0)(ctx)
+    }
+}
+
 pub struct App<Req, Res> {
     layout: Option<RenderLayout<Req, Res>>,
     router: Router<PageHandler<Req, Res>>,
@@ -161,23 +167,37 @@ where
     pub fn build(self) -> AppService<Req, Res> {
         let App { layout, router } = self;
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
-        AppService { layout, router }
+        let inner = Inner { layout, router };
+        AppService {
+            inner: Rc::new(inner),
+        }
     }
 }
 
-pub struct AppService<Req, Res> {
+struct Inner<Req, Res> {
     pub(crate) layout: RenderLayout<Req, Res>,
     pub(crate) router: Router<PageHandler<Req, Res>>,
+}
+pub struct AppService<Req, Res> {
+    inner: Rc<Inner<Req, Res>>,
 }
 
 impl<Req, Res> AppService<Req, Res> {
     pub fn create_context(&self, request: Req) -> AppContext<Req, Res> {
-        let layout = self.layout.clone();
+        let layout = self.inner.layout.clone();
         AppContext::new(request, layout)
     }
 
     pub fn router(&self) -> &Router<PageHandler<Req, Res>> {
-        &self.router
+        &self.inner.router
+    }
+}
+
+impl<Req, Res> Clone for AppService<Req, Res> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -192,3 +212,30 @@ where
         }
     })
 }
+/*
+### Server adapter:
+
+|req: Request| {
+    let path = req.path();
+    let service = req.data::<AppService>().unwrap();
+    let page = service.router.recognize(path).unwrap();
+    let ctx = service.create_context(req);
+    let res = page.call(ctx).await;
+    Ok(res)
+}
+
+
+### Page handle
+
+|ctx: AppContext| {
+    ctx.add_metadata(...);
+    ctx.add_links(...);
+    ctx.add_scripts(...);
+
+    let req = ctx.request();
+    let id = req.params.get::<u32>("id");
+    let user = db.get_user_by_id(id).await.unwrap();
+    let res = ctx.render_with_props<Component>(user).await;
+    Ok(res)
+}
+*/

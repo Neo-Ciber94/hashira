@@ -1,14 +1,15 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+use actix_web::{HttpRequest, HttpResponse};
+use hashira::server::AppService;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub async fn handle_request(req: HttpRequest) -> actix_web::Result<HttpResponse> {
+    let path = req.path();
+    let service = req
+        .app_data::<AppService<HttpRequest, HttpResponse>>()
+        .cloned()
+        .expect("Unable to find hashira `AppService`");
+    
+    let page = service.router().recognize(&path).expect("not found"); // TODO: Return 404
+    let ctx = service.create_context(req);
+    let res = page.handler().call(ctx).await;
+    Ok(res)
 }
