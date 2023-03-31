@@ -7,4 +7,5 @@ repository = "https://github.com/Neo-Ciber94/hashira"
 license = "MIT"
 
 [dependencies]
-yew = { version = "0.20.0", features = ["ssr"] }
+yew = { version = "0.20.0", features = ["ssr", "hydration"] }
+web-sys = "0.3.61"

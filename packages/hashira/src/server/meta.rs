@@ -1,10 +1,13 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::{btree_map::Values, BTreeMap},
+    fmt::Display,
+};
 
 /// Represents a `<meta>` element.
 #[derive(Debug, Clone)]
 pub struct MetaTag {
     name: String,
-    attributes: BTreeMap<String, String>,
+    attrs: BTreeMap<String, String>,
 }
 
 impl MetaTag {
@@ -14,14 +17,27 @@ impl MetaTag {
         I: IntoIterator<Item = (String, String)>,
     {
         let name = name.into();
-        let attributes = attrs.into_iter().collect::<BTreeMap<String, String>>();
-        MetaTag { name, attributes }
+        let attrs = attrs.into_iter().collect::<BTreeMap<String, String>>();
+        MetaTag { name, attrs }
     }
 
     pub fn with_content(name: impl Into<String>, content: impl Into<String>) -> Self {
         let name = name.into();
-        let attributes = BTreeMap::from_iter([("content".to_owned(), content.into())]);
-        MetaTag { name, attributes }
+        let attrs = BTreeMap::from_iter([("content".to_owned(), content.into())]);
+        MetaTag { name, attrs }
+    }
+}
+
+impl Display for MetaTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = format!("name=\"{}\"", self.name);
+        let attrs = self
+            .attrs
+            .iter()
+            .map(|(key, value)| format!("{}=\"{}\"", key, value))
+            .collect::<String>();
+
+        write!(f, "<meta {name} {attrs}/>")
     }
 }
 
@@ -36,6 +52,18 @@ impl Metadata {
     /// Constructs a empty collection of <meta> elements.
     pub fn new() -> Self {
         Default::default()
+    }
+
+    /// Returns an iterator over the meta elements.
+    pub fn meta_tags(&self) -> Values<String, MetaTag> {
+        self.tags.values()
+    }
+
+    /// Adds a `<meta name="viewport" content="...">` tag.
+    pub fn viewport(mut self, content: impl Into<String>) -> Self {
+        let meta = MetaTag::with_content("viewport", content);
+        self.tags.insert("viewport".to_owned(), meta);
+        self
     }
 
     /// Adds a `<meta name="title" content="...">` tag.

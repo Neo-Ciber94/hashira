@@ -1,9 +1,3 @@
-[package]
-name = "hashira"
-description = "A server side rendering framework build on top of Yew"
-version = "0.0.1"
-edition = "2021"
-repository = "https://github.com/Neo-Ciber94/hashira"
-license = "MIT"
+[workspace]
+members = ["packages/*"]
 
-[dependencies]

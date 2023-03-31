@@ -1,2 +1,8 @@
+pub mod components;
+pub mod client;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub mod context;
-pub mod metadata;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod server;
