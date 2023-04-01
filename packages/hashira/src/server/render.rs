@@ -89,19 +89,32 @@ fn insert_metadata(html: &mut String, metadata: Metadata) {
 }
 
 fn insert_links(html: &mut String, links: PageLinks) {
-    let tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+    let mut tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
 
-    let tags = tags_html.join("\n");
-    *html = html.replace(HASHIRA_LINKS_MARKER, &tags);
+    // Add wasm bundle
+    let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
+    tags_html.push(format!(
+        r#"
+        <link rel="preload" href="/static/{crate_name}_bg.wasm" as="fetch" type="application/wasm" crossorigin=""/>
+        <link rel="modulepreload" href="/static/{crate_name}.js" />
+    "#));
+
+    tags_html.push(format!(
+        r#"<script type="module">
+                import init from "/static/{crate_name}.js";
+                init("/static/{crate_name}_bg.wasm");
+            </script>
+        "#
+    ));
+
+    let links = tags_html.join("\n");
+    *html = html.replace(HASHIRA_LINKS_MARKER, &links);
 }
 
 fn insert_scripts(html: &mut String, scripts: PageScripts) {
     let tags_html = scripts.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-
-    let tags = tags_html.join("\n");
-    *html = html.replace(HASHIRA_SCRIPTS_MARKER, &tags);
-
-    // TODO: Insert the script for hydration
+    let links = tags_html.join("\n");
+    *html = html.replace(HASHIRA_SCRIPTS_MARKER, &links);
 }
 
 #[function_component]
@@ -120,7 +133,7 @@ pub fn DefaultLayout() -> Html {
     }
 }
 
-pub async fn render_to_string<F>(f: F) -> String
+pub async fn render_to_static_html<F>(f: F) -> String
 where
     F: FnOnce() -> Html + 'static,
 {
@@ -131,6 +144,7 @@ where
         }
     }
 
+    // FIXME: Found a  way to use the `ServerRenderer` instead?
     let renderer = LocalServerRenderer::<Dummy>::with_props(ChildrenProps {
         children: ChildrenRenderer::new(vec![f()]),
     });

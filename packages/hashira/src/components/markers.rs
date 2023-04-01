@@ -9,27 +9,27 @@ pub const HASHIRA_ROOT: &str = "__hashira__root__";
 #[yew::function_component]
 pub fn Meta() -> yew::Html {
     return yew::html! {
-        {HASHIRA_META_MARKER}
+        format!("{HASHIRA_META_MARKER}\n")
     };
 }
 
 #[yew::function_component]
 pub fn Content() -> yew::Html {
     return yew::html! {
-        {HASHIRA_CONTENT_MARKER}
+        format!("{HASHIRA_CONTENT_MARKER}\n")
     };
 }
 
 #[yew::function_component]
 pub fn Links() -> yew::Html {
     return yew::html! {
-        {HASHIRA_LINKS_MARKER}
+        format!("{HASHIRA_LINKS_MARKER}\n")
     };
 }
 
 #[yew::function_component]
 pub fn Scripts() -> yew::Html {
     return yew::html! {
-        {HASHIRA_SCRIPTS_MARKER}
+        format!("{HASHIRA_SCRIPTS_MARKER}\n")
     };
 }

@@ -1,5 +1,5 @@
 use super::{Metadata, PageLinks, PageScripts};
-use crate::server::{render_page_to_html, render_to_string, DefaultLayout, RenderPageOptions};
+use crate::server::{render_page_to_html, render_to_static_html, DefaultLayout, RenderPageOptions};
 use route_recognizer::{Params, Router};
 use std::{
     future::Future,
@@ -9,9 +9,9 @@ use std::{
 };
 use yew::{BaseComponent, Html};
 
-type LocalBoxFuture<T> = Pin<Box<dyn Future<Output = T>>>;
+type BoxFuture<T> = Pin<Box<dyn Future<Output = T>>>;
 
-type RenderLayout<Req, Res> = Rc<dyn Fn(AppContext<Req, Res>) -> LocalBoxFuture<Html>>;
+type RenderLayout<Req, Res> = Rc<dyn Fn(AppContext<Req, Res>) -> BoxFuture<Html>>;
 
 struct AppContextInner {
     // The `<meta>` tags of the page to render
@@ -25,7 +25,7 @@ struct AppContextInner {
 }
 
 pub struct AppContext<Req, Res> {
-    request: Req,
+    request: Option<Req>,
     params: Params,
     layout: Option<RenderLayout<Req, Res>>,
     inner: Arc<Mutex<AppContextInner>>,
@@ -41,7 +41,22 @@ impl<Req, Res> AppContext<Req, Res> {
 
         AppContext {
             params,
-            request,
+            request: Some(request),
+            layout: Some(layout),
+            inner: Arc::new(Mutex::new(inner)),
+        }
+    }
+
+    pub(crate) fn no_request(layout: RenderLayout<Req, Res>, params: Params) -> Self {
+        let inner = AppContextInner {
+            metadata: Metadata::default(),
+            links: PageLinks::default(),
+            scripts: PageScripts::default(),
+        };
+
+        AppContext {
+            params,
+            request: None,
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
         }
@@ -62,7 +77,9 @@ impl<Req, Res> AppContext<Req, Res> {
     }
 
     pub fn request(&self) -> &Req {
-        &self.request
+        self.request
+            .as_ref()
+            .expect("no request is being processed")
     }
 
     pub fn params(&self) -> &Params {
@@ -100,7 +117,7 @@ impl<Req, Res> AppContext<Req, Res> {
         };
 
         let layout_html = render_layout(ctx).await;
-        let layout_html_string = render_to_string(move || layout_html).await;
+        let layout_html_string = render_to_static_html(move || layout_html).await;
 
         let inner = inner.lock().unwrap();
         let links = inner.links.clone();
@@ -119,10 +136,10 @@ impl<Req, Res> AppContext<Req, Res> {
     }
 }
 
-pub struct PageHandler<Req, Res>(Box<dyn Fn(AppContext<Req, Res>) -> LocalBoxFuture<Res>>);
+pub struct PageHandler<Req, Res>(Box<dyn Fn(AppContext<Req, Res>) -> BoxFuture<Res>>);
 
 impl<Req, Res> PageHandler<Req, Res> {
-    pub fn call(&self, ctx: AppContext<Req, Res>) -> LocalBoxFuture<Res> {
+    pub fn call(&self, ctx: AppContext<Req, Res>) -> BoxFuture<Res> {
         (self.0)(ctx)
     }
 }
@@ -186,18 +203,32 @@ struct Inner<Req, Res> {
     pub(crate) layout: RenderLayout<Req, Res>,
     pub(crate) router: Router<PageHandler<Req, Res>>,
 }
+
 pub struct AppService<Req, Res> {
     inner: Rc<Inner<Req, Res>>,
 }
 
 impl<Req, Res> AppService<Req, Res> {
+    /// Create a context to be used in the request.
     pub fn create_context(&self, request: Req, params: Params) -> AppContext<Req, Res> {
         let layout = self.inner.layout.clone();
         AppContext::new(request, layout, params)
     }
 
+    /// Returns the router with all the pages.
     pub fn router(&self) -> &Router<PageHandler<Req, Res>> {
         &self.inner.router
+    }
+
+    /// Returns the `html` template of the layout
+    pub async fn get_layout_html(&self) -> String {
+        let layout = self.inner.layout.clone();
+        let params = Params::new();
+        let ctx = AppContext::no_request(layout, params);
+        let render_layout = &self.inner.layout;
+        let layout_html = render_layout(ctx).await;
+        let html_string = render_to_static_html(move || layout_html).await;
+        html_string
     }
 }
 
@@ -209,7 +240,7 @@ impl<Req, Res> Clone for AppService<Req, Res> {
     }
 }
 
-fn render_default_layout<Req, Res>(_: AppContext<Req, Res>) -> LocalBoxFuture<yew::Html>
+fn render_default_layout<Req, Res>(_: AppContext<Req, Res>) -> BoxFuture<yew::Html>
 where
     Req: 'static,
     Res: 'static,
