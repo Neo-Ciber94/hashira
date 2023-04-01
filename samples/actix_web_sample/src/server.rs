@@ -1,6 +1,6 @@
 use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
-use actix_files::Files;
+use actix_files::{Files, NamedFile};
 use actix_web::{get, App, HttpRequest, HttpResponse, HttpServer};
 
 pub async fn start_server() -> std::io::Result<()> {
@@ -9,7 +9,7 @@ pub async fn start_server() -> std::io::Result<()> {
     let path = {
         let mut temp = std::env::current_exe().expect("failed to get current directory");
         temp.pop();
-        temp.push("static");
+        temp.push("public");
         temp
     };
 
@@ -21,7 +21,10 @@ pub async fn start_server() -> std::io::Result<()> {
 
     // Create and run the server
     HttpServer::new(move || {
+        let favicon = NamedFile::open("./public/favicon.ico").expect("unable to find favicon");
+
         App::new()
+            .service(favicon)
             .service(Files::new("static/", &path))
             .app_data(hashira())
             .service(hashira_router)

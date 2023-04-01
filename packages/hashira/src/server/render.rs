@@ -1,8 +1,8 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::components::{
     AppPage, AppPageProps, Content, Links, Meta, PageData, RenderFn, Scripts,
-    HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_ROOT,
-    HASHIRA_SCRIPTS_MARKER, HASHIRA_PAGE_DATA
+    HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA,
+    HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
 };
 use serde::Serialize;
 use yew::{
@@ -141,8 +141,11 @@ where
             props,
         };
 
-        let json_data = serde_json::to_string(&page_data).map_err(|_| RenderError::PropSerialization)?;
-        let page_data_script = format!("<script id={HASHIRA_PAGE_DATA}>{json_data}</script>");
+        let json_data =
+            serde_json::to_string(&page_data).map_err(|_| RenderError::PropSerialization)?;
+        let page_data_script = format!(
+            "<script type=\"application/json\" id={HASHIRA_PAGE_DATA}>{json_data}</script>"
+        );
         tags_html.push(page_data_script);
     }
 
@@ -159,8 +162,10 @@ pub fn DefaultLayout() -> Html {
                 <Meta/>
                 <Links/>
             </head>
-            <body id={HASHIRA_ROOT}>
-                <Content/>
+            <body>
+                <main id={HASHIRA_ROOT}>
+                    <Content/>
+                </main>
                 <Scripts/>
             </body>
         </html>

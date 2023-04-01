@@ -1,0 +1,24 @@
+[config]
+default_to_workspace = false
+
+[tasks.build_html]
+command = "cargo"
+args = ["run", "--features", "build"]
+
+[tasks.build_client]
+command = "trunk"
+args = [
+    "build",
+    "--dist",
+    "../../target/debug/public",
+    "--public-url",
+    "static/",
+    "--filehash=false"
+]
+
+[tasks.build_clean]
+command = "rm"
+args = ["../../target/debug/public/index.html"]
+
+[tasks.build]
+dependencies = ["build_html", "build_client"]
