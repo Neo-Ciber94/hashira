@@ -1,14 +1,14 @@
 use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
 use actix_files::{Files, NamedFile};
-use actix_web::{get, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{get, App, HttpRequest, HttpResponse, HttpServer, Responder};
 
 pub async fn start_server() -> std::io::Result<()> {
+    let current_dir = get_current_dir();
     let host = "127.0.0.1";
     let port = 5000;
     let path = {
-        let mut temp = std::env::current_exe().expect("failed to get current directory");
-        temp.pop();
+        let mut temp = current_dir.clone();
         temp.push("public");
         temp
     };
@@ -21,8 +21,6 @@ pub async fn start_server() -> std::io::Result<()> {
 
     // Create and run the server
     HttpServer::new(move || {
-        let favicon = NamedFile::open("./public/favicon.ico").expect("unable to find favicon");
-
         App::new()
             .service(favicon)
             .service(Files::new("static/", &path))
@@ -34,10 +32,22 @@ pub async fn start_server() -> std::io::Result<()> {
     .await
 }
 
+#[get("/favicon.ico")]
+async fn favicon() -> actix_web::Result<impl Responder> {
+    let favicon = NamedFile::open_async("./public/favicon.ico").await?;
+    Ok(favicon)
+}
+
 // Actix web adapter
 #[get("/{params:.*}")]
 async fn hashira_router(req: HttpRequest) -> actix_web::Result<HttpResponse> {
     hashira_actix_web::handle_request(req).await
+}
+
+fn get_current_dir() -> std::path::PathBuf {
+    let mut current_dir = std::env::current_exe().expect("failed to get current directory");
+    current_dir.pop();
+    current_dir
 }
 
 // Setup all the components
