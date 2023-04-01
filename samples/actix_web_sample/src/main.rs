@@ -1,32 +1,30 @@
 mod components;
 
-#[cfg(target_arch = "wasm32")]
-mod client;
+cfg_if::cfg_if! {
+    if #[cfg(not(target_arch = "wasm32"))] {
+        mod index;
+        mod server;
 
-#[cfg(not(target_arch = "wasm32"))]
-mod index;
+        // Server
+        #[cfg(not(feature = "build"))]
+        #[actix_web::main]
+        async fn main() -> std::io::Result<()> {
+            crate::server::start_server().await
+        }
 
-#[cfg(not(target_arch = "wasm32"))]
-mod server;
+        // Generate index.html
+        #[cfg(feature = "build")]
+        #[actix_web::main]
+        async fn main() {
+            crate::index::generate_html_index().await;
+        }
 
-// Client
-#[cfg(target_arch = "wasm32")]
-fn main() {
-    crate::client::hydrate();
-}
+} else {
+        mod client;
 
-// Server
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(feature = "build"))]
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    crate::server::start_server().await
-}
-
-// Generate index.html 
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "build")]
-#[actix_web::main]
-async fn main() {
-    crate::index::generate_html_index().await;
+        // Client
+        fn main() {
+            crate::client::hydrate();
+        }
+    }
 }
