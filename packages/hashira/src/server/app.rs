@@ -221,6 +221,21 @@ impl<Req, Res> AppService<Req, Res> {
         &self.inner.router
     }
 
+    /// Process the incoming request and return the response.
+    pub async fn handle(&self, req: Req, path: &str) -> Res {
+        match self.inner.router.recognize(&path) {
+            Ok(mtch) => {
+                let params = mtch.params().clone();
+                let ctx = self.create_context(req, params);
+                let res = mtch.handler().call(ctx).await;
+                res
+            }
+            Err(_) => {
+                todo!("Return a 404 component")
+            }
+        }
+    }
+
     /// Returns the `html` template of the layout
     pub async fn get_layout_html(&self) -> String {
         let layout = self.inner.layout.clone();
@@ -252,30 +267,3 @@ where
         }
     })
 }
-/*
-### Server adapter:
-
-|req: Request| {
-    let path = req.path();
-    let service = req.data::<AppService>().unwrap();
-    let page = service.router.recognize(path).unwrap();
-    let ctx = service.create_context(req);
-    let res = page.call(ctx).await;
-    Ok(res)
-}
-
-
-### Page handle
-
-|ctx: AppContext| {
-    ctx.add_metadata(...);
-    ctx.add_links(...);
-    ctx.add_scripts(...);
-
-    let req = ctx.request();
-    let id = req.params.get::<u32>("id");
-    let user = db.get_user_by_id(id).await.unwrap();
-    let res = ctx.render_with_props<Component>(user).await;
-    Ok(res)
-}
-*/
