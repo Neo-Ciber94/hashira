@@ -1,47 +1,7 @@
+use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
 use actix_files::Files;
 use actix_web::{get, App, HttpRequest, HttpResponse, HttpServer};
-use yew::{use_state, Properties};
-
-#[yew::function_component]
-fn HomePage() -> yew::Html {
-    let counter = use_state(|| 0);
-    let increment = {
-        let counter = counter.clone();
-        move |_| {
-            let value = *counter + 1;
-            counter.set(value);
-        }
-    };
-
-    let decrement = {
-        let counter = counter.clone();
-        move |_| {
-            let value = *counter - 1;
-            counter.set(value);
-        }
-    };
-
-    yew::html! {
-        <div>
-            <button onclick={decrement}>{ "-1" }</button>
-            <p>{ *counter }</p>
-            <button onclick={increment}>{ "+1" }</button>
-        </div>
-    }
-}
-
-#[derive(PartialEq, Properties, Clone)]
-struct HelloPageProps {
-    name: String,
-}
-
-#[yew::function_component]
-fn HelloPage(props: &HelloPageProps) -> yew::Html {
-    yew::html! {
-        <h1>{format!("Hello {}!", props.name)}</h1>
-    }
-}
 
 pub async fn start_server() -> std::io::Result<()> {
     let host = "127.0.0.1";
@@ -56,6 +16,10 @@ pub async fn start_server() -> std::io::Result<()> {
     println!("⚡ Server started at: http://{host}:{port}");
     println!("⚡ Serving static files from: {}", path.display());
 
+    // Initialize hashira
+    hashira::init();
+
+    // Create and run the server
     HttpServer::new(move || {
         App::new()
             .service(Files::new("static/", &path))

@@ -1,6 +1,7 @@
 use super::{Metadata, PageLinks, PageScripts};
 use crate::server::{render_page_to_html, render_to_static_html, DefaultLayout, RenderPageOptions};
 use route_recognizer::{Params, Router};
+use serde::Serialize;
 use std::{
     future::Future,
     pin::Pin,
@@ -89,7 +90,7 @@ impl<Req, Res> AppContext<Req, Res> {
     pub async fn render<COMP>(self) -> String
     where
         COMP: BaseComponent,
-        COMP::Properties: Default + Send + Clone,
+        COMP::Properties: Serialize + Default + Send + Clone,
     {
         let props = COMP::Properties::default();
         self.render_with_props::<COMP>(props).await
@@ -98,7 +99,7 @@ impl<Req, Res> AppContext<Req, Res> {
     pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
     where
         COMP: BaseComponent,
-        COMP::Properties: Send + Clone,
+        COMP::Properties: Serialize + Send + Clone,
     {
         let Self {
             layout,

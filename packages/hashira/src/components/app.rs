@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use yew::{function_component, Html, Properties};
 
 pub struct RenderFn(Box<dyn Fn() -> Html + Send>);
@@ -32,4 +33,11 @@ pub struct AppPageProps {
 pub fn AppPage(props: &AppPageProps) -> Html {
     let render = &props.render;
     (render.0)()
+}
+
+/// Represents the data of the current page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PageData {
+    pub component_name: String,
+    pub props: serde_json::Value,
 }

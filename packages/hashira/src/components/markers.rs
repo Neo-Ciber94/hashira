@@ -5,6 +5,7 @@ pub const HASHIRA_CONTENT_MARKER: &str = "__hashira__content__";
 pub const HASHIRA_LINKS_MARKER: &str = "__hashira__links__";
 pub const HASHIRA_SCRIPTS_MARKER: &str = "__hashira__scripts__";
 pub const HASHIRA_ROOT: &str = "__hashira__root__";
+pub const HASHIRA_PAGE_DATA: &str = "__hashira__page_data__";
 
 #[yew::function_component]
 pub fn Meta() -> yew::Html {

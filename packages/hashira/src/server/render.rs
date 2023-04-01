@@ -1,8 +1,10 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::components::{
-    AppPage, AppPageProps, Content, Links, Meta, RenderFn, Scripts, HASHIRA_CONTENT_MARKER,
-    HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
+    AppPage, AppPageProps, Content, Links, Meta, PageData, RenderFn, Scripts,
+    HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_ROOT,
+    HASHIRA_SCRIPTS_MARKER, HASHIRA_PAGE_DATA
 };
+use serde::Serialize;
 use yew::{
     function_component,
     html::{ChildrenProps, ChildrenRenderer},
@@ -29,7 +31,7 @@ pub async fn render_page_to_html<COMP>(
 ) -> Result<String, RenderError>
 where
     COMP: BaseComponent,
-    COMP::Properties: Send + Clone,
+    COMP::Properties: Serialize + Send + Clone,
 {
     let RenderPageOptions {
         layout,
@@ -46,10 +48,14 @@ where
     }
 
     // Render the page
-    let render = RenderFn::new(move || {
+
+    let render = RenderFn::new({
         let props = props.clone();
-        yew::html! {
-            <COMP ..props/>
+        move || {
+            let props = props.clone();
+            yew::html! {
+                <COMP ..props/>
+            }
         }
     });
 
@@ -66,7 +72,7 @@ where
     insert_links(&mut result_html, links);
 
     // Insert the <script> elements from `struct PageScripts`
-    insert_scripts(&mut result_html, scripts);
+    insert_scripts::<COMP>(&mut result_html, scripts, props)?;
 
     Ok(result_html)
 }
@@ -91,31 +97,58 @@ fn insert_metadata(html: &mut String, metadata: Metadata) {
 fn insert_links(html: &mut String, links: PageLinks) {
     let mut tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
 
-    // TODO: Exclude bundle when building layout
-    // Add wasm bundle
-    let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
-    tags_html.push(format!(
-        r#"
-        <link rel="preload" href="/static/{crate_name}_bg.wasm" as="fetch" type="application/wasm" crossorigin=""/>
-        <link rel="modulepreload" href="/static/{crate_name}.js" />
-    "#));
+    // We do this to prevent adding the bundle when building the layout,
+    // TODO: Find a cleaner way to do this
+    if crate::is_initialized() {
+        // Add wasm bundle
+        let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
+        tags_html.push(format!(
+            r#"
+            <link rel="preload" href="/static/{crate_name}_bg.wasm" as="fetch" type="application/wasm" crossorigin=""/>
+            <link rel="modulepreload" href="/static/{crate_name}.js" />
+        "#));
 
-    tags_html.push(format!(
-        r#"<script type="module">
-                import init from "/static/{crate_name}.js";
-                init("/static/{crate_name}_bg.wasm");
-            </script>
-        "#
-    ));
+        tags_html.push(format!(
+            r#"<script type="module">
+                    import init from "/static/{crate_name}.js";
+                    init("/static/{crate_name}_bg.wasm");
+                </script>
+            "#
+        ));
+    }
 
     let links = tags_html.join("\n");
     *html = html.replace(HASHIRA_LINKS_MARKER, &links);
 }
 
-fn insert_scripts(html: &mut String, scripts: PageScripts) {
-    let tags_html = scripts.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+fn insert_scripts<COMP>(
+    html: &mut String,
+    scripts: PageScripts,
+    props: COMP::Properties,
+) -> Result<(), RenderError>
+where
+    COMP: BaseComponent,
+    COMP::Properties: Serialize,
+{
+    let mut tags_html = scripts.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+
+    // Add the component data to the page
+    if crate::is_initialized() {
+        let props = serde_json::to_value(props).map_err(|_| RenderError::PropSerialization)?;
+
+        let page_data = PageData {
+            component_name: std::any::type_name::<COMP>().to_string(),
+            props,
+        };
+
+        let json_data = serde_json::to_string(&page_data).map_err(|_| RenderError::PropSerialization)?;
+        let page_data_script = format!("<script id={HASHIRA_PAGE_DATA}>{json_data}</script>");
+        tags_html.push(page_data_script);
+    }
+
     let links = tags_html.join("\n");
     *html = html.replace(HASHIRA_SCRIPTS_MARKER, &links);
+    Ok(())
 }
 
 #[function_component]
