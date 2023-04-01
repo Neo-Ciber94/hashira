@@ -134,7 +134,7 @@ where
 
     // Add the component data to the page
     if crate::is_initialized() {
-        let props = serde_json::to_value(props).map_err(|_| RenderError::PropSerialization)?;
+        let props = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
 
         let page_data = PageData {
             component_name: std::any::type_name::<COMP>().to_string(),
@@ -142,7 +142,7 @@ where
         };
 
         let json_data =
-            serde_json::to_string(&page_data).map_err(|_| RenderError::PropSerialization)?;
+            serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
         let page_data_script = format!(
             "<script type=\"application/json\" id={HASHIRA_PAGE_DATA}>{json_data}</script>"
         );

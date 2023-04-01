@@ -3,7 +3,7 @@ use std::fmt::Display;
 #[derive(Debug)]
 pub enum RenderError {
     NoRoot,
-    PropSerialization,
+    InvalidProps(serde_json::Error),
 }
 
 impl Display for RenderError {
@@ -13,9 +13,11 @@ impl Display for RenderError {
                 f,
                 "No element was marked with 'HASHIRA_ROOT' marker, ex <body id={{HASHIRA_ROOT}}>"
             ),
-            RenderError::PropSerialization => {
-                write!(f, "Failed to serialize the page component props")
+            RenderError::InvalidProps(err) => {
+                write!(f, "Failed to serialize the page props: {err}")
             }
         }
     }
 }
+
+impl std::error::Error for RenderError {}
