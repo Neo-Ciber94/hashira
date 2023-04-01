@@ -1,8 +1,8 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::components::{
-    AppPage, AppPageProps, Content, Links, Meta, PageData, RenderFn, Scripts,
-    HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA,
-    HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
+    Content, Links, Meta, Page, PageData, PageProps, RenderFn, Scripts, HASHIRA_CONTENT_MARKER,
+    HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT,
+    HASHIRA_SCRIPTS_MARKER,
 };
 use serde::Serialize;
 use yew::{
@@ -25,13 +25,14 @@ pub struct RenderPageOptions {
     pub(crate) scripts: PageScripts,
 }
 
-pub async fn render_page_to_html<COMP>(
+pub async fn render_page_to_html<COMP, ROOT>(
     props: COMP::Properties,
     options: RenderPageOptions,
 ) -> Result<String, RenderError>
 where
     COMP: BaseComponent,
     COMP::Properties: Serialize + Send + Clone,
+    ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let RenderPageOptions {
         layout,
@@ -54,12 +55,14 @@ where
         move || {
             let props = props.clone();
             yew::html! {
-                <COMP ..props/>
+                <ROOT>
+                    <COMP ..props/>
+                </ROOT>
             }
         }
     });
 
-    let renderer = ServerRenderer::<AppPage>::with_props(move || AppPageProps { render });
+    let renderer = ServerRenderer::<Page>::with_props(move || PageProps { render });
     let page_html = renderer.render().await;
 
     // Build the root html
@@ -141,8 +144,7 @@ where
             props,
         };
 
-        let json_data =
-            serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
+        let json_data = serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
         let page_data_script = format!(
             "<script type=\"application/json\" id={HASHIRA_PAGE_DATA}>{json_data}</script>"
         );

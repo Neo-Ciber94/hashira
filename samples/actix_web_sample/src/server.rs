@@ -1,9 +1,13 @@
 use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
 use actix_files::{Files, NamedFile};
-use actix_web::{get, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use yew::{html::ChildrenProps, BaseComponent};
 
-pub async fn start_server() -> std::io::Result<()> {
+pub async fn start_server<C>() -> std::io::Result<()>
+where
+    C: BaseComponent<Properties = ChildrenProps>,
+{
     let current_dir = get_current_dir();
     let host = "127.0.0.1";
     let port = 5000;
@@ -24,8 +28,12 @@ pub async fn start_server() -> std::io::Result<()> {
         App::new()
             .service(favicon)
             .service(Files::new("static/", &path))
-            .app_data(hashira())
-            .service(hashira_router)
+            .app_data(hashira::<C>())
+            .service(
+                web::resource("/{params:.*}").route(web::get().to(|req: HttpRequest| async {
+                    hashira_actix_web::handle_request::<C>(req).await
+                })),
+            )
     })
     .bind((host, port))?
     .run()
@@ -38,12 +46,6 @@ async fn favicon() -> actix_web::Result<impl Responder> {
     Ok(favicon)
 }
 
-// Actix web adapter
-#[get("/{params:.*}")]
-async fn hashira_router(req: HttpRequest) -> actix_web::Result<HttpResponse> {
-    hashira_actix_web::handle_request(req).await
-}
-
 fn get_current_dir() -> std::path::PathBuf {
     let mut current_dir = std::env::current_exe().expect("failed to get current directory");
     current_dir.pop();
@@ -51,8 +53,11 @@ fn get_current_dir() -> std::path::PathBuf {
 }
 
 // Setup all the components
-pub fn hashira() -> AppService<HttpRequest, HttpResponse> {
-    HashiraApp::<HttpRequest, HttpResponse>::new()
+pub fn hashira<C>() -> AppService<HttpRequest, HttpResponse, C>
+where
+    C: BaseComponent<Properties = ChildrenProps>,
+{
+    HashiraApp::<HttpRequest, HttpResponse, C>::new()
         .page("/", |mut ctx| async {
             ctx.add_metadata(
                 Metadata::new()

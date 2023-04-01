@@ -1,12 +1,22 @@
-use crate::components::{AppPageProps, PageData, RenderFn};
+use crate::components::{PageData, PageProps, RenderFn};
 use serde::de::DeserializeOwned;
+use yew::html::ChildrenProps;
 use yew::BaseComponent;
 use yew::Renderer;
 
-use crate::components::{AppPage, HASHIRA_PAGE_DATA, HASHIRA_ROOT};
+use crate::components::{Page, HASHIRA_PAGE_DATA, HASHIRA_ROOT};
 
-pub fn hydrate<COMP>()
+pub fn mount<COMP>()
 where
+    COMP: BaseComponent,
+    COMP::Properties: DeserializeOwned + Send + Clone,
+{
+    mount_to::<COMP, crate::components::app::App>();
+}
+
+pub fn mount_to<COMP, ROOT>()
+where
+    ROOT: BaseComponent<Properties = ChildrenProps>,
     COMP: BaseComponent,
     COMP::Properties: DeserializeOwned + Send + Clone,
 {
@@ -27,12 +37,14 @@ where
     let render = RenderFn::new(move || {
         let props = props.clone();
         yew::html! {
-            <COMP ..props/>
+            <ROOT>
+                <COMP ..props/>
+            </ROOT>
         }
     });
 
     let root = find_element_by_id(HASHIRA_ROOT);
-    let renderer = Renderer::<AppPage>::with_root_and_props(root, AppPageProps { render });
+    let renderer = Renderer::<Page>::with_root_and_props(root, PageProps { render });
     renderer.hydrate();
 }
 

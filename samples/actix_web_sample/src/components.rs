@@ -1,5 +1,20 @@
-use yew::{use_state, Properties};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use yew::{html::ChildrenProps, use_state, Properties};
+
+#[yew::function_component]
+pub(crate) fn App(props: &ChildrenProps) -> yew::Html {
+    yew::html! {
+       <>
+        <header>
+            <nav>
+                <a href="/">{"Home"}</a>
+                <a href="/hello/freddy">{"Hello"}</a>
+            </nav>
+        </header>
+        <>{for props.children.iter()}</>
+       </>
+    }
+}
 
 #[yew::function_component]
 pub fn HomePage() -> yew::Html {

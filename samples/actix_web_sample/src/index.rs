@@ -1,10 +1,14 @@
 use crate::server::hashira;
+use yew::{html::ChildrenProps, BaseComponent};
 
 #[allow(dead_code)]
-pub async fn generate_html_index() {
+pub async fn generate_html_index<C>()
+where
+    C: BaseComponent<Properties = ChildrenProps>,
+{
     println!("🟦 Generating layout html...");
 
-    let service = hashira();
+    let service = hashira::<C>();
     let html = service.get_layout_html().await;
     let mut path = std::path::Path::new(".").to_path_buf();
 

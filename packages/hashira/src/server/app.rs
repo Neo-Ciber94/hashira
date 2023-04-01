@@ -4,15 +4,16 @@ use route_recognizer::{Params, Router};
 use serde::Serialize;
 use std::{
     future::Future,
+    marker::PhantomData,
     pin::Pin,
     rc::Rc,
     sync::{Arc, Mutex},
 };
-use yew::{BaseComponent, Html};
+use yew::{BaseComponent, Html, html::ChildrenProps};
 
 type BoxFuture<T> = Pin<Box<dyn Future<Output = T>>>;
 
-type RenderLayout<Req, Res> = Rc<dyn Fn(AppContext<Req, Res>) -> BoxFuture<Html>>;
+type RenderLayout<Req, Res, C> = Rc<dyn Fn(AppContext<Req, Res, C>) -> BoxFuture<Html>>;
 
 struct AppContextInner {
     // The `<meta>` tags of the page to render
@@ -25,15 +26,16 @@ struct AppContextInner {
     scripts: PageScripts,
 }
 
-pub struct AppContext<Req, Res> {
+pub struct AppContext<Req, Res, C> {
     request: Option<Req>,
     params: Params,
-    layout: Option<RenderLayout<Req, Res>>,
+    layout: Option<RenderLayout<Req, Res, C>>,
     inner: Arc<Mutex<AppContextInner>>,
+    _marker: PhantomData<C>,
 }
 
-impl<Req, Res> AppContext<Req, Res> {
-    pub fn new(request: Req, layout: RenderLayout<Req, Res>, params: Params) -> Self {
+impl<Req, Res, C> AppContext<Req, Res, C> {
+    pub fn new(request: Req, layout: RenderLayout<Req, Res, C>, params: Params) -> Self {
         let inner = AppContextInner {
             metadata: Metadata::default(),
             links: PageLinks::default(),
@@ -45,10 +47,11 @@ impl<Req, Res> AppContext<Req, Res> {
             request: Some(request),
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
+            _marker: PhantomData,
         }
     }
 
-    pub(crate) fn no_request(layout: RenderLayout<Req, Res>, params: Params) -> Self {
+    pub(crate) fn no_request(layout: RenderLayout<Req, Res, C>, params: Params) -> Self {
         let inner = AppContextInner {
             metadata: Metadata::default(),
             links: PageLinks::default(),
@@ -60,11 +63,15 @@ impl<Req, Res> AppContext<Req, Res> {
             request: None,
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
+            _marker: PhantomData,
         }
     }
 }
 
-impl<Req, Res> AppContext<Req, Res> {
+impl<Req, Res, C> AppContext<Req, Res, C>
+where
+    C: BaseComponent<Properties = ChildrenProps>,
+{
     pub fn add_metadata(&mut self, metadata: Metadata) {
         self.inner.lock().unwrap().metadata.extend(metadata);
     }
@@ -115,6 +122,7 @@ impl<Req, Res> AppContext<Req, Res> {
             request,
             layout: None,
             inner: inner.clone(),
+            _marker: PhantomData,
         };
 
         let layout_html = render_layout(ctx).await;
@@ -132,28 +140,31 @@ impl<Req, Res> AppContext<Req, Res> {
             scripts,
         };
 
-        let result_html = render_page_to_html::<COMP>(props, options).await.unwrap();
+        let result_html = render_page_to_html::<COMP, C>(props, options)
+            .await
+            .unwrap();
         result_html
     }
 }
 
-pub struct PageHandler<Req, Res>(Box<dyn Fn(AppContext<Req, Res>) -> BoxFuture<Res>>);
+pub struct PageHandler<Req, Res, C>(Box<dyn Fn(AppContext<Req, Res, C>) -> BoxFuture<Res>>);
 
-impl<Req, Res> PageHandler<Req, Res> {
-    pub fn call(&self, ctx: AppContext<Req, Res>) -> BoxFuture<Res> {
+impl<Req, Res, C> PageHandler<Req, Res, C> {
+    pub fn call(&self, ctx: AppContext<Req, Res, C>) -> BoxFuture<Res> {
         (self.0)(ctx)
     }
 }
 
-pub struct App<Req, Res> {
-    layout: Option<RenderLayout<Req, Res>>,
-    router: Router<PageHandler<Req, Res>>,
+pub struct App<Req, Res, C> {
+    layout: Option<RenderLayout<Req, Res, C>>,
+    router: Router<PageHandler<Req, Res, C>>,
 }
 
-impl<Req, Res> App<Req, Res>
+impl<Req, Res, C> App<Req, Res, C>
 where
     Req: 'static,
     Res: 'static,
+    C: 'static
 {
     pub fn new() -> Self {
         App {
@@ -164,7 +175,7 @@ where
 
     pub fn layout<F, Fut>(mut self, layout: F) -> Self
     where
-        F: Fn(AppContext<Req, Res>) -> Fut + 'static,
+        F: Fn(AppContext<Req, Res, C>) -> Fut + 'static,
         Fut: Future<Output = Html> + 'static,
     {
         self.layout = Some(Rc::new(move |ctx| {
@@ -176,7 +187,7 @@ where
 
     pub fn page<H, Fut>(mut self, path: &str, handler: H) -> Self
     where
-        H: Fn(AppContext<Req, Res>) -> Fut + 'static,
+        H: Fn(AppContext<Req, Res, C>) -> Fut + 'static,
         Fut: Future<Output = Res> + 'static,
     {
         assert!(path.starts_with("/"));
@@ -190,34 +201,35 @@ where
         self
     }
 
-    pub fn build(self) -> AppService<Req, Res> {
+    pub fn build(self) -> AppService<Req, Res, C> {
         let App { layout, router } = self;
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
         let inner = Inner { layout, router };
+
         AppService {
             inner: Rc::new(inner),
         }
     }
 }
 
-struct Inner<Req, Res> {
-    pub(crate) layout: RenderLayout<Req, Res>,
-    pub(crate) router: Router<PageHandler<Req, Res>>,
+struct Inner<Req, Res, C> {
+    pub(crate) layout: RenderLayout<Req, Res, C>,
+    pub(crate) router: Router<PageHandler<Req, Res, C>>,
 }
 
-pub struct AppService<Req, Res> {
-    inner: Rc<Inner<Req, Res>>,
+pub struct AppService<Req, Res, C> {
+    inner: Rc<Inner<Req, Res, C>>,
 }
 
-impl<Req, Res> AppService<Req, Res> {
+impl<Req, Res, C> AppService<Req, Res, C> {
     /// Create a context to be used in the request.
-    pub fn create_context(&self, request: Req, params: Params) -> AppContext<Req, Res> {
+    pub fn create_context(&self, request: Req, params: Params) -> AppContext<Req, Res, C> {
         let layout = self.inner.layout.clone();
         AppContext::new(request, layout, params)
     }
 
     /// Returns the router with all the pages.
-    pub fn router(&self) -> &Router<PageHandler<Req, Res>> {
+    pub fn router(&self) -> &Router<PageHandler<Req, Res, C>> {
         &self.inner.router
     }
 
@@ -248,7 +260,7 @@ impl<Req, Res> AppService<Req, Res> {
     }
 }
 
-impl<Req, Res> Clone for AppService<Req, Res> {
+impl<Req, Res, C> Clone for AppService<Req, Res, C> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -256,7 +268,7 @@ impl<Req, Res> Clone for AppService<Req, Res> {
     }
 }
 
-fn render_default_layout<Req, Res>(_: AppContext<Req, Res>) -> BoxFuture<yew::Html>
+fn render_default_layout<Req, Res, C>(_: AppContext<Req, Res, C>) -> BoxFuture<yew::Html>
 where
     Req: 'static,
     Res: 'static,
