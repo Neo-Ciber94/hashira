@@ -91,6 +91,7 @@ fn insert_metadata(html: &mut String, metadata: Metadata) {
 fn insert_links(html: &mut String, links: PageLinks) {
     let mut tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
 
+    // TODO: Exclude bundle when building layout
     // Add wasm bundle
     let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
     tags_html.push(format!(
