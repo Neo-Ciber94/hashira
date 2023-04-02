@@ -232,7 +232,7 @@ where
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub async fn render_with_props(self, props: COMP::Properties) -> String {
+    pub async fn render_with_props(self, _: COMP::Properties) -> String {
         unreachable!("this is a server-only function")
     }
 }
