@@ -1,7 +1,8 @@
 use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
 use actix_files::{Files, NamedFile};
-use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpRequest, HttpServer, Responder};
+use hashira::web::{Body, Response};
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -53,11 +54,12 @@ fn get_current_dir() -> std::path::PathBuf {
 }
 
 // Setup all the components
-pub fn hashira<C>() -> AppService<HttpRequest, HttpResponse, C>
+pub fn hashira<C>() -> AppService<C>
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
-    HashiraApp::<HttpRequest, HttpResponse, C>::new()
+    HashiraApp::<C>::new()
+        //.app_data(...)
         .page("/", |mut ctx| async {
             ctx.add_metadata(
                 Metadata::new()
@@ -67,7 +69,13 @@ where
             );
 
             let html = ctx.render::<HomePage>().await;
-            HttpResponse::Ok().body(html)
+            Response::builder()
+                .header(
+                    hashira::web::header::CONTENT_TYPE,
+                    "text/html; charset=utf-8",
+                )
+                .body(Body::from(html))
+                .unwrap()
         })
         .page("/hello/:name", |mut ctx| async {
             let name = ctx.params().find("name").unwrap().to_owned();
@@ -81,7 +89,14 @@ where
             let html = ctx
                 .render_with_props::<HelloPage>(HelloPageProps { name })
                 .await;
-            HttpResponse::Ok().body(html)
+
+            Response::builder()
+                .header(
+                    hashira::web::header::CONTENT_TYPE,
+                    "text/html; charset=utf-8",
+                )
+                .body(Body::from(html))
+                .unwrap()
         })
         .build()
 }
