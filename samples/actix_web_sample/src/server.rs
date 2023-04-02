@@ -2,7 +2,10 @@ use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
 use actix_files::{Files, NamedFile};
 use actix_web::{get, web, App, HttpRequest, HttpServer, Responder};
-use hashira::web::{Response, ResponseExt};
+use hashira::{
+    server::RenderContext,
+    web::{Response, ResponseExt},
+};
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -60,7 +63,7 @@ where
 {
     HashiraApp::<C>::new()
         //.app_data(...)
-        .page("/", |mut ctx| async {
+        .page("/", |mut ctx: RenderContext<HomePage, C>| async {
             ctx.add_metadata(
                 Metadata::new()
                     .viewport("width=device-width, initial-scale=1.0")
@@ -68,23 +71,24 @@ where
                     .description("A counter made with hashira actix-web"),
             );
 
-            let html = ctx.render::<HomePage>().await;
+            let html = ctx.render().await;
             Response::html(html)
         })
-        .page("/hello/:name", |mut ctx| async {
-            let name = ctx.params().find("name").unwrap().to_owned();
-            ctx.add_metadata(
-                Metadata::new()
-                    .viewport("width=device-width, initial-scale=1.0")
-                    .title("Hashira Sample App | Hello")
-                    .description("A hashira greeter"),
-            );
+        .page(
+            "/hello/:name",
+            |mut ctx: RenderContext<HelloPage, C>| async {
+                let name = ctx.params().find("name").unwrap().to_owned();
+                ctx.add_metadata(
+                    Metadata::new()
+                        .viewport("width=device-width, initial-scale=1.0")
+                        .title("Hashira Sample App | Hello")
+                        .description("A hashira greeter"),
+                );
 
-            let html = ctx
-                .render_with_props::<HelloPage>(HelloPageProps { name })
-                .await;
+                let html = ctx.render_with_props(HelloPageProps { name }).await;
 
-            Response::html(html)
-        })
+                Response::html(html)
+            },
+        )
         .build()
 }
