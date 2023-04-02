@@ -1,6 +1,6 @@
 use actix_web::{web::Bytes, FromRequest, HttpRequest, HttpResponse};
 use hashira::{
-    server::AppService,
+    app::AppService,
     web::{Body, Request, Response},
 };
 

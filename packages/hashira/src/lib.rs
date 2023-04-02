@@ -1,6 +1,7 @@
 pub mod client;
 pub mod components;
 pub mod web;
+pub mod app;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod server;

@@ -1,4 +1,4 @@
-use hashira::{server::{RenderContext, AppService, Metadata, App as HashiraApp}, web::{Response, ResponseExt}};
+use hashira::{app::{RenderContext, AppService, Metadata, App as HashiraApp}, web::{Response, ResponseExt}};
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, use_state, Properties, BaseComponent};
 

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
-use crate::server::client_router::ClientRouter;
+use crate::app::client_router::ClientRouter;
 
 pub struct RenderFn(Box<dyn Fn() -> Html + Send + Sync>);
 

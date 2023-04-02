@@ -1,5 +1,5 @@
 use crate::components::{PageData, PageProps};
-use crate::server::client_router::ClientRouter;
+use crate::app::client_router::ClientRouter;
 use yew::html::ChildrenProps;
 use yew::BaseComponent;
 use yew::Renderer;

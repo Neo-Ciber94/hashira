@@ -1,4 +1,5 @@
-use super::{client_router::ClientRouter, error::RenderError, Metadata, PageLinks, PageScripts};
+use super::{error::RenderError, Metadata, PageLinks, PageScripts};
+use crate::app::client_router::ClientRouter;
 use crate::components::{
     Content, Links, Meta, Page, PageData, PageProps, Scripts, HASHIRA_CONTENT_MARKER,
     HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT,
