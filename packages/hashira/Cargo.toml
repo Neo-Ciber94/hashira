@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }
+cookie = { version = "0.17.0", features = ["percent-encode"] }
 web-sys = "0.3.61"
 route-recognizer = "0.3.1"
 serde = { version = "1.0", features = ["derive"] }

@@ -1,5 +1,8 @@
-mod ext;
-pub use ext::*;
+mod response_ext;
+mod request_ext;
+
+pub use response_ext::*;
+pub use request_ext::*;
 
 pub type Body = bytes::Bytes;
 
