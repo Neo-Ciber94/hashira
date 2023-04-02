@@ -7,7 +7,6 @@ use route_recognizer::{Params, Router};
 use serde::Serialize;
 use std::{
     future::Future,
-    marker::PhantomData,
     pin::Pin,
     rc::Rc,
     sync::{Arc, Mutex},
@@ -34,7 +33,6 @@ pub struct AppContext<C> {
     params: Params,
     layout: Option<RenderLayout<C>>,
     inner: Arc<Mutex<AppContextInner>>,
-    _marker: PhantomData<C>,
 }
 
 impl<C> AppContext<C> {
@@ -50,7 +48,6 @@ impl<C> AppContext<C> {
             request: Some(request),
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
-            _marker: PhantomData,
         }
     }
 
@@ -66,7 +63,6 @@ impl<C> AppContext<C> {
             request: None,
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
-            _marker: PhantomData,
         }
     }
 }
@@ -125,7 +121,6 @@ where
             request,
             layout: None,
             inner: inner.clone(),
-            _marker: PhantomData,
         };
 
         let layout_html = render_layout(ctx).await;
