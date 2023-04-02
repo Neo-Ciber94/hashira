@@ -1,6 +1,10 @@
-use hashira::{app::{RenderContext, AppService, Metadata, App as HashiraApp}, web::{Response, ResponseExt}};
+use hashira::{
+    app::{App as HashiraApp, AppService, RenderContext},
+    server::Metadata,
+    web::{Response, ResponseExt},
+};
 use serde::{Deserialize, Serialize};
-use yew::{html::ChildrenProps, use_state, Properties, BaseComponent};
+use yew::{html::ChildrenProps, use_state, BaseComponent, Properties};
 
 #[yew::function_component]
 pub(crate) fn App(props: &ChildrenProps) -> yew::Html {
@@ -57,41 +61,39 @@ pub fn HelloPage(props: &HelloPageProps) -> yew::Html {
     }
 }
 
-
 // Setup all the components
 pub fn hashira<C>() -> AppService<C>
-    where
-        C: BaseComponent<Properties = ChildrenProps>,
-    {
-        HashiraApp::<C>::new()
-            //.app_data(...)
-            .page("/", |mut ctx: RenderContext<HomePage, C>| async {
+where
+    C: BaseComponent<Properties = ChildrenProps>,
+{
+    HashiraApp::<C>::new()
+        //.app_data(...)
+        .page("/", |mut ctx: RenderContext<HomePage, C>| async {
+            ctx.add_metadata(
+                Metadata::new()
+                    .viewport("width=device-width, initial-scale=1.0")
+                    .title("Hashira Sample App | Counter")
+                    .description("A counter made with hashira actix-web"),
+            );
+
+            let html = ctx.render().await;
+            Response::html(html)
+        })
+        .page(
+            "/hello/:name",
+            |mut ctx: RenderContext<HelloPage, C>| async {
+                let name = ctx.params().find("name").unwrap().to_owned();
                 ctx.add_metadata(
                     Metadata::new()
                         .viewport("width=device-width, initial-scale=1.0")
-                        .title("Hashira Sample App | Counter")
-                        .description("A counter made with hashira actix-web"),
+                        .title("Hashira Sample App | Hello")
+                        .description("A hashira greeter"),
                 );
-    
-                let html = ctx.render().await;
+
+                let html = ctx.render_with_props(HelloPageProps { name }).await;
+
                 Response::html(html)
-            })
-            .page(
-                "/hello/:name",
-                |mut ctx: RenderContext<HelloPage, C>| async {
-                    let name = ctx.params().find("name").unwrap().to_owned();
-                    ctx.add_metadata(
-                        Metadata::new()
-                            .viewport("width=device-width, initial-scale=1.0")
-                            .title("Hashira Sample App | Hello")
-                            .description("A hashira greeter"),
-                    );
-    
-                    let html = ctx.render_with_props(HelloPageProps { name }).await;
-    
-                    Response::html(html)
-                },
-            )
-            .build()
-    }
-    
+            },
+        )
+        .build()
+}

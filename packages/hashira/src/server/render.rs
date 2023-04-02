@@ -1,9 +1,8 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::client_router::ClientRouter;
 use crate::components::{
-    Content, Links, Meta, Page, PageData, PageProps, Scripts, HASHIRA_CONTENT_MARKER,
-    HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT,
-    HASHIRA_SCRIPTS_MARKER,
+    Page, PageData, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER,
+    HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
 };
 use serde::Serialize;
 use yew::{
@@ -156,24 +155,6 @@ where
     let links = tags_html.join("\n");
     *html = html.replace(HASHIRA_SCRIPTS_MARKER, &links);
     Ok(())
-}
-
-#[function_component]
-pub fn DefaultLayout() -> Html {
-    yew::html! {
-        <html lang={"en"}>
-            <head>
-                <Meta/>
-                <Links/>
-            </head>
-            <body>
-                <main id={HASHIRA_ROOT}>
-                    <Content/>
-                </main>
-                <Scripts/>
-            </body>
-        </html>
-    }
 }
 
 pub async fn render_to_static_html<F>(f: F) -> String

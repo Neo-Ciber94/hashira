@@ -58,11 +58,11 @@ where
             }
         }
         // TODO: Add custom error pages
-        Err(path) => {
+        Err(error) => {
             yew::html! {
               <>
                 <h1>{"404 | Not Found"}</h1>
-                <p>{format!("Unable to find: {path}")}</p>
+                <p>{error}</p>
               </>
             }
         }

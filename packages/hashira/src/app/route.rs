@@ -1,5 +1,5 @@
 use super::PageHandler;
-use crate::components::any::AnyComponent;
+use crate::components::AnyComponent;
 
 pub struct ServerPageRoute<C> {
     pub(crate) handler: PageHandler<C>,

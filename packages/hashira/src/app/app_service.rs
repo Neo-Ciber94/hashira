@@ -1,14 +1,7 @@
-use crate::{
-    server::render_to_static_html,
-    web::{Request, Response},
-};
+use crate::web::{Request, Response};
 use route_recognizer::{Params, Router};
-
 use std::rc::Rc;
-
-use super::{
-    client_router::ClientRouter, AppContext, RenderLayout, ServerPageRoute,
-};
+use super::{client_router::ClientRouter, AppContext, RenderLayout, ServerPageRoute};
 
 pub(crate) struct Inner<C> {
     pub(crate) layout: RenderLayout<C>,
@@ -63,7 +56,10 @@ impl<C> AppService<C> {
     }
 
     /// Returns the `html` template of the layout
+    #[cfg(not(target_arch="wasm32"))]
     pub async fn get_layout_html(&self) -> String {
+        use crate::server::render_to_static_html;
+
         let path = String::new(); // TODO: Use Option<String> instead
         let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();

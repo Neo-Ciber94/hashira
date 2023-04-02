@@ -7,6 +7,8 @@ pub async fn start_server<C>() -> std::io::Result<()>
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    
     let current_dir = get_current_dir();
     let host = "127.0.0.1";
     let port = 5000;

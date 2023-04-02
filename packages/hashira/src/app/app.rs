@@ -2,11 +2,7 @@ use super::{
     client_router::ClientRouter, AppContext, AppService, BoxFuture, ClientPageRoute, Inner,
     RenderContext, ServerPageRoute,
 };
-use crate::{
-    components::{any::AnyComponent},
-    server::DefaultLayout,
-    web::Response,
-};
+use crate::{components::RootLayout, web::Response};
 use route_recognizer::Router;
 use serde::de::DeserializeOwned;
 use std::{future::Future, rc::Rc};
@@ -72,18 +68,36 @@ where
         };
 
         self.server_router.add(path, page);
+        self.add_client_page::<COMP, H, Fut>(path);
         self
     }
 
-    //#[cfg(target_arch = "wasm32")]
-    pub fn _page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
+    #[cfg(target_arch = "wasm32")]
+    pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
     where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Response> + 'static,
     {
-        assert!(path.starts_with("/"), "page path must start with `/`");
+        self.add_client_page::<COMP, H, Fut>(path);
+        self
+    }
+
+    fn add_client_page<COMP, H, Fut>(&mut self, path: &str)
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        Fut: Future<Output = Response> + 'static,
+    {
+        use crate::components::AnyComponent;
+
+        log::info!(
+            "Registering component `{}` on {path}",
+            std::any::type_name::<COMP>()
+        );
+
         self.client_router.add(
             path,
             ClientPageRoute {
@@ -102,7 +116,6 @@ where
                 }),
             },
         );
-        self
     }
 
     pub fn build(self) -> AppService<C> {
@@ -127,7 +140,7 @@ where
 fn render_default_layout<C>(_: AppContext<C>) -> BoxFuture<yew::Html> {
     Box::pin(async {
         yew::html! {
-            <DefaultLayout/>
+            <RootLayout/>
         }
     })
 }

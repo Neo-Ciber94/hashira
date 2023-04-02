@@ -1,9 +1,6 @@
 use super::{client_router::ClientRouter, RenderLayout};
 use crate::{
-    server::{
-        render_page_to_html, render_to_static_html, Metadata, PageLinks, PageScripts,
-        RenderPageOptions,
-    },
+    server::{Metadata, PageLinks, PageScripts},
     web::Request,
 };
 use route_recognizer::Params;
@@ -25,6 +22,7 @@ struct AppContextInner {
     scripts: PageScripts,
 }
 
+#[allow(dead_code)] // TODO: Ignore server only data
 pub struct AppContext<C> {
     client_router: ClientRouter,
     request: Option<Request>,
@@ -34,6 +32,7 @@ pub struct AppContext<C> {
     inner: Arc<Mutex<AppContextInner>>,
 }
 
+#[allow(dead_code)] // TODO: Ignore server only data
 impl<C> AppContext<C> {
     fn _new(
         request: Option<Request>,
@@ -104,6 +103,7 @@ where
         &self.params
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn render<COMP>(self) -> String
     where
         COMP: BaseComponent,
@@ -113,11 +113,14 @@ where
         self.render_with_props::<COMP>(props).await
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
+        use crate::server::{render_page_to_html, render_to_static_html, RenderPageOptions};
+
         let Self {
             layout,
             request,
@@ -167,6 +170,7 @@ pub struct RenderContext<COMP, C> {
     _marker: PhantomData<COMP>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<COMP, C> RenderContext<COMP, C> {
     pub(crate) fn new(context: AppContext<C>) -> Self {
         RenderContext {
@@ -206,6 +210,7 @@ where
     COMP: BaseComponent,
     COMP::Properties: Serialize + Send + Clone,
 {
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn render(self) -> String
     where
         COMP::Properties: Default,
@@ -213,7 +218,21 @@ where
         self.context.render::<COMP>().await
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props(self, props: COMP::Properties) -> String {
         self.context.render_with_props::<COMP>(props).await
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn render(self) -> String
+    where
+        COMP::Properties: Default,
+    {
+        unreachable!("this is a server-only function")
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn render_with_props(self, props: COMP::Properties) -> String {
+        unreachable!("this is a server-only function")
     }
 }
