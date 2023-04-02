@@ -1,18 +1,14 @@
 use std::sync::Arc;
-use yew::{BaseComponent, Html};
+use yew::Html;
 
-pub struct AnyComponent<Props>(Arc<dyn Fn(Props) -> Html + Send + Send>);
+pub struct AnyComponent<Props>(Arc<dyn Fn(Props) -> Html + Send + Sync>);
 
-impl AnyComponent<()> {
-    pub fn new<COMP>() -> AnyComponent<COMP::Properties>
+impl<Props> AnyComponent<Props> {
+    pub fn new<F>(f: F) -> Self
     where
-        COMP: BaseComponent,
+        F: Fn(Props) -> yew::Html + Send + Sync + 'static,
     {
-        AnyComponent(Arc::new(|props| {
-            yew::html! {
-                <COMP ..props/>
-            }
-        }))
+        AnyComponent(Arc::new(f))
     }
 }
 

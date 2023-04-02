@@ -1,5 +1,5 @@
 use super::PageHandler;
-use crate::components::RenderFn;
+use crate::components::any::AnyComponent;
 
 pub struct ServerPageRoute<C> {
     pub(crate) handler: PageHandler<C>,
@@ -17,13 +17,13 @@ impl<C> ServerPageRoute<C> {
 }
 
 pub struct ClientPageRoute {
-    pub(crate) render: RenderFn,
+    pub(crate) component: AnyComponent<serde_json::Value>,
     pub(crate) match_pattern: String,
 }
 
 impl ClientPageRoute {
-    pub fn render(&self) -> &RenderFn {
-        &self.render
+    pub fn render(&self, props: serde_json::Value) -> yew::Html {
+        self.component.render_with_props(props)
     }
 
     pub fn match_pattern(&self) -> &str {

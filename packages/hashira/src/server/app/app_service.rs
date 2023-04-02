@@ -6,12 +6,14 @@ use route_recognizer::{Params, Router};
 
 use std::rc::Rc;
 
-use super::{AppContext, ClientPageRoute, RenderLayout, ServerPageRoute};
+use super::{
+    client_router::ClientRouter, AppContext, RenderLayout, ServerPageRoute,
+};
 
 pub(crate) struct Inner<C> {
     pub(crate) layout: RenderLayout<C>,
     pub(crate) server_router: Router<ServerPageRoute<C>>,
-    pub(crate) client_router: Router<ClientPageRoute>,
+    pub(crate) client_router: ClientRouter,
 }
 
 pub struct AppService<C>(Rc<Inner<C>>);
@@ -22,9 +24,15 @@ impl<C> AppService<C> {
     }
 
     /// Create a context to be used in the request.
-    pub fn create_context(&self, request: Request, params: Params) -> AppContext<C> {
+    pub fn create_context(
+        &self,
+        client_router: ClientRouter,
+        path: String,
+        request: Request,
+        params: Params,
+    ) -> AppContext<C> {
         let layout = self.0.layout.clone();
-        AppContext::new(request, layout, params)
+        AppContext::new(request, client_router, path, layout, params)
     }
 
     /// Returns the server router.
@@ -33,7 +41,7 @@ impl<C> AppService<C> {
     }
 
     /// Returns the client router.
-    pub fn client_router(&self) -> &Router<ClientPageRoute> {
+    pub fn client_router(&self) -> &ClientRouter {
         &self.0.client_router
     }
 
@@ -43,7 +51,8 @@ impl<C> AppService<C> {
             Ok(page) => {
                 let route = page.handler();
                 let params = page.params().clone();
-                let ctx = self.create_context(req, params);
+                let client_router = self.0.client_router.clone();
+                let ctx = self.create_context(client_router, path.to_owned(), req, params);
                 let res = route.handler().call(ctx).await;
                 res
             }
@@ -55,9 +64,11 @@ impl<C> AppService<C> {
 
     /// Returns the `html` template of the layout
     pub async fn get_layout_html(&self) -> String {
+        let path = String::new(); // TODO: Use Option<String> instead
         let layout = self.0.layout.clone();
+        let client_router = self.0.client_router.clone();
         let params = Params::new();
-        let ctx = AppContext::no_request(layout, params);
+        let ctx = AppContext::no_request(client_router, path, layout, params);
         let render_layout = &self.0.layout;
         let layout_html = render_layout(ctx).await;
         let html_string = render_to_static_html(move || layout_html).await;

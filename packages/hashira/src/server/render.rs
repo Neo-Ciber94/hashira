@@ -1,6 +1,6 @@
-use super::{error::RenderError, Metadata, PageLinks, PageScripts};
+use super::{client_router::ClientRouter, error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::components::{
-    Content, Links, Meta, Page, PageData, PageProps, RenderFn, Scripts, HASHIRA_CONTENT_MARKER,
+    Content, Links, Meta, Page, PageData, PageProps, Scripts, HASHIRA_CONTENT_MARKER,
     HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT,
     HASHIRA_SCRIPTS_MARKER,
 };
@@ -12,6 +12,12 @@ use yew::{
 };
 
 pub struct RenderPageOptions {
+    // The current route path of the component to render.
+    pub(crate) path: String,
+
+    // The router used to render the page
+    pub(crate) client_router: ClientRouter,
+
     // Represents the shell where the page will be rendered
     pub(crate) layout: String,
 
@@ -39,6 +45,8 @@ where
         metadata,
         links,
         scripts,
+        client_router,
+        path,
     } = options;
 
     // The base layout
@@ -48,21 +56,21 @@ where
         return Err(RenderError::NoRoot);
     }
 
-    // Render the page
+    let props_json = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
 
-    let render = RenderFn::new({
-        let props = props.clone();
-        move || {
-            let props = props.clone();
-            yew::html! {
-                <ROOT>
-                    <COMP ..props/>
-                </ROOT>
-            }
-        }
-    });
+    let page_data = PageData {
+        component_name: std::any::type_name::<COMP>().to_string(),
+        props: props_json.clone(),
+        path: path.clone(),
+    };
 
-    let renderer = ServerRenderer::<Page>::with_props(move || PageProps { render });
+    let page_props = PageProps {
+        path: path.clone(),
+        props_json: props_json.clone(),
+        client_router,
+    };
+
+    let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);
     let page_html = renderer.render().await;
 
     // Build the root html
@@ -75,7 +83,7 @@ where
     insert_links(&mut result_html, links);
 
     // Insert the <script> elements from `struct PageScripts`
-    insert_scripts::<COMP>(&mut result_html, scripts, props)?;
+    insert_scripts::<COMP>(&mut result_html, scripts, page_data)?;
 
     Ok(result_html)
 }
@@ -127,7 +135,7 @@ fn insert_links(html: &mut String, links: PageLinks) {
 fn insert_scripts<COMP>(
     html: &mut String,
     scripts: PageScripts,
-    props: COMP::Properties,
+    page_data: PageData,
 ) -> Result<(), RenderError>
 where
     COMP: BaseComponent,
@@ -137,13 +145,6 @@ where
 
     // Add the component data to the page
     if crate::is_initialized() {
-        let props = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
-
-        let page_data = PageData {
-            component_name: std::any::type_name::<COMP>().to_string(),
-            props,
-        };
-
         let json_data = serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
         let page_data_script = format!(
             "<script type=\"application/json\" id={HASHIRA_PAGE_DATA}>{json_data}</script>"

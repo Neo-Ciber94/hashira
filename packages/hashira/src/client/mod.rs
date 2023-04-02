@@ -1,24 +1,18 @@
-use crate::components::{PageData, PageProps, RenderFn};
-use serde::de::DeserializeOwned;
+use crate::components::{PageData, PageProps};
+use crate::server::client_router::ClientRouter;
 use yew::html::ChildrenProps;
 use yew::BaseComponent;
 use yew::Renderer;
 
 use crate::components::{Page, HASHIRA_PAGE_DATA, HASHIRA_ROOT};
 
-pub fn mount<COMP>()
-where
-    COMP: BaseComponent,
-    COMP::Properties: DeserializeOwned + Send + Clone,
-{
-    mount_to::<COMP, crate::components::app::App>();
+pub fn mount(router: ClientRouter) {
+    mount_to::<crate::components::app::App>(router);
 }
 
-pub fn mount_to<COMP, ROOT>()
+pub fn mount_to<ROOT>(router: ClientRouter)
 where
     ROOT: BaseComponent<Properties = ChildrenProps>,
-    COMP: BaseComponent,
-    COMP::Properties: DeserializeOwned + Send + Clone,
 {
     let page_data_element = find_element_by_id(HASHIRA_PAGE_DATA);
     let content = page_data_element
@@ -26,25 +20,15 @@ where
         .expect("unable to get page data");
     let page_data =
         serde_json::from_str::<PageData>(&content).expect("failed to deserialize page data");
-    let component_name = std::any::type_name::<COMP>().to_string();
 
-    if component_name != page_data.component_name {
-        return;
-    }
-
-    let props = serde_json::from_value::<COMP::Properties>(page_data.props)
-        .expect("failed to deserialize props");
-    let render = RenderFn::new(move || {
-        let props = props.clone();
-        yew::html! {
-            <ROOT>
-                <COMP ..props/>
-            </ROOT>
-        }
-    });
+    let props = PageProps {
+        path: page_data.path.clone(),
+        props_json: page_data.props,
+        client_router: router,
+    };
 
     let root = find_element_by_id(HASHIRA_ROOT);
-    let renderer = Renderer::<Page>::with_root_and_props(root, PageProps { render });
+    let renderer = Renderer::<Page<ROOT>>::with_root_and_props(root, props);
     renderer.hydrate();
 }
 

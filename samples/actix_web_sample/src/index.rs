@@ -1,4 +1,4 @@
-use crate::server::hashira;
+use crate::components::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 #[allow(dead_code)]

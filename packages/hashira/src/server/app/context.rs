@@ -1,4 +1,4 @@
-use super::RenderLayout;
+use super::{client_router::ClientRouter, RenderLayout};
 use crate::{
     server::{
         render_page_to_html, render_to_static_html, Metadata, PageLinks, PageScripts,
@@ -26,14 +26,22 @@ struct AppContextInner {
 }
 
 pub struct AppContext<C> {
+    client_router: ClientRouter,
     request: Option<Request>,
+    path: String,
     params: Params,
     layout: Option<RenderLayout<C>>,
     inner: Arc<Mutex<AppContextInner>>,
 }
 
 impl<C> AppContext<C> {
-    pub fn new(request: Request, layout: RenderLayout<C>, params: Params) -> Self {
+    fn _new(
+        request: Option<Request>,
+        client_router: ClientRouter,
+        path: String,
+        layout: RenderLayout<C>,
+        params: Params,
+    ) -> Self {
         let inner = AppContextInner {
             metadata: Metadata::default(),
             links: PageLinks::default(),
@@ -41,26 +49,32 @@ impl<C> AppContext<C> {
         };
 
         AppContext {
+            path,
             params,
-            request: Some(request),
+            request,
+            client_router,
             layout: Some(layout),
             inner: Arc::new(Mutex::new(inner)),
         }
     }
 
-    pub(crate) fn no_request(layout: RenderLayout<C>, params: Params) -> Self {
-        let inner = AppContextInner {
-            metadata: Metadata::default(),
-            links: PageLinks::default(),
-            scripts: PageScripts::default(),
-        };
+    pub fn new(
+        request: Request,
+        client_router: ClientRouter,
+        path: String,
+        layout: RenderLayout<C>,
+        params: Params,
+    ) -> Self {
+        Self::_new(Some(request), client_router, path, layout, params)
+    }
 
-        AppContext {
-            params,
-            request: None,
-            layout: Some(layout),
-            inner: Arc::new(Mutex::new(inner)),
-        }
+    pub(crate) fn no_request(
+        client_router: ClientRouter,
+        path: String,
+        layout: RenderLayout<C>,
+        params: Params,
+    ) -> Self {
+        Self::_new(None, client_router, path, layout, params)
     }
 }
 
@@ -109,6 +123,8 @@ where
             request,
             inner,
             params,
+            client_router,
+            path,
             ..
         } = self;
 
@@ -116,7 +132,9 @@ where
         let ctx = AppContext {
             params,
             request,
+            path: path.clone(),
             layout: None,
+            client_router: client_router.clone(),
             inner: inner.clone(),
         };
 
@@ -130,6 +148,8 @@ where
 
         let options = RenderPageOptions {
             layout: layout_html_string,
+            path,
+            client_router,
             metadata,
             links,
             scripts,

@@ -1,11 +1,6 @@
-use crate::components::{HelloPage, HelloPageProps, HomePage};
-use ::hashira::server::{App as HashiraApp, AppService, Metadata};
+use crate::components::hashira;
 use actix_files::{Files, NamedFile};
 use actix_web::{get, web, App, HttpRequest, HttpServer, Responder};
-use hashira::{
-    server::RenderContext,
-    web::{Response, ResponseExt},
-};
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -54,41 +49,4 @@ fn get_current_dir() -> std::path::PathBuf {
     let mut current_dir = std::env::current_exe().expect("failed to get current directory");
     current_dir.pop();
     current_dir
-}
-
-// Setup all the components
-pub fn hashira<C>() -> AppService<C>
-where
-    C: BaseComponent<Properties = ChildrenProps>,
-{
-    HashiraApp::<C>::new()
-        //.app_data(...)
-        .page("/", |mut ctx: RenderContext<HomePage, C>| async {
-            ctx.add_metadata(
-                Metadata::new()
-                    .viewport("width=device-width, initial-scale=1.0")
-                    .title("Hashira Sample App | Counter")
-                    .description("A counter made with hashira actix-web"),
-            );
-
-            let html = ctx.render().await;
-            Response::html(html)
-        })
-        .page(
-            "/hello/:name",
-            |mut ctx: RenderContext<HelloPage, C>| async {
-                let name = ctx.params().find("name").unwrap().to_owned();
-                ctx.add_metadata(
-                    Metadata::new()
-                        .viewport("width=device-width, initial-scale=1.0")
-                        .title("Hashira Sample App | Hello")
-                        .description("A hashira greeter"),
-                );
-
-                let html = ctx.render_with_props(HelloPageProps { name }).await;
-
-                Response::html(html)
-            },
-        )
-        .build()
 }

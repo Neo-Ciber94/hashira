@@ -1,10 +1,16 @@
 use super::{
-    AppContext, AppService, BoxFuture, ClientPageRoute, Inner, RenderContext, ServerPageRoute,
+    client_router::ClientRouter, AppContext, AppService, BoxFuture, ClientPageRoute, Inner,
+    RenderContext, ServerPageRoute,
 };
-use crate::{server::DefaultLayout, web::Response};
+use crate::{
+    components::{any::AnyComponent},
+    server::DefaultLayout,
+    web::Response,
+};
 use route_recognizer::Router;
+use serde::de::DeserializeOwned;
 use std::{future::Future, rc::Rc};
-use yew::{Html, BaseComponent};
+use yew::{BaseComponent, Html};
 
 pub type RenderLayout<C> = Rc<dyn Fn(AppContext<C>) -> BoxFuture<Html>>;
 
@@ -46,9 +52,11 @@ where
         self
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
         COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Response> + 'static,
     {
@@ -67,6 +75,36 @@ where
         self
     }
 
+    //#[cfg(target_arch = "wasm32")]
+    pub fn _page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        Fut: Future<Output = Response> + 'static,
+    {
+        assert!(path.starts_with("/"), "page path must start with `/`");
+        self.client_router.add(
+            path,
+            ClientPageRoute {
+                match_pattern: path.to_string(),
+                component: AnyComponent::<serde_json::Value>::new(|props_json| {
+                    let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
+                        panic!(
+                            "Failed to deserialize `{}` component props. {err}",
+                            std::any::type_name::<COMP>()
+                        )
+                    });
+
+                    yew::html! {
+                        <COMP ..props/>
+                    }
+                }),
+            },
+        );
+        self
+    }
+
     pub fn build(self) -> AppService<C> {
         let App {
             layout,
@@ -75,6 +113,7 @@ where
         } = self;
 
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
+        let client_router = ClientRouter::from(client_router);
         let inner = Inner {
             layout,
             server_router,
