@@ -1,4 +1,5 @@
-use super::{Metadata, PageLinks, PageScripts};
+use super::{AppService, BoxFuture, ClientPageRoute, Inner, ServerPageRoute};
+use crate::server::{Metadata, PageLinks, PageScripts};
 use crate::{
     server::{render_page_to_html, render_to_static_html, DefaultLayout, RenderPageOptions},
     web::{Request, Response},
@@ -7,15 +8,12 @@ use route_recognizer::{Params, Router};
 use serde::Serialize;
 use std::{
     future::Future,
-    pin::Pin,
     rc::Rc,
     sync::{Arc, Mutex},
 };
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
-type BoxFuture<T> = Pin<Box<dyn Future<Output = T>>>;
-
-type RenderLayout<C> = Rc<dyn Fn(AppContext<C>) -> BoxFuture<Html>>;
+pub type RenderLayout<C> = Rc<dyn Fn(AppContext<C>) -> BoxFuture<Html>>;
 
 struct AppContextInner {
     // The `<meta>` tags of the page to render
@@ -145,7 +143,7 @@ where
     }
 }
 
-pub struct PageHandler<C>(Box<dyn Fn(AppContext<C>) -> BoxFuture<Response>>);
+pub struct PageHandler<C>(pub(crate) Box<dyn Fn(AppContext<C>) -> BoxFuture<Response>>);
 
 impl<C> PageHandler<C> {
     pub fn call(&self, ctx: AppContext<C>) -> BoxFuture<Response> {
@@ -155,7 +153,8 @@ impl<C> PageHandler<C> {
 
 pub struct App<C> {
     layout: Option<RenderLayout<C>>,
-    router: Router<PageHandler<C>>,
+    server_router: Router<ServerPageRoute<C>>,
+    client_router: Router<ClientPageRoute>,
 }
 
 impl<C> App<C>
@@ -165,7 +164,8 @@ where
     pub fn new() -> Self {
         App {
             layout: None,
-            router: Router::new(),
+            server_router: Router::new(),
+            client_router: Router::new(),
         }
     }
 
@@ -186,81 +186,35 @@ where
         H: Fn(AppContext<C>) -> Fut + 'static,
         Fut: Future<Output = Response> + 'static,
     {
-        assert!(path.starts_with("/"));
-        self.router.add(
-            path,
-            PageHandler(Box::new(move |ctx| {
+        assert!(path.starts_with("/"), "page path must start with `/`");
+
+        let page = ServerPageRoute {
+            match_pattern: path.to_string(),
+            handler: PageHandler(Box::new(move |ctx| {
                 let res = handler(ctx);
                 Box::pin(res)
             })),
-        );
+        };
+
+        self.server_router.add(path, page);
         self
     }
 
     pub fn build(self) -> AppService<C> {
-        let App { layout, router } = self;
+        let App {
+            layout,
+            server_router,
+            client_router,
+        } = self;
+
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
-        let inner = Inner { layout, router };
+        let inner = Inner {
+            layout,
+            server_router,
+            client_router,
+        };
 
-        AppService {
-            inner: Rc::new(inner),
-        }
-    }
-}
-
-struct Inner<C> {
-    pub(crate) layout: RenderLayout<C>,
-    pub(crate) router: Router<PageHandler<C>>,
-}
-
-pub struct AppService<C> {
-    inner: Rc<Inner<C>>,
-}
-
-impl<C> AppService<C> {
-    /// Create a context to be used in the request.
-    pub fn create_context(&self, request: Request, params: Params) -> AppContext<C> {
-        let layout = self.inner.layout.clone();
-        AppContext::new(request, layout, params)
-    }
-
-    /// Returns the router with all the pages.
-    pub fn router(&self) -> &Router<PageHandler<C>> {
-        &self.inner.router
-    }
-
-    /// Process the incoming request and return the response.
-    pub async fn handle(&self, req: Request, path: &str) -> Response {
-        match self.inner.router.recognize(&path) {
-            Ok(mtch) => {
-                let params = mtch.params().clone();
-                let ctx = self.create_context(req, params);
-                let res = mtch.handler().call(ctx).await;
-                res
-            }
-            Err(_) => {
-                todo!("Return a 404 component")
-            }
-        }
-    }
-
-    /// Returns the `html` template of the layout
-    pub async fn get_layout_html(&self) -> String {
-        let layout = self.inner.layout.clone();
-        let params = Params::new();
-        let ctx = AppContext::no_request(layout, params);
-        let render_layout = &self.inner.layout;
-        let layout_html = render_layout(ctx).await;
-        let html_string = render_to_static_html(move || layout_html).await;
-        html_string
-    }
-}
-
-impl<C> Clone for AppService<C> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
+        AppService::new(Rc::new(inner))
     }
 }
 
