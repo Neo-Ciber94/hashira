@@ -1,4 +1,5 @@
-use crate::web::{Request, Response};
+use crate::web::{Request, Response, ResponseExt};
+use http::StatusCode;
 use route_recognizer::{Params, Router};
 use std::rc::Rc;
 use super::{client_router::ClientRouter, AppContext, RenderLayout, ServerPageRoute};
@@ -50,7 +51,7 @@ impl<C> AppService<C> {
                 res
             }
             Err(_) => {
-                todo!("Return a 404 component")
+                Response::with_status(StatusCode::NOT_FOUND)
             }
         }
     }

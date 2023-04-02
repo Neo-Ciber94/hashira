@@ -44,7 +44,7 @@ pub trait ResponseExt {
     ) -> Result<Response, RedirectionError>;
 
     /// Creates a response with the given status code.
-    fn status(status: StatusCode) -> Response;
+    fn with_status(status: StatusCode) -> Response;
 
     // TODO: Return an iterator instead.
     /// Returns all the cookies in the request.
@@ -94,7 +94,7 @@ impl ResponseExt for Response {
         Ok(res)
     }
 
-    fn status(status: StatusCode) -> Response {
+    fn with_status(status: StatusCode) -> Response {
         let mut res = Response::new(Body::new());
         *res.status_mut() = status;
         res

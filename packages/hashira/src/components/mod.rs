@@ -1,4 +1,5 @@
 pub(crate) mod app;
+pub mod error;
 mod any;
 mod markers;
 mod page;

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
-use crate::app::client_router::ClientRouter;
+use crate::{app::client_router::ClientRouter, components::error::NotFoundPage};
 
 pub struct RenderFn(Box<dyn Fn() -> Html + Send + Sync>);
 
@@ -58,12 +58,9 @@ where
             }
         }
         // TODO: Add custom error pages
-        Err(error) => {
+        Err(_) => {
             yew::html! {
-              <>
-                <h1>{"404 | Not Found"}</h1>
-                <p>{error}</p>
-              </>
+              <NotFoundPage />
             }
         }
     }
