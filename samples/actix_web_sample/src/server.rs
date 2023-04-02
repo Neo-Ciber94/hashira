@@ -2,7 +2,7 @@ use crate::components::{HelloPage, HelloPageProps, HomePage};
 use ::hashira::server::{App as HashiraApp, AppService, Metadata};
 use actix_files::{Files, NamedFile};
 use actix_web::{get, web, App, HttpRequest, HttpServer, Responder};
-use hashira::web::{Body, Response};
+use hashira::web::{Response, ResponseExt};
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -69,13 +69,7 @@ where
             );
 
             let html = ctx.render::<HomePage>().await;
-            Response::builder()
-                .header(
-                    hashira::web::header::CONTENT_TYPE,
-                    "text/html; charset=utf-8",
-                )
-                .body(Body::from(html))
-                .unwrap()
+            Response::html(html)
         })
         .page("/hello/:name", |mut ctx| async {
             let name = ctx.params().find("name").unwrap().to_owned();
@@ -90,13 +84,7 @@ where
                 .render_with_props::<HelloPage>(HelloPageProps { name })
                 .await;
 
-            Response::builder()
-                .header(
-                    hashira::web::header::CONTENT_TYPE,
-                    "text/html; charset=utf-8",
-                )
-                .body(Body::from(html))
-                .unwrap()
+            Response::html(html)
         })
         .build()
 }
