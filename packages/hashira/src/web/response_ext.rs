@@ -1,5 +1,4 @@
 use std::fmt::Display;
-
 use bytes::Bytes;
 use cookie::Cookie;
 use http::{
@@ -7,7 +6,6 @@ use http::{
     HeaderValue, StatusCode,
 };
 use serde::Serialize;
-
 use super::{Body, Response};
 
 impl std::error::Error for RedirectionError {}
