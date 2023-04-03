@@ -1,42 +1,11 @@
 use std::sync::Arc;
-
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
-
 use crate::{
-    app::{client_router::ClientRouter, error_router::ClientErrorRouter},
+    app::{client_router::ClientRouter, error_router::ErrorRouter},
     components::error::{ErrorPage, NotFoundPage},
 };
-
-pub struct RenderFn(Box<dyn Fn() -> Html + Send + Sync>);
-
-impl RenderFn {
-    pub fn render(&self) -> Html {
-        (self.0)()
-    }
-}
-
-impl Default for RenderFn {
-    fn default() -> Self {
-        RenderFn::new(|| Html::default())
-    }
-}
-
-impl RenderFn {
-    pub fn new<F>(f: F) -> Self
-    where
-        F: Fn() -> Html + Send + Sync + 'static,
-    {
-        RenderFn(Box::new(f))
-    }
-}
-
-impl PartialEq for RenderFn {
-    fn eq(&self, other: &Self) -> bool {
-        std::ptr::eq(&self.0, &other.0)
-    }
-}
 
 #[derive(PartialEq, Properties)]
 pub struct PageProps {
@@ -44,7 +13,7 @@ pub struct PageProps {
     pub error: Option<PageError>,
     pub props_json: serde_json::Value,
     pub client_router: ClientRouter,
-    pub client_error_router: Arc<ClientErrorRouter>,
+    pub client_error_router: Arc<ErrorRouter>,
 }
 
 #[function_component]
