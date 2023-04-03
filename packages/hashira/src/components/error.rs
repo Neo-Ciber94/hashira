@@ -110,4 +110,20 @@ body.dark h1 {
 body.dark .error-message {
     font-size: 16px;
     color: rgb(226, 226, 226);
-}"#;
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: black;
+    }
+    
+    h1 {
+        color: rgb(220, 220, 220);
+    }
+    
+    .error-message {
+        font-size: 16px;
+        color: rgb(226, 226, 226);
+    }    
+}
+"#;
