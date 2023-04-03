@@ -1,21 +1,27 @@
-use std::{collections::BTreeMap, fmt::Display};
+use indexmap::IndexMap;
+use std::fmt::Display;
 
+/// Represents a `<script>` element.
 #[derive(Default, Debug, Clone)]
 pub struct ScriptTag {
-    attrs: BTreeMap<String, String>,
+    attrs: IndexMap<String, String>,
     content: Option<String>,
+    // TODO: priority: Option<ScriptPriority>, BeforeInteractive, AfterInteractive?
 }
 
 impl ScriptTag {
+    /// Constructs an empty `<script>` element.
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Sets an attribute on the `<script>` element.
     pub fn attr(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.attrs.insert(key.into(), value.into());
         self
     }
 
+    /// Sets the inner content of the `<script>` element.
     pub fn content(mut self, content: impl Into<String>) -> Self {
         self.content = Some(content.into());
         self
@@ -38,6 +44,7 @@ impl Display for ScriptTag {
     }
 }
 
+/// Represents a collection of `<script>` elements to include on the page.
 #[derive(Default, Debug, Clone)]
 pub struct PageScripts {
     tags: Vec<ScriptTag>,

@@ -116,7 +116,7 @@ fn insert_metadata(html: &mut String, metadata: Metadata) {
 
     // Add <title> from <meta name="title" ...>
     if let Some(meta) = metadata.meta_tags().find(|x| x.name() == "title") {
-        let content = meta.attrs().get("content").unwrap();
+        let (_, content) = meta.attrs().find(|(name, _)| name.as_str() == "content").unwrap();
         tags_html.push(format!("<title>{}</title>", content));
     }
 

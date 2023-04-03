@@ -1,13 +1,12 @@
-use std::{
-    collections::{btree_map::Values, BTreeMap},
-    fmt::Display,
-};
+use std::fmt::Display;
+
+use indexmap::IndexMap;
 
 /// Represents a `<meta>` element.
 #[derive(Debug, Clone)]
 pub struct MetaTag {
     name: String,
-    attrs: BTreeMap<String, String>,
+    attrs: IndexMap<String, String>,
 }
 
 impl MetaTag {
@@ -17,22 +16,25 @@ impl MetaTag {
         I: IntoIterator<Item = (String, String)>,
     {
         let name = name.into();
-        let attrs = attrs.into_iter().collect::<BTreeMap<String, String>>();
+        let attrs = attrs.into_iter().collect::<IndexMap<String, String>>();
         MetaTag { name, attrs }
     }
 
+    /// Constructs a tag in the form: `<meta name='...' content='...' />`
+    pub fn with_content(name: impl Into<String>, content: impl Into<String>) -> Self {
+        let name = name.into();
+        let attrs = IndexMap::from_iter([("content".to_owned(), content.into())]);
+        MetaTag { name, attrs }
+    }
+
+    /// Returns the value of the `name` attribute.
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
 
-    pub fn attrs(&self) -> &BTreeMap<String, String> {
-        &self.attrs
-    }
-
-    pub fn with_content(name: impl Into<String>, content: impl Into<String>) -> Self {
-        let name = name.into();
-        let attrs = BTreeMap::from_iter([("content".to_owned(), content.into())]);
-        MetaTag { name, attrs }
+    /// Returns the attributes of the tag.
+    pub fn attrs(&self) -> indexmap::map::Iter<String, String> {
+        self.attrs.iter()
     }
 }
 
@@ -53,7 +55,7 @@ impl Display for MetaTag {
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
     // This represents the `name` and additional attributes of the <meta> tag
-    tags: BTreeMap<String, MetaTag>,
+    tags: IndexMap<String, MetaTag>,
 }
 
 impl Metadata {
@@ -63,7 +65,7 @@ impl Metadata {
     }
 
     /// Returns an iterator over the meta elements.
-    pub fn meta_tags(&self) -> Values<String, MetaTag> {
+    pub fn meta_tags(&self) -> indexmap::map::Values<String, MetaTag> {
         self.tags.values()
     }
 
@@ -131,6 +133,12 @@ impl Metadata {
 
 pub trait IntoMetaTag {
     fn into_meta_tag(self) -> MetaTag;
+}
+
+impl IntoMetaTag for MetaTag {
+    fn into_meta_tag(self) -> MetaTag {
+        self
+    }
 }
 
 impl IntoMetaTag for (&'_ str, &'_ str) {
