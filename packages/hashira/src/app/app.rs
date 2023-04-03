@@ -1,12 +1,20 @@
 use super::{
-    client_router::ClientRouter, AppContext, AppService, BoxFuture, ClientPageRoute, Inner,
-    RenderContext, ServerPageRoute,
+    client_router::ClientRouter,
+    error_router::{ClientErrorRouter, ServerErrorRouter},
+    AppContext, AppService, BoxFuture, ClientPageRoute, Inner, RenderContext, ServerPageRoute,
 };
-use crate::{components::RootLayout, web::Response};
+use crate::{
+    components::{
+        error::{ErrorPage, ErrorPageProps, NotFoundPage},
+        RootLayout,
+    },
+    web::{Body, Response, ResponseExt},
+};
+use http::{header, status::StatusCode};
 use route_recognizer::Router;
 use serde::de::DeserializeOwned;
-use std::{future::Future, rc::Rc};
-use yew::{BaseComponent, Html};
+use std::{future::Future, rc::Rc, sync::Arc};
+use yew::{html::ChildrenProps, BaseComponent, Html};
 
 pub type RenderLayout<C> = Rc<dyn Fn(AppContext<C>) -> BoxFuture<Html>>;
 
@@ -18,10 +26,22 @@ impl<C> PageHandler<C> {
     }
 }
 
+pub struct ErrorPageHandler<C>(
+    pub(crate) Box<dyn Fn(AppContext<C>, StatusCode) -> BoxFuture<Response>>,
+);
+
+impl<C> ErrorPageHandler<C> {
+    pub fn call(&self, ctx: AppContext<C>, status: StatusCode) -> BoxFuture<Response> {
+        (self.0)(ctx, status)
+    }
+}
+
 pub struct App<C> {
     layout: Option<RenderLayout<C>>,
     server_router: Router<ServerPageRoute<C>>,
     client_router: Router<ClientPageRoute>,
+    client_error_router: ClientErrorRouter,
+    server_error_router: ServerErrorRouter<C>,
 }
 
 impl<C> App<C>
@@ -33,6 +53,8 @@ where
             layout: None,
             server_router: Router::new(),
             client_router: Router::new(),
+            client_error_router: ClientErrorRouter::new(),
+            server_error_router: ServerErrorRouter::new(),
         }
     }
 
@@ -68,7 +90,7 @@ where
         };
 
         self.server_router.add(path, page);
-        self.add_client_page::<COMP, H, Fut>(path);
+        self.add_component::<COMP>(path);
         self
     }
 
@@ -80,16 +102,113 @@ where
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Response> + 'static,
     {
-        self.add_client_page::<COMP, H, Fut>(path);
+        self.add_component::<COMP, H, Fut>(path);
         self
     }
 
-    fn add_client_page<COMP, H, Fut>(&mut self, path: &str)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
     where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Response> + 'static,
+    {
+        self.server_error_router.add(
+            status,
+            ErrorPageHandler(Box::new(move |ctx, status| {
+                let render_ctx = RenderContext::new(ctx);
+                let res = handler(render_ctx, status);
+                Box::pin(res)
+            })),
+        );
+
+        self.add_error_component::<COMP>(status);
+        self
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, _: H) -> Self
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        Fut: Future<Output = Response> + 'static,
+    {
+        self.add_error_component::<COMP>(status);
+        self
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        Fut: Future<Output = Response> + 'static,
+    {
+        self.server_error_router
+            .add_fallback(ErrorPageHandler(Box::new(move |ctx, status| {
+                let render_ctx = RenderContext::new(ctx);
+                let res = handler(render_ctx, status);
+                Box::pin(res)
+            })));
+
+        self.add_error_fallback_component::<COMP>();
+        self
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn error_page_fallback<COMP, H, Fut>(mut self, _: H) -> Self
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        Fut: Future<Output = Response> + 'static,
+    {
+        self.add_error_fallback_component::<COMP>();
+        self
+    }
+
+    /// Adds the default `404` error page and a fallback error page.
+    pub fn use_default_error_pages(self) -> Self
+    where
+        C: BaseComponent<Properties = ChildrenProps>,
+    {
+        self.error_page(
+            StatusCode::NOT_FOUND,
+            move |ctx: RenderContext<NotFoundPage, C>, status: StatusCode| async move {
+                let html = ctx.render().await;
+                let mut res = Response::with_status(status);
+                *res.body_mut() = Body::from(html);
+                res.headers_mut().append(
+                    header::CONTENT_TYPE,
+                    header::HeaderValue::from_static("text/html; charset=utf-8"),
+                );
+                res
+            },
+        )
+        .error_page_fallback(move |ctx: RenderContext<ErrorPage, C>, status| async move {
+            let html = ctx
+                .render_with_props(ErrorPageProps {
+                    status,
+                    message: None,
+                })
+                .await;
+            let mut res = Response::with_status(status);
+            *res.body_mut() = Body::from(html);
+            res.headers_mut().append(
+                header::CONTENT_TYPE,
+                header::HeaderValue::from_static("text/html; charset=utf-8"),
+            );
+            res
+        })
+    }
+
+    fn add_component<COMP>(&mut self, path: &str)
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
     {
         use crate::components::AnyComponent;
 
@@ -118,19 +237,80 @@ where
         );
     }
 
+    fn add_error_component<COMP>(&mut self, status: StatusCode)
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+    {
+        use crate::components::AnyComponent;
+
+        log::info!(
+            "Registering error component `{}` for {status}",
+            std::any::type_name::<COMP>()
+        );
+
+        self.client_error_router.add(
+            status,
+            AnyComponent::<serde_json::Value>::new(|props_json| {
+                let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
+                    panic!(
+                        "Failed to deserialize `{}` component props. {err}",
+                        std::any::type_name::<COMP>()
+                    )
+                });
+
+                yew::html! {
+                    <COMP ..props/>
+                }
+            }),
+        );
+    }
+
+    fn add_error_fallback_component<COMP>(&mut self)
+    where
+        COMP: BaseComponent,
+        COMP::Properties: DeserializeOwned,
+    {
+        use crate::components::AnyComponent;
+
+        log::info!(
+            "Registering fallback error component `{}`",
+            std::any::type_name::<COMP>()
+        );
+
+        self.client_error_router
+            .add_fallback(AnyComponent::<serde_json::Value>::new(|props_json| {
+                let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
+                    panic!(
+                        "Failed to deserialize `{}` component props. {err}",
+                        std::any::type_name::<COMP>()
+                    )
+                });
+
+                yew::html! {
+                    <COMP ..props/>
+                }
+            }));
+    }
+
     pub fn build(self) -> AppService<C> {
         let App {
             layout,
             server_router,
             client_router,
+            client_error_router,
+            server_error_router,
         } = self;
 
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
         let client_router = ClientRouter::from(client_router);
+        let client_error_router = Arc::from(client_error_router);
         let inner = Inner {
             layout,
             server_router,
             client_router,
+            client_error_router,
+            server_error_router,
         };
 
         AppService::new(Rc::new(inner))

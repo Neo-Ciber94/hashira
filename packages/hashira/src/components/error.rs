@@ -1,13 +1,15 @@
 use http::StatusCode;
+use serde::{Deserialize, Serialize};
 use yew::{function_component, Properties};
 
 
-#[derive(Properties, PartialEq)]
+#[derive(Clone, Properties, PartialEq, Serialize, Deserialize)]
 pub struct ErrorPageProps {
-    status: StatusCode,
+    #[serde(with = "crate::web::serde::status_code")]
+    pub status: StatusCode,
 
     #[prop_or_default]
-    message: Option<String>,
+    pub message: Option<String>,
 }
 
 #[function_component]
@@ -39,10 +41,10 @@ pub fn ErrorPage(props: &ErrorPageProps) -> yew::Html {
     }
 }
 
-#[derive(Properties, PartialEq)]
+#[derive(Clone, Default, Properties, PartialEq, Serialize, Deserialize)]
 pub struct NotFoundPageProps {
     #[prop_or_default]
-    message: Option<String>,
+    pub message: Option<String>,
 }
 
 #[function_component]
@@ -51,7 +53,6 @@ pub fn NotFoundPage(props: &NotFoundPageProps) -> yew::Html {
         <ErrorPage status={StatusCode::NOT_FOUND} message={props.message.clone()}/>
     }
 }
-
 
 const ERROR_PAGE_STYLES : &str = r#"
 .error-page-container {

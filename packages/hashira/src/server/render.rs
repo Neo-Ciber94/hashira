@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::client_router::ClientRouter;
+use crate::app::error_router::ClientErrorRouter;
 use crate::components::{
     Page, PageData, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER,
     HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
@@ -12,11 +15,14 @@ use yew::{
 };
 
 pub struct RenderPageOptions {
-    // The current route path of the component to render.
+    // The current route path of the component to render
     pub(crate) path: String,
 
     // The router used to render the page
     pub(crate) client_router: ClientRouter,
+
+    // The router used to render errors
+    pub(crate) client_error_router: Arc<ClientErrorRouter>,
 
     // Represents the shell where the page will be rendered
     pub(crate) layout: String,
@@ -41,12 +47,13 @@ where
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let RenderPageOptions {
+        path,
         layout,
         metadata,
         links,
         scripts,
         client_router,
-        path,
+        client_error_router,
     } = options;
 
     // The base layout
@@ -68,6 +75,7 @@ where
         path: path.clone(),
         props_json: props_json.clone(),
         client_router,
+        client_error_router,
     };
 
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);

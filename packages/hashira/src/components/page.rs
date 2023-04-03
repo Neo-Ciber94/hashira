@@ -1,7 +1,13 @@
+use std::sync::Arc;
+
+use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
-use crate::{app::client_router::ClientRouter, components::error::NotFoundPage};
+use crate::{
+    app::{client_router::ClientRouter, error_router::ClientErrorRouter},
+    components::error::NotFoundPage,
+};
 
 pub struct RenderFn(Box<dyn Fn() -> Html + Send + Sync>);
 
@@ -37,6 +43,7 @@ pub struct PageProps {
     pub path: String,
     pub props_json: serde_json::Value,
     pub client_router: ClientRouter,
+    pub client_error_router: Arc<ClientErrorRouter>,
 }
 
 #[function_component]
@@ -46,6 +53,8 @@ where
 {
     let path = props.path.as_str();
     let router = &props.client_router;
+    let error_router = &props.client_error_router;
+
     match router.recognize(path) {
         Ok(mtch) => {
             let route = mtch.handler();
@@ -57,12 +66,20 @@ where
                 </ROOT>
             }
         }
-        // TODO: Add custom error pages
-        Err(_) => {
-            yew::html! {
-              <NotFoundPage />
+        Err(_) => match error_router.recognize_error(&StatusCode::NOT_FOUND) {
+            Some(comp) => {
+                let props = props.props_json.clone();
+                yew::html! {
+                    {comp.render_with_props(props)}
+                }
             }
-        }
+            None => {
+                log::error!("not error page was registered for 404 errors");
+                yew::html! {
+                    <NotFoundPage />
+                }
+            }
+        },
     }
 }
 

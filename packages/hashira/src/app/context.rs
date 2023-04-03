@@ -1,4 +1,4 @@
-use super::{client_router::ClientRouter, RenderLayout};
+use super::{client_router::ClientRouter, error_router::ClientErrorRouter, RenderLayout};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
     web::Request,
@@ -25,6 +25,7 @@ struct AppContextInner {
 #[allow(dead_code)] // TODO: Ignore server only data
 pub struct AppContext<C> {
     client_router: ClientRouter,
+    client_error_router: Arc<ClientErrorRouter>,
     request: Option<Request>,
     path: String,
     params: Params,
@@ -37,6 +38,7 @@ impl<C> AppContext<C> {
     fn _new(
         request: Option<Request>,
         client_router: ClientRouter,
+        client_error_router: Arc<ClientErrorRouter>,
         path: String,
         layout: RenderLayout<C>,
         params: Params,
@@ -53,6 +55,7 @@ impl<C> AppContext<C> {
             request,
             client_router,
             layout: Some(layout),
+            client_error_router,
             inner: Arc::new(Mutex::new(inner)),
         }
     }
@@ -60,20 +63,36 @@ impl<C> AppContext<C> {
     pub fn new(
         request: Request,
         client_router: ClientRouter,
+        client_error_router: Arc<ClientErrorRouter>,
         path: String,
         layout: RenderLayout<C>,
         params: Params,
     ) -> Self {
-        Self::_new(Some(request), client_router, path, layout, params)
+        Self::_new(
+            Some(request),
+            client_router,
+            client_error_router,
+            path,
+            layout,
+            params,
+        )
     }
 
     pub(crate) fn no_request(
         client_router: ClientRouter,
+        client_error_router: Arc<ClientErrorRouter>,
         path: String,
         layout: RenderLayout<C>,
         params: Params,
     ) -> Self {
-        Self::_new(None, client_router, path, layout, params)
+        Self::_new(
+            None,
+            client_router,
+            client_error_router,
+            path,
+            layout,
+            params,
+        )
     }
 }
 
@@ -127,22 +146,24 @@ where
             inner,
             params,
             client_router,
+            client_error_router,
             path,
-            ..
         } = self;
 
         let render_layout = layout.unwrap();
+
         let ctx = AppContext {
             params,
             request,
             path: path.clone(),
             layout: None,
             client_router: client_router.clone(),
+            client_error_router: client_error_router.clone(),
             inner: inner.clone(),
         };
 
-        let layout_html = render_layout(ctx).await;
-        let layout_html_string = render_to_static_html(move || layout_html).await;
+        let layout_node = render_layout(ctx).await;
+        let layout = render_to_static_html(move || layout_node).await;
 
         let inner = inner.lock().unwrap();
         let links = inner.links.clone();
@@ -150,7 +171,8 @@ where
         let scripts = inner.scripts.clone();
 
         let options = RenderPageOptions {
-            layout: layout_html_string,
+            layout,
+            client_error_router,
             path,
             client_router,
             metadata,

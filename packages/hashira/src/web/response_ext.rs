@@ -75,7 +75,7 @@ impl ResponseExt for Response {
         let body = Body::from(json);
         let mut res = Response::new(body);
         res.headers_mut()
-            .append(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+            .append(CONTENT_TYPE, HeaderValue::from_static("application/json; charset=utf-8"));
         Ok(res)
     }
 

@@ -68,6 +68,7 @@ where
 {
     HashiraApp::<C>::new()
         //.app_data(...)
+        .use_default_error_pages()
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
             ctx.add_metadata(
                 Metadata::new()
@@ -95,5 +96,6 @@ where
                 Response::html(html)
             },
         )
+   
         .build()
 }

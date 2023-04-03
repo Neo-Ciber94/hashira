@@ -1,3 +1,6 @@
+#[doc(hidden)]
+pub mod serde;
+
 mod response_ext;
 mod request_ext;
 
