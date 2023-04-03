@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
-use crate::app::client_router::ClientRouter;
+use crate::app::router::ClientRouter;
 use crate::app::error_router::ErrorRouter;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,

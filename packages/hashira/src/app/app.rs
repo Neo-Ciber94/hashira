@@ -1,5 +1,5 @@
 use super::{
-    client_router::ClientRouter,
+    router::ClientRouter,
     error_router::{ErrorRouter, ServerErrorRouter},
     RequestContext, AppService, BoxFuture, ClientPageRoute, AppServiceInner, RenderContext, ServerPageRoute,
 };
@@ -89,7 +89,7 @@ where
         assert!(path.starts_with("/"), "page path must start with `/`");
 
         let page = ServerPageRoute {
-            match_pattern: path.to_string(),
+            path: path.to_string(),
             handler: PageHandler(Box::new(move |ctx| {
                 let render_ctx = RenderContext::new(ctx);
                 let res = handler(render_ctx);
@@ -230,7 +230,7 @@ where
         self.client_router.add(
             path,
             ClientPageRoute {
-                match_pattern: path.to_string(),
+                path: path.to_string(),
                 component: AnyComponent::<serde_json::Value>::new(|props_json| {
                     let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
                         panic!(

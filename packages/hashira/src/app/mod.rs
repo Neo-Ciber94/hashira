@@ -11,7 +11,7 @@ pub use render_context::*;
 pub use route::*;
 
 //
-pub mod client_router;
+pub mod router;
 pub mod error_router;
 
 // A convenient boxed future.

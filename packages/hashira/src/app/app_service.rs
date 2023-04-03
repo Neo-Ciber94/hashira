@@ -1,5 +1,5 @@
 use super::{
-    client_router::ClientRouter,
+    router::ClientRouter,
     error_router::{ErrorRouter, ServerErrorRouter},
     RequestContext, RenderLayout, ServerPageRoute,
 };

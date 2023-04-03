@@ -3,7 +3,7 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 use crate::{
-    app::{client_router::ClientRouter, error_router::ErrorRouter},
+    app::{router::ClientRouter, error_router::ErrorRouter},
     components::error::{ErrorPage, NotFoundPage},
 };
 

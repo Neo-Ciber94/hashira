@@ -1,4 +1,4 @@
-use super::{client_router::ClientRouter, error_router::ErrorRouter, RenderLayout};
+use super::{router::ClientRouter, error_router::ErrorRouter, RenderLayout};
 pub use crate::error::ResponseError;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
