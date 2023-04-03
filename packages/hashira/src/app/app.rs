@@ -102,7 +102,7 @@ where
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Response> + 'static,
     {
-        self.add_component::<COMP, H, Fut>(path);
+        self.add_component::<COMP>(path);
         self
     }
 

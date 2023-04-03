@@ -2,7 +2,6 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, Properties};
 
-
 #[derive(Clone, Properties, PartialEq, Serialize, Deserialize)]
 pub struct ErrorPageProps {
     #[serde(with = "crate::web::serde::status_code")]
@@ -29,7 +28,7 @@ pub fn ErrorPage(props: &ErrorPageProps) -> yew::Html {
                     <h1 class="error-text">
                         <span class="error-status">{format!("{}", status.as_u16())}</span>
                         <span class="error-divider"></span>
-                        <span class="error-status-message">{format!("{}", status.as_str())}</span>
+                        <span class="error-status-message">{format!("{}", status.canonical_reason().unwrap_or("An error has occurred"))}</span>
                     </h1>
                         if let Some(message) = message {
                             <strong class="error-message">{message}</strong>
@@ -54,7 +53,7 @@ pub fn NotFoundPage(props: &NotFoundPageProps) -> yew::Html {
     }
 }
 
-const ERROR_PAGE_STYLES : &str = r#"
+const ERROR_PAGE_STYLES: &str = r#"
 .error-page-container {
     position: relative;
     height: 80vh;
