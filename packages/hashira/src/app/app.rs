@@ -1,7 +1,7 @@
 use super::{
     client_router::ClientRouter,
     error_router::{ClientErrorRouter, ServerErrorRouter},
-    AppContext, AppService, BoxFuture, ClientPageRoute, AppServiceInner, RenderContext, ServerPageRoute,
+    RequestContext, AppService, BoxFuture, ClientPageRoute, AppServiceInner, RenderContext, ServerPageRoute,
 };
 use crate::{
     components::{
@@ -18,26 +18,26 @@ use serde::de::DeserializeOwned;
 use std::{future::Future, rc::Rc, sync::Arc};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
-pub type RenderLayout<C> = Rc<dyn Fn(AppContext<C>) -> BoxFuture<Html>>;
+pub type RenderLayout<C> = Rc<dyn Fn(RequestContext<C>) -> BoxFuture<Html>>;
 
 pub struct PageHandler<C>(
-    pub(crate) Box<dyn Fn(AppContext<C>) -> BoxFuture<Result<Response, Error>>>,
+    pub(crate) Box<dyn Fn(RequestContext<C>) -> BoxFuture<Result<Response, Error>>>,
 );
 
 impl<C> PageHandler<C> {
-    pub fn call(&self, ctx: AppContext<C>) -> BoxFuture<Result<Response, Error>> {
+    pub fn call(&self, ctx: RequestContext<C>) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx)
     }
 }
 
 pub struct ErrorPageHandler<C>(
-    pub(crate) Box<dyn Fn(AppContext<C>, StatusCode) -> BoxFuture<Result<Response, Error>>>,
+    pub(crate) Box<dyn Fn(RequestContext<C>, StatusCode) -> BoxFuture<Result<Response, Error>>>,
 );
 
 impl<C> ErrorPageHandler<C> {
     pub fn call(
         &self,
-        ctx: AppContext<C>,
+        ctx: RequestContext<C>,
         status: StatusCode,
     ) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx, status)
@@ -68,7 +68,7 @@ where
 
     pub fn layout<F, Fut>(mut self, layout: F) -> Self
     where
-        F: Fn(AppContext<C>) -> Fut + 'static,
+        F: Fn(RequestContext<C>) -> Fut + 'static,
         Fut: Future<Output = Html> + 'static,
     {
         self.layout = Some(Rc::new(move |ctx| {
@@ -327,7 +327,7 @@ where
     }
 }
 
-fn render_default_layout<C>(_: AppContext<C>) -> BoxFuture<yew::Html> {
+fn render_default_layout<C>(_: RequestContext<C>) -> BoxFuture<yew::Html> {
     Box::pin(async {
         yew::html! {
             <RootLayout/>

@@ -1,11 +1,13 @@
 mod app;
 mod app_service;
-mod context;
+mod request_context;
+mod render_context;
 mod route;
 
 pub use app::*;
 pub use app_service::*;
-pub use context::*;
+pub use request_context::*;
+pub use render_context::*;
 pub use route::*;
 
 //

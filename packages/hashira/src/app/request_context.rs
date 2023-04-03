@@ -1,18 +1,12 @@
 use super::{client_router::ClientRouter, error_router::ClientErrorRouter, RenderLayout};
-use crate::error::Error;
 pub use crate::error::ResponseError;
-use crate::web::ResponseExt;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
-    web::{Request, Response},
+    web::Request,
 };
-use http::StatusCode;
 use route_recognizer::Params;
 use serde::Serialize;
-use std::{
-    marker::PhantomData,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use yew::{html::ChildrenProps, BaseComponent};
 
 struct PageLayoutData {
@@ -26,8 +20,9 @@ struct PageLayoutData {
     scripts: PageScripts,
 }
 
+/// Contains information about the current request.
 #[allow(dead_code)] // TODO: Ignore server only data
-pub struct AppContext<C> { // rename to RequestContext?
+pub struct RequestContext<C> {
     path: String,
     params: Params,
     client_router: ClientRouter,
@@ -39,7 +34,7 @@ pub struct AppContext<C> { // rename to RequestContext?
 }
 
 #[allow(dead_code)] // TODO: Ignore server only data
-impl<C> AppContext<C> {
+impl<C> RequestContext<C> {
     pub fn new(
         request: Option<Arc<Request>>,
         client_router: ClientRouter,
@@ -55,7 +50,7 @@ impl<C> AppContext<C> {
             scripts: PageScripts::default(),
         };
 
-        AppContext {
+        RequestContext {
             path,
             params,
             error,
@@ -68,32 +63,38 @@ impl<C> AppContext<C> {
     }
 }
 
-impl<C> AppContext<C>
+impl<C> RequestContext<C>
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
+    /// Adds a `<meta>` element to the page head.
     pub fn add_metadata(&mut self, metadata: Metadata) {
         self.data.lock().unwrap().metadata.extend(metadata);
     }
 
+    /// Adds a `<link>` element to the page head.
     pub fn add_links(&mut self, links: PageLinks) {
         self.data.lock().unwrap().links.extend(links);
     }
 
+    /// Adds a `<script>` element to the page body.
     pub fn add_scripts(&mut self, scripts: PageScripts) {
         self.data.lock().unwrap().scripts.extend(scripts);
     }
 
+    /// Returns the current request.
     pub fn request(&self) -> &Request {
         self.request
             .as_ref()
             .expect("no request is being processed")
     }
 
+    /// Returns the matching params of the route.
     pub fn params(&self) -> &Params {
         &self.params
     }
 
+    /// Renders the given component to html.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render<COMP>(self) -> String
     where
@@ -104,6 +105,7 @@ where
         self.render_with_props::<COMP>(props).await
     }
 
+    /// Renders the given component with the specified props to html.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
     where
@@ -125,7 +127,7 @@ where
 
         let render_layout = layout.unwrap();
 
-        let layout_ctx = AppContext {
+        let layout_ctx = RequestContext {
             params,
             request,
             path: path.clone(),
@@ -159,88 +161,5 @@ where
             .await
             .unwrap();
         result_html
-    }
-}
-
-pub struct RenderContext<COMP, C> {
-    context: AppContext<C>,
-    _marker: PhantomData<COMP>,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl<COMP, C> RenderContext<COMP, C> {
-    pub(crate) fn new(context: AppContext<C>) -> Self {
-        RenderContext {
-            context,
-            _marker: PhantomData,
-        }
-    }
-}
-impl<COMP, C> RenderContext<COMP, C>
-where
-    C: BaseComponent<Properties = ChildrenProps>,
-{
-    pub fn add_metadata(&mut self, metadata: Metadata) {
-        self.context.add_metadata(metadata);
-    }
-
-    pub fn add_links(&mut self, links: PageLinks) {
-        self.context.add_links(links);
-    }
-
-    pub fn add_scripts(&mut self, scripts: PageScripts) {
-        self.context.add_scripts(scripts);
-    }
-
-    pub fn request(&self) -> &Request {
-        self.context.request()
-    }
-
-    pub fn params(&self) -> &Params {
-        self.context.params()
-    }
-}
-
-impl<COMP, C> RenderContext<COMP, C>
-where
-    C: BaseComponent<Properties = ChildrenProps>,
-    COMP: BaseComponent,
-    COMP::Properties: Serialize + Send + Clone,
-{
-    /// Render the page and returns the `text/html` response.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render(self) -> Response
-    where
-        COMP::Properties: Default,
-    {
-        let html = self.context.render::<COMP>().await;
-        Response::html(html)
-    }
-
-    /// Render the page with the given props and returns the `text/html` response.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_with_props(self, props: COMP::Properties) -> Response {
-        let html = self.context.render_with_props::<COMP>(props).await;
-        Response::html(html)
-    }
-
-    /// Render the page and returns the `text/html` response.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render(self) -> Response
-    where
-        COMP::Properties: Default,
-    {
-        unreachable!("this is a server-only function")
-    }
-
-    /// Render the page with the given props and returns the `text/html` response.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render_with_props(self, _: COMP::Properties) -> Response {
-        unreachable!("this is a server-only function")
-    }
-
-    /// Returns a `404` error.
-    pub fn not_found(self) -> Result<Response, Error> {
-        Err(ResponseError::from_status(StatusCode::NOT_FOUND).into())
     }
 }

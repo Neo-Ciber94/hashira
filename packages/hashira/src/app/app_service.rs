@@ -1,7 +1,7 @@
 use super::{
     client_router::ClientRouter,
     error_router::{ClientErrorRouter, ServerErrorRouter},
-    AppContext, RenderLayout, ServerPageRoute,
+    RequestContext, RenderLayout, ServerPageRoute,
 };
 use crate::{
     error::ResponseError,
@@ -33,12 +33,12 @@ impl<C> AppService<C> {
         request: Arc<Request>,
         params: Params,
         error: Option<ResponseError>
-    ) -> AppContext<C> {
+    ) -> RequestContext<C> {
         let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let client_error_router = self.0.client_error_router.clone();
 
-        AppContext::new(
+        RequestContext::new(
             Some(request),
             client_router,
             client_error_router,
@@ -127,7 +127,7 @@ impl<C> AppService<C> {
         let client_router = self.0.client_router.clone();
         let client_error_router = self.0.client_error_router.clone();
         let params = Params::new();
-        let ctx = AppContext::new(
+        let ctx = RequestContext::new(
             None,
             client_router,
             client_error_router,
