@@ -27,7 +27,7 @@ struct PageLayoutData {
 }
 
 #[allow(dead_code)] // TODO: Ignore server only data
-pub struct AppContext<C> {
+pub struct AppContext<C> { // rename to RequestContext?
     path: String,
     params: Params,
     client_router: ClientRouter,
