@@ -1,4 +1,4 @@
-use crate::components::hashira;
+use crate::app::hashira;
 use actix_files::{Files, NamedFile};
 use actix_web::{get, web, App, HttpRequest, HttpServer, Responder};
 use yew::{html::ChildrenProps, BaseComponent};

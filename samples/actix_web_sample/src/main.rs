@@ -1,17 +1,14 @@
-mod components;
-use components::App;
-
-#[cfg(not(target_arch = "wasm32"))]
-mod index;
-
-#[cfg(not(target_arch = "wasm32"))]
-mod server;
-
-#[cfg(target_arch = "wasm32")]
-mod client;
+mod app;
+use app::App;
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
+        #[cfg(feature = "build")]
+        mod index;
+
+        #[cfg(not(feature = "build"))]
+        mod server;
+
         // Generate index.html
         #[cfg(feature = "build")]
         #[actix_web::main]
@@ -19,7 +16,7 @@ cfg_if::cfg_if! {
             crate::index::generate_html_index::<App>().await;
         }
 
-        // Server
+        // Starts the server
         #[cfg(not(feature = "build"))]
         #[actix_web::main]
         async fn main() -> std::io::Result<()> {
@@ -27,7 +24,9 @@ cfg_if::cfg_if! {
         }
 
 } else {
-        // Client
+        mod client;
+
+        // Starts the client
         fn main() {
             crate::client::start_client::<App>();
         }
