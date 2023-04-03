@@ -212,7 +212,7 @@ where
     {
         use crate::components::AnyComponent;
 
-        log::info!(
+        log::debug!(
             "Registering component `{}` on {path}",
             std::any::type_name::<COMP>()
         );
@@ -244,7 +244,7 @@ where
     {
         use crate::components::AnyComponent;
 
-        log::info!(
+        log::debug!(
             "Registering error component `{}` for {status}",
             std::any::type_name::<COMP>()
         );
@@ -273,7 +273,7 @@ where
     {
         use crate::components::AnyComponent;
 
-        log::info!(
+        log::debug!(
             "Registering fallback error component `{}`",
             std::any::type_name::<COMP>()
         );

@@ -22,6 +22,7 @@ where
     let props = PageProps {
         path: page_data.path.clone(),
         props_json: page_data.props,
+        error: page_data.error,
         client_error_router,
         client_router,
     };

@@ -1,7 +1,7 @@
 use super::{client_router::ClientRouter, error_router::ClientErrorRouter, RenderLayout};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
-    web::Request,
+    web::{Request, Response},
 };
 use route_recognizer::Params;
 use serde::Serialize;
@@ -35,7 +35,7 @@ pub struct AppContext<C> {
 
 #[allow(dead_code)] // TODO: Ignore server only data
 impl<C> AppContext<C> {
-    fn _new(
+    pub fn new(
         request: Option<Request>,
         client_router: ClientRouter,
         client_error_router: Arc<ClientErrorRouter>,
@@ -58,41 +58,6 @@ impl<C> AppContext<C> {
             client_error_router,
             inner: Arc::new(Mutex::new(inner)),
         }
-    }
-
-    pub fn new(
-        request: Request,
-        client_router: ClientRouter,
-        client_error_router: Arc<ClientErrorRouter>,
-        path: String,
-        layout: RenderLayout<C>,
-        params: Params,
-    ) -> Self {
-        Self::_new(
-            Some(request),
-            client_router,
-            client_error_router,
-            path,
-            layout,
-            params,
-        )
-    }
-
-    pub(crate) fn no_request(
-        client_router: ClientRouter,
-        client_error_router: Arc<ClientErrorRouter>,
-        path: String,
-        layout: RenderLayout<C>,
-        params: Params,
-    ) -> Self {
-        Self::_new(
-            None,
-            client_router,
-            client_error_router,
-            path,
-            layout,
-            params,
-        )
     }
 }
 
@@ -171,13 +136,13 @@ where
         let scripts = inner.scripts.clone();
 
         let options = RenderPageOptions {
-            layout,
-            client_error_router,
             path,
-            client_router,
+            layout,
             metadata,
             links,
             scripts,
+            client_router,
+            client_error_router,
         };
 
         let result_html = render_page_to_html::<COMP, C>(props, options)

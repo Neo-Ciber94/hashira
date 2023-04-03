@@ -69,10 +69,12 @@ where
         component_name: std::any::type_name::<COMP>().to_string(),
         props: props_json.clone(),
         path: path.clone(),
+        error: None,
     };
 
     let page_props = PageProps {
         path: path.clone(),
+        error: None,
         props_json: props_json.clone(),
         client_router,
         client_error_router,

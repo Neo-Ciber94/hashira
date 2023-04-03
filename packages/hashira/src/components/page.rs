@@ -6,7 +6,7 @@ use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properti
 
 use crate::{
     app::{client_router::ClientRouter, error_router::ClientErrorRouter},
-    components::error::NotFoundPage,
+    components::error::{NotFoundPage, ErrorPage},
 };
 
 pub struct RenderFn(Box<dyn Fn() -> Html + Send + Sync>);
@@ -41,6 +41,7 @@ impl PartialEq for RenderFn {
 #[derive(PartialEq, Properties)]
 pub struct PageProps {
     pub path: String,
+    pub error: Option<PageError>,
     pub props_json: serde_json::Value,
     pub client_router: ClientRouter,
     pub client_error_router: Arc<ClientErrorRouter>,
@@ -54,6 +55,23 @@ where
     let path = props.path.as_str();
     let router = &props.client_router;
     let error_router = &props.client_error_router;
+
+    if let Some(error) = &props.error {
+        return match error_router.recognize_error(&error.status) {
+            Some(comp) => {
+                let props = props.props_json.clone();
+                yew::html! {
+                    {comp.render_with_props(props)}
+                }
+            }
+            None => {
+                log::warn!("fallback error page was not registered");
+                yew::html! {
+                    <ErrorPage status={error.status} message={error.message.clone()} />
+                }
+            }
+        };
+    }
 
     match router.recognize(path) {
         Ok(mtch) => {
@@ -74,7 +92,7 @@ where
                 }
             }
             None => {
-                log::error!("not error page was registered for 404 errors");
+                log::warn!("not error page was registered for 404 errors");
                 yew::html! {
                     <NotFoundPage />
                 }
@@ -83,15 +101,29 @@ where
     }
 }
 
+/// Represents an error that occurred on the server.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PageError {
+    /// The status code of the error.
+    #[serde(with = "crate::web::serde::status_code")]
+    pub status: StatusCode,
+
+    /// A message of the error.
+    pub message: Option<String>,
+}
+
 /// Represents the data of the current page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageData {
-    // The path of the component.
+    /// The path of the component.
     pub path: String,
 
-    // Component being rendered, (remove?)
+    /// Component being rendered, (remove?)
     pub component_name: String,
 
-    // Properties of the current component.
+    /// Properties of the current component.
     pub props: serde_json::Value,
+
+    /// An error that ocurred in the route.
+    pub error: Option<PageError>,
 }

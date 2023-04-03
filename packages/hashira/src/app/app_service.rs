@@ -30,7 +30,7 @@ impl<C> AppService<C> {
         let client_error_router = self.0.client_error_router.clone();
 
         AppContext::new(
-            request,
+            Some(request),
             client_router,
             client_error_router,
             path,
@@ -94,7 +94,14 @@ impl<C> AppService<C> {
         let client_router = self.0.client_router.clone();
         let client_error_router = self.0.client_error_router.clone();
         let params = Params::new();
-        let ctx = AppContext::no_request(client_router, client_error_router, path, layout, params);
+        let ctx = AppContext::new(
+            None,
+            client_router,
+            client_error_router,
+            path,
+            layout,
+            params,
+        );
         let render_layout = &self.0.layout;
         let layout_html = render_layout(ctx).await;
         let html_string = render_to_static_html(move || layout_html).await;
