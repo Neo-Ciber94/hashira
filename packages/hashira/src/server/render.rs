@@ -4,8 +4,8 @@ use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::client_router::ClientRouter;
 use crate::app::error_router::ClientErrorRouter;
 use crate::components::{
-    Page, PageData, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER,
-    HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER, PageError,
+    Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
+    HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
 };
 use crate::error::ResponseError;
 use serde::Serialize;
@@ -70,17 +70,17 @@ where
 
     let props_json = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
 
-    let page_data = PageData {
-        component_name: std::any::type_name::<COMP>().to_string(),
-        props: props_json.clone(),
-        path: path.clone(),
-        error: None,
-    };
-
     let page_error = error.map(|e| PageError {
         status: e.status(),
         message: e.message().map(|s| s.to_owned()),
     });
+
+    let page_data = PageData {
+        component_name: std::any::type_name::<COMP>().to_string(),
+        props: props_json.clone(),
+        path: path.clone(),
+        error: page_error.clone(),
+    };
 
     let page_props = PageProps {
         path: path.clone(),
@@ -138,12 +138,14 @@ fn insert_links(html: &mut String, links: PageLinks) {
             <link rel="modulepreload" href="/static/{crate_name}.js" />
         "#));
 
-        tags_html.push(format!(r#"
+        tags_html.push(format!(
+            r#"
             <script type="module">
                 import init from "/static/{crate_name}.js";
                 init("/static/{crate_name}_bg.wasm");
             </script>
-        "#));
+        "#
+        ));
     }
 
     let links = tags_html.join("\n");

@@ -15,7 +15,7 @@ use std::{
 };
 use yew::{html::ChildrenProps, BaseComponent};
 
-struct AppContextInner {
+struct PageLayoutData {
     // The `<meta>` tags of the page to render
     metadata: Metadata,
 
@@ -28,13 +28,14 @@ struct AppContextInner {
 
 #[allow(dead_code)] // TODO: Ignore server only data
 pub struct AppContext<C> {
+    path: String,
+    params: Params,
     client_router: ClientRouter,
     client_error_router: Arc<ClientErrorRouter>,
     request: Option<Arc<Request>>,
-    path: String,
-    params: Params,
+    error: Option<ResponseError>,
     layout: Option<RenderLayout<C>>,
-    inner: Arc<Mutex<AppContextInner>>,
+    data: Arc<Mutex<PageLayoutData>>,
 }
 
 #[allow(dead_code)] // TODO: Ignore server only data
@@ -43,11 +44,12 @@ impl<C> AppContext<C> {
         request: Option<Arc<Request>>,
         client_router: ClientRouter,
         client_error_router: Arc<ClientErrorRouter>,
+        error: Option<ResponseError>,
         path: String,
         layout: RenderLayout<C>,
         params: Params,
     ) -> Self {
-        let inner = AppContextInner {
+        let data = PageLayoutData {
             metadata: Metadata::default(),
             links: PageLinks::default(),
             scripts: PageScripts::default(),
@@ -56,11 +58,12 @@ impl<C> AppContext<C> {
         AppContext {
             path,
             params,
+            error,
             request,
             client_router,
             layout: Some(layout),
             client_error_router,
-            inner: Arc::new(Mutex::new(inner)),
+            data: Arc::new(Mutex::new(data)),
         }
     }
 }
@@ -70,15 +73,15 @@ where
     C: BaseComponent<Properties = ChildrenProps>,
 {
     pub fn add_metadata(&mut self, metadata: Metadata) {
-        self.inner.lock().unwrap().metadata.extend(metadata);
+        self.data.lock().unwrap().metadata.extend(metadata);
     }
 
     pub fn add_links(&mut self, links: PageLinks) {
-        self.inner.lock().unwrap().links.extend(links);
+        self.data.lock().unwrap().links.extend(links);
     }
 
     pub fn add_scripts(&mut self, scripts: PageScripts) {
-        self.inner.lock().unwrap().scripts.extend(scripts);
+        self.data.lock().unwrap().scripts.extend(scripts);
     }
 
     pub fn request(&self) -> &Request {
@@ -92,21 +95,17 @@ where
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP>(self, error: Option<ResponseError>) -> String
+    pub async fn render<COMP>(self) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: Serialize + Default + Send + Clone,
     {
         let props = COMP::Properties::default();
-        self.render_with_props::<COMP>(props, error).await
+        self.render_with_props::<COMP>(props).await
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_with_props<COMP>(
-        self,
-        props: COMP::Properties,
-        error: Option<ResponseError>,
-    ) -> String
+    pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: Serialize + Send + Clone,
@@ -116,26 +115,28 @@ where
         let Self {
             layout,
             request,
-            inner,
+            data: inner,
             params,
             client_router,
             client_error_router,
             path,
+            error,
         } = self;
 
         let render_layout = layout.unwrap();
 
-        let ctx = AppContext {
+        let layout_ctx = AppContext {
             params,
             request,
             path: path.clone(),
             layout: None,
+            error: None, // FIXME: Pass error to layout?
             client_router: client_router.clone(),
             client_error_router: client_error_router.clone(),
-            inner: inner.clone(),
+            data: inner.clone(),
         };
 
-        let layout_node = render_layout(ctx).await;
+        let layout_node = render_layout(layout_ctx).await;
         let layout = render_to_static_html(move || layout_node).await;
 
         let inner = inner.lock().unwrap();
@@ -212,14 +213,14 @@ where
     where
         COMP::Properties: Default,
     {
-        let html = self.context.render::<COMP>(None).await;
+        let html = self.context.render::<COMP>().await;
         Response::html(html)
     }
 
     /// Render the page with the given props and returns the `text/html` response.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
-        let html = self.context.render_with_props::<COMP>(props, None).await;
+        let html = self.context.render_with_props::<COMP>(props).await;
         Response::html(html)
     }
 

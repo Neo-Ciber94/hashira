@@ -11,7 +11,7 @@ use http::{status, StatusCode};
 use route_recognizer::{Params, Router};
 use std::{rc::Rc, sync::Arc};
 
-pub(crate) struct Inner<C> {
+pub(crate) struct AppServiceInner<C> {
     pub(crate) layout: RenderLayout<C>,
     pub(crate) server_router: Router<ServerPageRoute<C>>,
     pub(crate) client_router: ClientRouter,
@@ -19,10 +19,10 @@ pub(crate) struct Inner<C> {
     pub(crate) client_error_router: Arc<ClientErrorRouter>,
 }
 
-pub struct AppService<C>(Rc<Inner<C>>);
+pub struct AppService<C>(Rc<AppServiceInner<C>>);
 
 impl<C> AppService<C> {
-    pub(crate) fn new(inner: Rc<Inner<C>>) -> Self {
+    pub(crate) fn new(inner: Rc<AppServiceInner<C>>) -> Self {
         Self(inner)
     }
 
@@ -32,6 +32,7 @@ impl<C> AppService<C> {
         path: String,
         request: Arc<Request>,
         params: Params,
+        error: Option<ResponseError>
     ) -> AppContext<C> {
         let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
@@ -41,6 +42,7 @@ impl<C> AppService<C> {
             Some(request),
             client_router,
             client_error_router,
+            error,
             path,
             layout,
             params,
@@ -70,7 +72,7 @@ impl<C> AppService<C> {
             Ok(page) => {
                 let route = page.handler();
                 let params = page.params().clone();
-                let ctx = self.create_context(path.to_owned(), req.clone(), params);
+                let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
 
                 match route.handler().call(ctx).await {
                     Ok(res) => res,
@@ -93,7 +95,7 @@ impl<C> AppService<C> {
         match self.0.server_error_router.recognize_error(&status) {
             Some(error_handler) => {
                 let params = Params::new();
-                let ctx = self.create_context(path.to_owned(), req, params);
+                let ctx = self.create_context(path.to_owned(), req, params, Some(err));
 
                 match error_handler.call(ctx, status).await {
                     Ok(res) => res,
@@ -129,6 +131,7 @@ impl<C> AppService<C> {
             None,
             client_router,
             client_error_router,
+            None,
             path,
             layout,
             params,

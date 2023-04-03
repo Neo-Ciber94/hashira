@@ -1,7 +1,7 @@
 use super::{
     client_router::ClientRouter,
     error_router::{ClientErrorRouter, ServerErrorRouter},
-    AppContext, AppService, BoxFuture, ClientPageRoute, Inner, RenderContext, ServerPageRoute,
+    AppContext, AppService, BoxFuture, ClientPageRoute, AppServiceInner, RenderContext, ServerPageRoute,
 };
 use crate::{
     components::{
@@ -315,7 +315,7 @@ where
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
         let client_router = ClientRouter::from(client_router);
         let client_error_router = Arc::from(client_error_router);
-        let inner = Inner {
+        let inner = AppServiceInner {
             layout,
             server_router,
             client_router,
