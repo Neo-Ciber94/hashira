@@ -1,4 +1,4 @@
-use super::{client_router::ClientRouter, error_router::ClientErrorRouter, RenderLayout};
+use super::{client_router::ClientRouter, error_router::ErrorRouter, RenderLayout};
 pub use crate::error::ResponseError;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
@@ -26,7 +26,7 @@ pub struct RequestContext<C> {
     path: String,
     params: Params,
     client_router: ClientRouter,
-    client_error_router: Arc<ClientErrorRouter>,
+    client_error_router: Arc<ErrorRouter>,
     request: Option<Arc<Request>>,
     error: Option<ResponseError>,
     layout: Option<RenderLayout<C>>,
@@ -38,7 +38,7 @@ impl<C> RequestContext<C> {
     pub fn new(
         request: Option<Arc<Request>>,
         client_router: ClientRouter,
-        client_error_router: Arc<ClientErrorRouter>,
+        client_error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
         path: String,
         layout: RenderLayout<C>,

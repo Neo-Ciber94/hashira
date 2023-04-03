@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::client_router::ClientRouter;
-use crate::app::error_router::ClientErrorRouter;
+use crate::app::error_router::ErrorRouter;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
     HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
@@ -26,7 +26,7 @@ pub struct RenderPageOptions {
     pub(crate) client_router: ClientRouter,
 
     // The router used to render errors
-    pub(crate) client_error_router: Arc<ClientErrorRouter>,
+    pub(crate) client_error_router: Arc<ErrorRouter>,
 
     // Represents the shell where the page will be rendered
     pub(crate) layout: String,

@@ -1,6 +1,6 @@
 use super::{
     client_router::ClientRouter,
-    error_router::{ClientErrorRouter, ServerErrorRouter},
+    error_router::{ErrorRouter, ServerErrorRouter},
     RequestContext, AppService, BoxFuture, ClientPageRoute, AppServiceInner, RenderContext, ServerPageRoute,
 };
 use crate::{
@@ -48,7 +48,7 @@ pub struct App<C> {
     layout: Option<RenderLayout<C>>,
     server_router: Router<ServerPageRoute<C>>,
     client_router: Router<ClientPageRoute>,
-    client_error_router: ClientErrorRouter,
+    client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter<C>,
 }
 
@@ -61,7 +61,7 @@ where
             layout: None,
             server_router: Router::new(),
             client_router: Router::new(),
-            client_error_router: ClientErrorRouter::new(),
+            client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
         }
     }

@@ -1,6 +1,6 @@
 use super::{
     client_router::ClientRouter,
-    error_router::{ClientErrorRouter, ServerErrorRouter},
+    error_router::{ErrorRouter, ServerErrorRouter},
     RequestContext, RenderLayout, ServerPageRoute,
 };
 use crate::{
@@ -16,7 +16,7 @@ pub(crate) struct AppServiceInner<C> {
     pub(crate) server_router: Router<ServerPageRoute<C>>,
     pub(crate) client_router: ClientRouter,
     pub(crate) server_error_router: ServerErrorRouter<C>,
-    pub(crate) client_error_router: Arc<ClientErrorRouter>,
+    pub(crate) client_error_router: Arc<ErrorRouter>,
 }
 
 pub struct AppService<C>(Rc<AppServiceInner<C>>);
@@ -60,7 +60,7 @@ impl<C> AppService<C> {
     }
 
     /// Returns the router for handling error pages on the client.
-    pub fn client_error_router(&self) -> &Arc<ClientErrorRouter> {
+    pub fn client_error_router(&self) -> &Arc<ErrorRouter> {
         &self.0.client_error_router
     }
 

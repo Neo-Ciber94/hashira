@@ -5,15 +5,15 @@ use std::collections::HashMap;
 
 /// Contains the error routes for the client.
 #[derive(Clone, PartialEq)]
-pub struct ClientErrorRouter {
+pub struct ErrorRouter {
     routes: HashMap<StatusCode, AnyComponent<serde_json::Value>>,
     fallback: Option<AnyComponent<serde_json::Value>>,
 }
 
-impl ClientErrorRouter {
+impl ErrorRouter {
     /// Constructs a new error router.
     pub fn new() -> Self {
-        ClientErrorRouter {
+        ErrorRouter {
             routes: HashMap::new(),
             fallback: None,
         }
