@@ -1,7 +1,6 @@
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
     server::Metadata,
-    web::{Response, ResponseExt},
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, use_state, BaseComponent, Properties};
@@ -72,30 +71,31 @@ where
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
             ctx.add_metadata(
                 Metadata::new()
-                    .viewport("width=device-width, initial-scale=1.0")
                     .title("Hashira Sample App | Counter")
                     .description("A counter made with hashira actix-web"),
             );
 
-            let html = ctx.render().await;
-            Response::html(html)
+            let res = ctx.render().await;
+            Ok(res)
         })
         .page(
             "/hello/:name",
             |mut ctx: RenderContext<HelloPage, C>| async {
-                let name = ctx.params().find("name").unwrap().to_owned();
                 ctx.add_metadata(
                     Metadata::new()
-                        .viewport("width=device-width, initial-scale=1.0")
                         .title("Hashira Sample App | Hello")
                         .description("A hashira greeter"),
                 );
 
-                let html = ctx.render_with_props(HelloPageProps { name }).await;
+                let name = ctx.params().find("name").unwrap().to_owned();
 
-                Response::html(html)
+                if !name.starts_with("f") {
+                    return ctx.not_found();
+                }
+
+                let res = ctx.render_with_props(HelloPageProps { name }).await;
+                Ok(res)
             },
         )
-   
         .build()
 }

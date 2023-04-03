@@ -1,9 +1,9 @@
+pub mod app;
 pub mod client;
 pub mod components;
-pub mod web;
-pub mod app;
+pub mod error;
 pub mod server;
-
+pub mod web;
 
 /// Initialize the hashira framework.
 #[cfg(not(target_arch = "wasm32"))]

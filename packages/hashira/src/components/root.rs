@@ -1,5 +1,5 @@
-use yew::{Html, function_component};
-use crate::components::{Content, Meta, Links, Scripts, HASHIRA_ROOT};
+use crate::components::{Content, Links, Meta, Scripts, HASHIRA_ROOT};
+use yew::{function_component, Html};
 
 /// Default root component.
 #[function_component]
@@ -9,6 +9,7 @@ pub fn RootLayout() -> Html {
             <head>
                 <Meta/>
                 <Links/>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             </head>
             <body>
                 <main id={HASHIRA_ROOT}>

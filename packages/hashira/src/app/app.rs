@@ -8,9 +8,11 @@ use crate::{
         error::{ErrorPage, ErrorPageProps, NotFoundPage},
         RootLayout,
     },
-    web::{Body, Response, ResponseExt},
+    error::Error,
+    server::Metadata,
+    web::Response,
 };
-use http::{header, status::StatusCode};
+use http::status::StatusCode;
 use route_recognizer::Router;
 use serde::de::DeserializeOwned;
 use std::{future::Future, rc::Rc, sync::Arc};
@@ -18,20 +20,26 @@ use yew::{html::ChildrenProps, BaseComponent, Html};
 
 pub type RenderLayout<C> = Rc<dyn Fn(AppContext<C>) -> BoxFuture<Html>>;
 
-pub struct PageHandler<C>(pub(crate) Box<dyn Fn(AppContext<C>) -> BoxFuture<Response>>);
+pub struct PageHandler<C>(
+    pub(crate) Box<dyn Fn(AppContext<C>) -> BoxFuture<Result<Response, Error>>>,
+);
 
 impl<C> PageHandler<C> {
-    pub fn call(&self, ctx: AppContext<C>) -> BoxFuture<Response> {
+    pub fn call(&self, ctx: AppContext<C>) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx)
     }
 }
 
 pub struct ErrorPageHandler<C>(
-    pub(crate) Box<dyn Fn(AppContext<C>, StatusCode) -> BoxFuture<Response>>,
+    pub(crate) Box<dyn Fn(AppContext<C>, StatusCode) -> BoxFuture<Result<Response, Error>>>,
 );
 
 impl<C> ErrorPageHandler<C> {
-    pub fn call(&self, ctx: AppContext<C>, status: StatusCode) -> BoxFuture<Response> {
+    pub fn call(
+        &self,
+        ctx: AppContext<C>,
+        status: StatusCode,
+    ) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx, status)
     }
 }
@@ -76,7 +84,7 @@ where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
-        Fut: Future<Output = Response> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         assert!(path.starts_with("/"), "page path must start with `/`");
 
@@ -100,7 +108,7 @@ where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
-        Fut: Future<Output = Response> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_component::<COMP>(path);
         self
@@ -112,7 +120,7 @@ where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
-        Fut: Future<Output = Response> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.server_error_router.add(
             status,
@@ -133,7 +141,7 @@ where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
-        Fut: Future<Output = Response> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_error_component::<COMP>(status);
         self
@@ -145,7 +153,7 @@ where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
-        Fut: Future<Output = Response> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.server_error_router
             .add_fallback(ErrorPageHandler(Box::new(move |ctx, status| {
@@ -164,7 +172,7 @@ where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
-        Fut: Future<Output = Response> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_error_fallback_component::<COMP>();
         self
@@ -177,31 +185,33 @@ where
     {
         self.error_page(
             StatusCode::NOT_FOUND,
-            move |ctx: RenderContext<NotFoundPage, C>, status: StatusCode| async move {
-                let html = ctx.render().await;
-                let mut res = Response::with_status(status);
-                *res.body_mut() = Body::from(html);
-                res.headers_mut().append(
-                    header::CONTENT_TYPE,
-                    header::HeaderValue::from_static("text/html; charset=utf-8"),
-                );
-                res
+            move |mut ctx: RenderContext<NotFoundPage, C>, status: StatusCode| async move {
+                ctx.add_metadata(Metadata::new().title(format!(
+                    "{} | {}",
+                    status.as_u16(),
+                    status.canonical_reason().unwrap_or("Page Error")
+                )));
+
+                let mut res = ctx.render().await;
+                *res.status_mut() = status;
+                Ok(res)
             },
         )
-        .error_page_fallback(move |ctx: RenderContext<ErrorPage, C>, status| async move {
-            let html = ctx
+        .error_page_fallback(move |mut ctx: RenderContext<ErrorPage, C>, status| async move {
+            ctx.add_metadata(Metadata::new().title(format!(
+                "{} | {}",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Page Error")
+            )));
+
+            let mut res = ctx
                 .render_with_props(ErrorPageProps {
                     status,
                     message: None,
                 })
                 .await;
-            let mut res = Response::with_status(status);
-            *res.body_mut() = Body::from(html);
-            res.headers_mut().append(
-                header::CONTENT_TYPE,
-                header::HeaderValue::from_static("text/html; charset=utf-8"),
-            );
-            res
+            *res.status_mut() = status;
+            Ok(res)
         })
     }
 

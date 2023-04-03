@@ -5,8 +5,9 @@ use crate::app::client_router::ClientRouter;
 use crate::app::error_router::ClientErrorRouter;
 use crate::components::{
     Page, PageData, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER,
-    HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
+    HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER, PageError,
 };
+use crate::error::ResponseError;
 use serde::Serialize;
 use yew::{
     function_component,
@@ -17,6 +18,9 @@ use yew::{
 pub struct RenderPageOptions {
     // The current route path of the component to render
     pub(crate) path: String,
+
+    // An error that occurred in the route
+    pub(crate) error: Option<ResponseError>,
 
     // The router used to render the page
     pub(crate) client_router: ClientRouter,
@@ -48,6 +52,7 @@ where
 {
     let RenderPageOptions {
         path,
+        error,
         layout,
         metadata,
         links,
@@ -72,9 +77,14 @@ where
         error: None,
     };
 
+    let page_error = error.map(|e| PageError {
+        status: e.status(),
+        message: e.message().map(|s| s.to_owned()),
+    });
+
     let page_props = PageProps {
         path: path.clone(),
-        error: None,
+        error: page_error,
         props_json: props_json.clone(),
         client_router,
         client_error_router,
@@ -123,19 +133,17 @@ fn insert_links(html: &mut String, links: PageLinks) {
     if crate::is_initialized() {
         // Add wasm bundle
         let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
-        tags_html.push(format!(
-            r#"
+        tags_html.push(format!(r#"
             <link rel="preload" href="/static/{crate_name}_bg.wasm" as="fetch" type="application/wasm" crossorigin=""/>
             <link rel="modulepreload" href="/static/{crate_name}.js" />
         "#));
 
-        tags_html.push(format!(
-            r#"<script type="module">
-                    import init from "/static/{crate_name}.js";
-                    init("/static/{crate_name}_bg.wasm");
-                </script>
-            "#
-        ));
+        tags_html.push(format!(r#"
+            <script type="module">
+                import init from "/static/{crate_name}.js";
+                init("/static/{crate_name}_bg.wasm");
+            </script>
+        "#));
     }
 
     let links = tags_html.join("\n");

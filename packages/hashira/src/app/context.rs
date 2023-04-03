@@ -1,8 +1,12 @@
 use super::{client_router::ClientRouter, error_router::ClientErrorRouter, RenderLayout};
+use crate::error::Error;
+pub use crate::error::ResponseError;
+use crate::web::ResponseExt;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
     web::{Request, Response},
 };
+use http::StatusCode;
 use route_recognizer::Params;
 use serde::Serialize;
 use std::{
@@ -26,7 +30,7 @@ struct AppContextInner {
 pub struct AppContext<C> {
     client_router: ClientRouter,
     client_error_router: Arc<ClientErrorRouter>,
-    request: Option<Request>,
+    request: Option<Arc<Request>>,
     path: String,
     params: Params,
     layout: Option<RenderLayout<C>>,
@@ -36,7 +40,7 @@ pub struct AppContext<C> {
 #[allow(dead_code)] // TODO: Ignore server only data
 impl<C> AppContext<C> {
     pub fn new(
-        request: Option<Request>,
+        request: Option<Arc<Request>>,
         client_router: ClientRouter,
         client_error_router: Arc<ClientErrorRouter>,
         path: String,
@@ -88,17 +92,21 @@ where
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP>(self) -> String
+    pub async fn render<COMP>(self, error: Option<ResponseError>) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: Serialize + Default + Send + Clone,
     {
         let props = COMP::Properties::default();
-        self.render_with_props::<COMP>(props).await
+        self.render_with_props::<COMP>(props, error).await
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
+    pub async fn render_with_props<COMP>(
+        self,
+        props: COMP::Properties,
+        error: Option<ResponseError>,
+    ) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: Serialize + Send + Clone,
@@ -137,6 +145,7 @@ where
 
         let options = RenderPageOptions {
             path,
+            error,
             layout,
             metadata,
             links,
@@ -197,29 +206,40 @@ where
     COMP: BaseComponent,
     COMP::Properties: Serialize + Send + Clone,
 {
+    /// Render the page and returns the `text/html` response.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render(self) -> String
+    pub async fn render(self) -> Response
     where
         COMP::Properties: Default,
     {
-        self.context.render::<COMP>().await
+        let html = self.context.render::<COMP>(None).await;
+        Response::html(html)
     }
 
+    /// Render the page with the given props and returns the `text/html` response.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_with_props(self, props: COMP::Properties) -> String {
-        self.context.render_with_props::<COMP>(props).await
+    pub async fn render_with_props(self, props: COMP::Properties) -> Response {
+        let html = self.context.render_with_props::<COMP>(props, None).await;
+        Response::html(html)
     }
 
+    /// Render the page and returns the `text/html` response.
     #[cfg(target_arch = "wasm32")]
-    pub async fn render(self) -> String
+    pub async fn render(self) -> Response
     where
         COMP::Properties: Default,
     {
         unreachable!("this is a server-only function")
     }
 
+    /// Render the page with the given props and returns the `text/html` response.
     #[cfg(target_arch = "wasm32")]
-    pub async fn render_with_props(self, _: COMP::Properties) -> String {
+    pub async fn render_with_props(self, _: COMP::Properties) -> Response {
         unreachable!("this is a server-only function")
+    }
+
+    /// Returns a `404` error.
+    pub fn not_found(self) -> Result<Response, Error> {
+        Err(ResponseError::from_status(StatusCode::NOT_FOUND).into())
     }
 }

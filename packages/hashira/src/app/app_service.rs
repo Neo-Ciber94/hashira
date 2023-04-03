@@ -3,8 +3,11 @@ use super::{
     error_router::{ClientErrorRouter, ServerErrorRouter},
     AppContext, RenderLayout, ServerPageRoute,
 };
-use crate::web::{Request, Response, ResponseExt};
-use http::StatusCode;
+use crate::{
+    error::ResponseError,
+    web::{Request, Response, ResponseExt},
+};
+use http::{status, StatusCode};
 use route_recognizer::{Params, Router};
 use std::{rc::Rc, sync::Arc};
 
@@ -24,7 +27,12 @@ impl<C> AppService<C> {
     }
 
     /// Create a context to be used in the request.
-    pub fn create_context(&self, path: String, request: Request, params: Params) -> AppContext<C> {
+    pub fn create_context(
+        &self,
+        path: String,
+        request: Arc<Request>,
+        params: Params,
+    ) -> AppContext<C> {
         let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let client_error_router = self.0.client_error_router.clone();
@@ -56,31 +64,54 @@ impl<C> AppService<C> {
 
     /// Process the incoming request and return the response.
     pub async fn handle(&self, req: Request, path: &str) -> Response {
+        let req = Arc::new(req);
+
         match self.0.server_router.recognize(&path) {
             Ok(page) => {
                 let route = page.handler();
                 let params = page.params().clone();
-                let ctx = self.create_context(path.to_owned(), req, params);
+                let ctx = self.create_context(path.to_owned(), req.clone(), params);
 
-                // TODO: Change return type to `Result<Response>` to handle with error pages
-                let res = route.handler().call(ctx).await;
-                res
-            }
-            Err(_) => {
-                match self
-                    .0
-                    .server_error_router
-                    .recognize_error(&StatusCode::NOT_FOUND)
-                {
-                    Some(handler) => {
-                        let params = Params::new();
-                        let ctx = self.create_context(path.to_owned(), req, params);
-                        let res = handler.call(ctx, StatusCode::NOT_FOUND).await;
-                        res
+                match route.handler().call(ctx).await {
+                    Ok(res) => res,
+                    Err(err) => {
+                        self.handle_error(ResponseError::from_error(err), path, req)
+                            .await
                     }
-                    None => Response::with_status(StatusCode::NOT_FOUND),
                 }
             }
+            Err(_) => {
+                self.handle_error(ResponseError::from_status(StatusCode::NOT_FOUND), path, req)
+                    .await
+            }
+        }
+    }
+
+    async fn handle_error(&self, err: ResponseError, path: &str, req: Arc<Request>) -> Response {
+        let status = err.status();
+
+        match self.0.server_error_router.recognize_error(&status) {
+            Some(error_handler) => {
+                let params = Params::new();
+                let ctx = self.create_context(path.to_owned(), req, params);
+
+                match error_handler.call(ctx, status).await {
+                    Ok(res) => res,
+                    Err(err) => match err.downcast::<ResponseError>() {
+                        Ok(err) => {
+                            let mut res = Response::text(err.to_string());
+                            *res.status_mut() = err.status();
+                            res
+                        }
+                        Err(err) => {
+                            let mut res = Response::text(err.to_string());
+                            *res.status_mut() = status::StatusCode::INTERNAL_SERVER_ERROR;
+                            res
+                        }
+                    },
+                }
+            }
+            None => Response::with_status(status),
         }
     }
 
@@ -89,7 +120,7 @@ impl<C> AppService<C> {
     pub async fn get_layout_html(&self) -> String {
         use crate::server::render_to_static_html;
 
-        let path = String::new(); // TODO: Use Option<String> instead
+        let path = String::new(); // TODO: Use Option<String> instead?
         let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let client_error_router = self.0.client_error_router.clone();

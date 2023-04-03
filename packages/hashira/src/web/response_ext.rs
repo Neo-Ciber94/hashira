@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use super::{Body, Response};
 use bytes::Bytes;
 use cookie::Cookie;
 use http::{
@@ -6,7 +6,7 @@ use http::{
     HeaderValue, StatusCode,
 };
 use serde::Serialize;
-use super::{Body, Response};
+use std::fmt::Display;
 
 impl std::error::Error for RedirectionError {}
 
@@ -29,6 +29,9 @@ impl Display for RedirectionError {
 
 /// Extension methods for `Response`.
 pub trait ResponseExt {
+    /// Create a `text/plain` response.
+    fn text(text: impl Into<String>) -> Response;
+
     /// Create a `text/html` response.
     fn html(body: impl Into<Bytes>) -> Response;
 
@@ -58,6 +61,16 @@ pub trait ResponseExt {
 }
 
 impl ResponseExt for Response {
+    fn text(text: impl Into<String>) -> Response {
+        let body = Body::from(text.into());
+        let mut res = Response::new(body);
+        res.headers_mut().append(
+            CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; charset=utf-8"),
+        );
+        res
+    }
+
     fn html(body: impl Into<Bytes>) -> Response {
         let mut res = Response::new(body.into());
         res.headers_mut().append(
@@ -74,8 +87,10 @@ impl ResponseExt for Response {
         let json = serde_json::to_string(&data)?;
         let body = Body::from(json);
         let mut res = Response::new(body);
-        res.headers_mut()
-            .append(CONTENT_TYPE, HeaderValue::from_static("application/json; charset=utf-8"));
+        res.headers_mut().append(
+            CONTENT_TYPE,
+            HeaderValue::from_static("application/json; charset=utf-8"),
+        );
         Ok(res)
     }
 

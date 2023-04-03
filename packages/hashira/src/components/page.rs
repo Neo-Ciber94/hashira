@@ -6,7 +6,7 @@ use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properti
 
 use crate::{
     app::{client_router::ClientRouter, error_router::ClientErrorRouter},
-    components::error::{NotFoundPage, ErrorPage},
+    components::error::{ErrorPage, NotFoundPage},
 };
 
 pub struct RenderFn(Box<dyn Fn() -> Html + Send + Sync>);
@@ -92,7 +92,7 @@ where
                 }
             }
             None => {
-                log::warn!("not error page was registered for 404 errors");
+                log::warn!("404 error page was not registered");
                 yew::html! {
                     <NotFoundPage />
                 }
@@ -118,12 +118,12 @@ pub struct PageData {
     /// The path of the component.
     pub path: String,
 
+    /// An error that ocurred in the route.
+    pub error: Option<PageError>,
+
     /// Component being rendered, (remove?)
     pub component_name: String,
 
     /// Properties of the current component.
     pub props: serde_json::Value,
-
-    /// An error that ocurred in the route.
-    pub error: Option<PageError>,
 }
