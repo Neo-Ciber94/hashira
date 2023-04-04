@@ -1,4 +1,4 @@
-use super::{router::ClientRouter, error_router::ErrorRouter, RenderLayout};
+use super::{error_router::ErrorRouter, router::ClientRouter, RenderLayout};
 pub use crate::error::ResponseError;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
@@ -25,7 +25,7 @@ pub struct RequestContext<C> {
     path: String,
     params: Params,
     client_router: ClientRouter,
-    client_error_router: Arc<ErrorRouter>,
+    error_router: Arc<ErrorRouter>,
     request: Option<Arc<Request>>,
     error: Option<ResponseError>,
     layout: Option<RenderLayout<C>>,
@@ -56,7 +56,7 @@ impl<C> RequestContext<C> {
             request,
             client_router,
             layout: Some(layout),
-            client_error_router,
+            error_router: client_error_router,
             data: Arc::new(Mutex::new(data)),
         }
     }
@@ -119,7 +119,7 @@ where
             data: inner,
             params,
             client_router,
-            client_error_router,
+            error_router,
             path,
             error,
         } = self;
@@ -133,7 +133,7 @@ where
             layout: None,
             error: None, // FIXME: Pass error to layout?
             client_router: client_router.clone(),
-            client_error_router: client_error_router.clone(),
+            error_router: error_router.clone(),
             data: inner.clone(),
         };
 
@@ -153,7 +153,7 @@ where
             links,
             scripts,
             client_router,
-            client_error_router,
+            error_router,
         };
 
         let result_html = render_page_to_html::<COMP, C>(props, options)

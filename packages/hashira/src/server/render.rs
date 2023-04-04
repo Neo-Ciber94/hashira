@@ -26,7 +26,7 @@ pub struct RenderPageOptions {
     pub(crate) client_router: ClientRouter,
 
     // The router used to render errors
-    pub(crate) client_error_router: Arc<ErrorRouter>,
+    pub(crate) error_router: Arc<ErrorRouter>,
 
     // Represents the shell where the page will be rendered
     pub(crate) layout: String,
@@ -58,7 +58,7 @@ where
         links,
         scripts,
         client_router,
-        client_error_router,
+        error_router: client_error_router,
     } = options;
 
     // The base layout
