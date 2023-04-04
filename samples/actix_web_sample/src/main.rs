@@ -1,5 +1,5 @@
 mod app;
-use app::{hashira, App};
+use app::App;
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -11,8 +11,8 @@ cfg_if::cfg_if! {
         #[actix_web::main]
         async fn main() -> std::io::Result<()> {
             env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
-            
-            let service = hashira::<App>();
+
+            let service = app::hashira::<App>();
             service.generate_index_html().await
         }
 
@@ -29,7 +29,7 @@ cfg_if::cfg_if! {
             wasm_logger::init(wasm_logger::Config::default());
             log::debug!("Hydrating app...");
 
-            let service = hashira::<App>();
+            let service = app::hashira::<App>();
             hashira::client::mount_to(service);
         }
     }

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
-use crate::app::router::ClientRouter;
 use crate::app::error_router::ErrorRouter;
+use crate::app::router::ClientRouter;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
     HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
@@ -29,7 +29,7 @@ pub struct RenderPageOptions {
     pub(crate) error_router: Arc<ErrorRouter>,
 
     // Represents the shell where the page will be rendered
-    pub(crate) layout: String,
+    pub(crate) index_html: String,
 
     // The `<meta>` tags of the page to render
     pub(crate) metadata: Metadata,
@@ -53,7 +53,7 @@ where
     let RenderPageOptions {
         path,
         error,
-        layout,
+        index_html,
         metadata,
         links,
         scripts,
@@ -62,7 +62,7 @@ where
     } = options;
 
     // The base layout
-    let mut result_html = layout;
+    let mut result_html = index_html;
 
     if !result_html.contains(HASHIRA_ROOT) {
         return Err(RenderError::NoRoot);
@@ -116,7 +116,10 @@ fn insert_metadata(html: &mut String, metadata: Metadata) {
 
     // Add <title> from <meta name="title" ...>
     if let Some(meta) = metadata.meta_tags().find(|x| x.name() == "title") {
-        let (_, content) = meta.attrs().find(|(name, _)| name.as_str() == "content").unwrap();
+        let (_, content) = meta
+            .attrs()
+            .find(|(name, _)| name.as_str() == "content")
+            .unwrap();
         tags_html.push(format!("<title>{}</title>", content));
     }
 
@@ -126,28 +129,7 @@ fn insert_metadata(html: &mut String, metadata: Metadata) {
 }
 
 fn insert_links(html: &mut String, links: PageLinks) {
-    let mut tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-
-    // We do this to prevent adding the bundle when building the layout,
-    // TODO: Find a cleaner way to do this
-    if crate::is_initialized() {
-        // Add wasm bundle
-        let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
-        tags_html.push(format!(r#"
-            <link rel="preload" href="/static/{crate_name}_bg.wasm" as="fetch" type="application/wasm" crossorigin=""/>
-            <link rel="modulepreload" href="/static/{crate_name}.js" />
-        "#));
-
-        tags_html.push(format!(
-            r#"
-            <script type="module">
-                import init from "/static/{crate_name}.js";
-                init("/static/{crate_name}_bg.wasm");
-            </script>
-        "#
-        ));
-    }
-
+    let tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
     let links = tags_html.join("\n");
     *html = html.replace(HASHIRA_LINKS_MARKER, &links);
 }

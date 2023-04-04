@@ -135,12 +135,7 @@ impl<C> AppService<C> {
             server::render_to_static_html,
         };
 
-        let path = String::new(); // TODO: Use Option<String> instead?
-        let client_router = self.0.client_router.clone();
-        let client_error_router = self.0.client_error_router.clone();
-        let params = Params::new();
-        let ctx = RequestContext::new(None, client_router, client_error_router, None, path, params);
-        let layout_ctx = LayoutContext::new(ctx, PageLayoutData::new());
+        let layout_ctx = LayoutContext::new(PageLayoutData::new());
         let render_layout = &self.0.layout;
         let layout_html = render_layout(layout_ctx).await;
         let html_string = render_to_static_html(move || layout_html).await;
@@ -150,12 +145,12 @@ impl<C> AppService<C> {
     /// Generates the `index.html` file to use for the pages.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn generate_index_html(&self) -> std::io::Result<()> {
-        let html = self.get_layout_html().await;
+        let index_html = self.get_layout_html().await;
         let mut file_path = std::env::current_dir()?;
         file_path.push("index.html");
         let mut file = std::fs::File::create(&file_path)?;
 
-        file.write(html.as_bytes())?;
+        file.write(index_html.as_bytes())?;
         log::info!("Written index.html file to {}", file_path.display());
         Ok(())
     }
