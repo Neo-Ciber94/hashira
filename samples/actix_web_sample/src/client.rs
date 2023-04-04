@@ -1,4 +1,4 @@
-use crate::components::hashira;
+use crate::app::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub fn start_client<C>()

@@ -1,7 +1,7 @@
 use super::{
-    router::ClientRouter,
     error_router::{ErrorRouter, ServerErrorRouter},
-    RequestContext, AppService, BoxFuture, ClientPageRoute, AppServiceInner, RenderContext, ServerPageRoute,
+    router::ClientRouter,
+    AppService, AppServiceInner, BoxFuture, ClientPageRoute, RenderContext, RequestContext, Route,
 };
 use crate::{
     components::{
@@ -46,7 +46,7 @@ impl<C> ErrorPageHandler<C> {
 
 pub struct App<C> {
     layout: Option<RenderLayout<C>>,
-    server_router: Router<ServerPageRoute<C>>,
+    server_router: Router<Route<C>>,
     client_router: Router<ClientPageRoute>,
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter<C>,
@@ -79,6 +79,18 @@ where
     }
 
     #[cfg(not(target_arch = "wasm32"))]
+    pub fn route(mut self, route: Route<C>) -> Self {
+        let path = route.path().to_owned(); // To please the borrow checker
+        self.server_router.add(&path, route);
+        self
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn route(self, _: Route<C>) -> Self {
+        self
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
         COMP: BaseComponent,
@@ -86,20 +98,16 @@ where
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
-        assert!(path.starts_with("/"), "page path must start with `/`");
+        self.add_component::<COMP>(path);
 
-        let page = ServerPageRoute {
-            path: path.to_string(),
-            handler: PageHandler(Box::new(move |ctx| {
+        self.route(Route::get(
+            path,
+            PageHandler(Box::new(move |ctx| {
                 let render_ctx = RenderContext::new(ctx);
                 let res = handler(render_ctx);
                 Box::pin(res)
             })),
-        };
-
-        self.server_router.add(path, page);
-        self.add_component::<COMP>(path);
-        self
+        ))
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -197,22 +205,24 @@ where
                 Ok(res)
             },
         )
-        .error_page_fallback(move |mut ctx: RenderContext<ErrorPage, C>, status| async move {
-            ctx.add_metadata(Metadata::new().title(format!(
-                "{} | {}",
-                status.as_u16(),
-                status.canonical_reason().unwrap_or("Page Error")
-            )));
+        .error_page_fallback(
+            move |mut ctx: RenderContext<ErrorPage, C>, status| async move {
+                ctx.add_metadata(Metadata::new().title(format!(
+                    "{} | {}",
+                    status.as_u16(),
+                    status.canonical_reason().unwrap_or("Page Error")
+                )));
 
-            let mut res = ctx
-                .render_with_props(ErrorPageProps {
-                    status,
-                    message: None,
-                })
-                .await;
-            *res.status_mut() = status;
-            Ok(res)
-        })
+                let mut res = ctx
+                    .render_with_props(ErrorPageProps {
+                        status,
+                        message: None,
+                    })
+                    .await;
+                *res.status_mut() = status;
+                Ok(res)
+            },
+        )
     }
 
     fn add_component<COMP>(&mut self, path: &str)

@@ -5,7 +5,6 @@ use crate::{
     web::Request,
 };
 use route_recognizer::Params;
-use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use yew::{html::ChildrenProps, BaseComponent};
 
@@ -99,7 +98,7 @@ where
     pub async fn render<COMP>(self) -> String
     where
         COMP: BaseComponent,
-        COMP::Properties: Serialize + Default + Send + Clone,
+        COMP::Properties: serde::Serialize + Default + Send + Clone,
     {
         let props = COMP::Properties::default();
         self.render_with_props::<COMP>(props).await
@@ -110,7 +109,7 @@ where
     pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
     where
         COMP: BaseComponent,
-        COMP::Properties: Serialize + Send + Clone,
+        COMP::Properties: serde::Serialize + Send + Clone,
     {
         use crate::server::{render_page_to_html, render_to_static_html, RenderPageOptions};
 

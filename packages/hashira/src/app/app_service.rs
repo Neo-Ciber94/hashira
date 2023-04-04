@@ -1,7 +1,7 @@
 use super::{
-    router::ClientRouter,
     error_router::{ErrorRouter, ServerErrorRouter},
-    RequestContext, RenderLayout, ServerPageRoute,
+    router::ClientRouter,
+    RenderLayout, RequestContext, Route,
 };
 use crate::{
     error::ResponseError,
@@ -13,7 +13,7 @@ use std::{rc::Rc, sync::Arc};
 
 pub(crate) struct AppServiceInner<C> {
     pub(crate) layout: RenderLayout<C>,
-    pub(crate) server_router: Router<ServerPageRoute<C>>,
+    pub(crate) server_router: Router<Route<C>>,
     pub(crate) client_router: ClientRouter,
     pub(crate) server_error_router: ServerErrorRouter<C>,
     pub(crate) client_error_router: Arc<ErrorRouter>,
@@ -32,7 +32,7 @@ impl<C> AppService<C> {
         path: String,
         request: Arc<Request>,
         params: Params,
-        error: Option<ResponseError>
+        error: Option<ResponseError>,
     ) -> RequestContext<C> {
         let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
@@ -50,7 +50,7 @@ impl<C> AppService<C> {
     }
 
     /// Returns the server router.
-    pub fn server_router(&self) -> &Router<ServerPageRoute<C>> {
+    pub fn server_router(&self) -> &Router<Route<C>> {
         &self.0.server_router
     }
 
@@ -69,9 +69,15 @@ impl<C> AppService<C> {
         let req = Arc::new(req);
 
         match self.0.server_router.recognize(&path) {
-            Ok(page) => {
-                let route = page.handler();
-                let params = page.params().clone();
+            Ok(mtch) => {
+                let route = mtch.handler();
+                let method = req.method().into();
+
+                if !route.method().matches(&method) {
+                    return Response::with_status(StatusCode::METHOD_NOT_ALLOWED);
+                }
+
+                let params = mtch.params().clone();
                 let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
 
                 match route.handler().call(ctx).await {

@@ -1,7 +1,6 @@
 use super::RequestContext;
 use crate::error::Error;
 pub use crate::error::ResponseError;
-use crate::web::ResponseExt;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
     web::{Request, Response},
@@ -70,6 +69,8 @@ where
     where
         COMP::Properties: Default,
     {
+        use crate::web::ResponseExt;
+
         let html = self.context.render::<COMP>().await;
         Response::html(html)
     }
@@ -77,6 +78,8 @@ where
     /// Render the page with the given props and returns the `text/html` response.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
+        use crate::web::ResponseExt;
+        
         let html = self.context.render_with_props::<COMP>(props).await;
         Response::html(html)
     }

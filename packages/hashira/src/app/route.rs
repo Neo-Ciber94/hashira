@@ -3,24 +3,6 @@ use http::Method;
 use super::PageHandler;
 use crate::components::AnyComponent;
 
-// Represents a server-side page route, containing a handler function and a path pattern.
-pub struct ServerPageRoute<C> {
-    pub(crate) handler: PageHandler<C>, // The handler function for this page route.
-    pub(crate) path: String,            // The path pattern for this page route.
-}
-
-impl<C> ServerPageRoute<C> {
-    // Returns a reference to the handler function for this page route.
-    pub fn handler(&self) -> &PageHandler<C> {
-        &self.handler
-    }
-
-    // Returns a reference to the path pattern for this page route.
-    pub fn path(&self) -> &str {
-        self.path.as_str()
-    }
-}
-
 // Represents a client-side page route, containing a component and a path pattern.
 pub struct ClientPageRoute {
     pub(crate) component: AnyComponent<serde_json::Value>, // The component for this page route.
@@ -87,9 +69,9 @@ impl std::ops::BitOr for HttpMethod {
     }
 }
 
-impl From<Method> for HttpMethod {
-    fn from(value: Method) -> Self {
-        match value {
+impl From<&Method> for HttpMethod {
+    fn from(value: &Method) -> Self {
+        match *value {
             Method::GET => HttpMethod::GET,
             Method::POST => HttpMethod::POST,
             Method::PUT => HttpMethod::PUT,
@@ -100,6 +82,12 @@ impl From<Method> for HttpMethod {
             Method::TRACE => HttpMethod::TRACE,
             _ => panic!("unsupported http method: {value}"),
         }
+    }
+}
+
+impl From<Method> for HttpMethod {
+    fn from(value: Method) -> Self {
+        HttpMethod::from(&value)
     }
 }
 
@@ -115,8 +103,10 @@ pub struct Route<C> {
 }
 
 impl<C> Route<C> {
-    /// Creates a new `Route` with the given path, HTTP method, and handler function.
+    /// Creates a new `ServerPageRoute` with the given path, HTTP method, and handler function.
     pub fn new(path: &str, method: HttpMethod, handler: PageHandler<C>) -> Self {
+        assert!(path.starts_with("/"), "page path must start with `/`");
+
         Route {
             path: path.to_owned(),
             method,
