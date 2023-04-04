@@ -36,12 +36,12 @@ impl ErrorRouter {
 }
 
 /// Contains the error routes for the client.
-pub struct ServerErrorRouter<C> {
-    routes: HashMap<StatusCode, ErrorPageHandler<C>>,
-    fallback: Option<ErrorPageHandler<C>>,
+pub struct ServerErrorRouter {
+    routes: HashMap<StatusCode, ErrorPageHandler>,
+    fallback: Option<ErrorPageHandler>,
 }
 
-impl<C> ServerErrorRouter<C> {
+impl ServerErrorRouter {
     /// Constructs a new error router.
     pub fn new() -> Self {
         ServerErrorRouter {
@@ -51,17 +51,17 @@ impl<C> ServerErrorRouter<C> {
     }
 
     /// Adds a handler for the given `StatusCode`.
-    pub fn add(&mut self, status: StatusCode, handler: ErrorPageHandler<C>) {
+    pub fn add(&mut self, status: StatusCode, handler: ErrorPageHandler) {
         self.routes.insert(status, handler);
     }
 
     /// Adds a component to handle for error status code.
-    pub fn add_fallback(&mut self, handler: ErrorPageHandler<C>) {
+    pub fn add_fallback(&mut self, handler: ErrorPageHandler) {
         self.fallback = Some(handler);
     }
 
     /// Returns the handler for the given `StatusCode`.
-    pub fn recognize_error(&self, status: &StatusCode) -> Option<&ErrorPageHandler<C>> {
+    pub fn recognize_error(&self, status: &StatusCode) -> Option<&ErrorPageHandler> {
         self.routes.get(status)
     }
 }

@@ -9,14 +9,15 @@ use crate::{
 };
 use http::{status, StatusCode};
 use route_recognizer::{Params, Router};
-use std::{rc::Rc, sync::Arc};
+use std::{marker::PhantomData, rc::Rc, sync::Arc};
 
 pub(crate) struct AppServiceInner<C> {
-    pub(crate) layout: RenderLayout<C>,
-    pub(crate) server_router: Router<Route<C>>,
+    pub(crate) layout: RenderLayout,
+    pub(crate) server_router: Router<Route>,
     pub(crate) client_router: ClientRouter,
-    pub(crate) server_error_router: ServerErrorRouter<C>,
+    pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
+    pub(crate) _marker: PhantomData<C>, // FIXME: Remove generic?
 }
 
 pub struct AppService<C>(Rc<AppServiceInner<C>>);
@@ -33,24 +34,22 @@ impl<C> AppService<C> {
         request: Arc<Request>,
         params: Params,
         error: Option<ResponseError>,
-    ) -> RequestContext<C> {
-        let layout = self.0.layout.clone();
+    ) -> RequestContext {
         let client_router = self.0.client_router.clone();
-        let client_error_router = self.0.client_error_router.clone();
+        let error_router = self.0.client_error_router.clone();
 
         RequestContext::new(
             Some(request),
             client_router,
-            client_error_router,
+            error_router,
             error,
             path,
-            layout,
             params,
         )
     }
 
     /// Returns the server router.
-    pub fn server_router(&self) -> &Router<Route<C>> {
+    pub fn server_router(&self) -> &Router<Route> {
         &self.0.server_router
     }
 
@@ -65,7 +64,12 @@ impl<C> AppService<C> {
     }
 
     /// Process the incoming request and return the response.
-    pub async fn handle(&self, req: Request, path: &str) -> Response {
+    pub async fn handle(&self, mut req: Request, path: &str) -> Response {
+        // Insert request extensions
+        let render_layout = self.0.layout.clone();
+        req.extensions_mut().insert(render_layout);
+
+        // Request now is read-only
         let req = Arc::new(req);
 
         match self.0.server_router.recognize(&path) {
@@ -126,24 +130,19 @@ impl<C> AppService<C> {
     /// Returns the `html` template of the layout
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn get_layout_html(&self) -> String {
-        use crate::server::render_to_static_html;
+        use crate::{
+            app::{layout_data::PageLayoutData, LayoutContext},
+            server::render_to_static_html,
+        };
 
         let path = String::new(); // TODO: Use Option<String> instead?
-        let layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let client_error_router = self.0.client_error_router.clone();
         let params = Params::new();
-        let ctx = RequestContext::new(
-            None,
-            client_router,
-            client_error_router,
-            None,
-            path,
-            layout,
-            params,
-        );
+        let ctx = RequestContext::new(None, client_router, client_error_router, None, path, params);
+        let layout_ctx = LayoutContext::new(ctx, PageLayoutData::new());
         let render_layout = &self.0.layout;
-        let layout_html = render_layout(ctx).await;
+        let layout_html = render_layout(layout_ctx).await;
         let html_string = render_to_static_html(move || layout_html).await;
         html_string
     }

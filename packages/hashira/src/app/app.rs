@@ -1,7 +1,8 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::ClientRouter,
-    AppService, AppServiceInner, BoxFuture, ClientPageRoute, RenderContext, RequestContext, Route,
+    AppService, AppServiceInner, BoxFuture, ClientPageRoute, LayoutContext, RenderContext,
+    RequestContext, Route,
 };
 use crate::{
     components::{
@@ -15,29 +16,29 @@ use crate::{
 use http::status::StatusCode;
 use route_recognizer::Router;
 use serde::de::DeserializeOwned;
-use std::{future::Future, rc::Rc, sync::Arc};
+use std::{future::Future, marker::PhantomData, rc::Rc, sync::Arc};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
-pub type RenderLayout<C> = Rc<dyn Fn(RequestContext<C>) -> BoxFuture<Html>>;
+pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxFuture<Html> + Send + Sync>;
 
-pub struct PageHandler<C>(
-    pub(crate) Box<dyn Fn(RequestContext<C>) -> BoxFuture<Result<Response, Error>>>,
+pub struct PageHandler(
+    pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Result<Response, Error>>>,
 );
 
-impl<C> PageHandler<C> {
-    pub fn call(&self, ctx: RequestContext<C>) -> BoxFuture<Result<Response, Error>> {
+impl PageHandler {
+    pub fn call(&self, ctx: RequestContext) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx)
     }
 }
 
-pub struct ErrorPageHandler<C>(
-    pub(crate) Box<dyn Fn(RequestContext<C>, StatusCode) -> BoxFuture<Result<Response, Error>>>,
+pub struct ErrorPageHandler(
+    pub(crate) Box<dyn Fn(RequestContext, StatusCode) -> BoxFuture<Result<Response, Error>>>,
 );
 
-impl<C> ErrorPageHandler<C> {
+impl ErrorPageHandler {
     pub fn call(
         &self,
-        ctx: RequestContext<C>,
+        ctx: RequestContext,
         status: StatusCode,
     ) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx, status)
@@ -45,11 +46,12 @@ impl<C> ErrorPageHandler<C> {
 }
 
 pub struct App<C> {
-    layout: Option<RenderLayout<C>>,
-    server_router: Router<Route<C>>,
+    layout: Option<RenderLayout>,
+    server_router: Router<Route>,
     client_router: Router<ClientPageRoute>,
     client_error_router: ErrorRouter,
-    server_error_router: ServerErrorRouter<C>,
+    server_error_router: ServerErrorRouter,
+    _marker: PhantomData<C>,
 }
 
 impl<C> App<C>
@@ -63,30 +65,31 @@ where
             client_router: Router::new(),
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
+            _marker: PhantomData,
         }
     }
 
     pub fn layout<F, Fut>(mut self, layout: F) -> Self
     where
-        F: Fn(RequestContext<C>) -> Fut + 'static,
+        F: Fn(LayoutContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Html> + 'static,
     {
-        self.layout = Some(Rc::new(move |ctx| {
-            let html = layout(ctx);
-            Box::pin(html)
+        self.layout = Some(Arc::new(move |ctx| {
+            let fut = layout(ctx);
+            Box::pin(fut)
         }));
         self
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn route(mut self, route: Route<C>) -> Self {
+    pub fn route(mut self, route: Route) -> Self {
         let path = route.path().to_owned(); // To please the borrow checker
         self.server_router.add(&path, route);
         self
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn route(self, _: Route<C>) -> Self {
+    pub fn route(self, _: Route) -> Self {
         self
     }
 
@@ -98,12 +101,21 @@ where
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
+        use super::layout_data::PageLayoutData;
+
         self.add_component::<COMP>(path);
 
         self.route(Route::get(
             path,
             PageHandler(Box::new(move |ctx| {
-                let render_ctx = RenderContext::new(ctx);
+                let layout_data = PageLayoutData::new();
+                let render_layout = ctx
+                    .request()
+                    .extensions()
+                    .get::<RenderLayout>()
+                    .cloned()
+                    .unwrap();
+                let render_ctx = RenderContext::new(ctx, layout_data, render_layout);
                 let res = handler(render_ctx);
                 Box::pin(res)
             })),
@@ -130,10 +142,19 @@ where
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
+        use super::layout_data::PageLayoutData;
+
         self.server_error_router.add(
             status,
             ErrorPageHandler(Box::new(move |ctx, status| {
-                let render_ctx = RenderContext::new(ctx);
+                let layout_data = PageLayoutData::new();
+                let render_layout = ctx
+                    .request()
+                    .extensions()
+                    .get::<RenderLayout>()
+                    .cloned()
+                    .unwrap();
+                let render_ctx = RenderContext::new(ctx, layout_data, render_layout);
                 let res = handler(render_ctx, status);
                 Box::pin(res)
             })),
@@ -163,9 +184,18 @@ where
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
+        use super::layout_data::PageLayoutData;
+
         self.server_error_router
             .add_fallback(ErrorPageHandler(Box::new(move |ctx, status| {
-                let render_ctx = RenderContext::new(ctx);
+                let layout_data = PageLayoutData::new();
+                let render_layout = ctx
+                    .request()
+                    .extensions()
+                    .get::<RenderLayout>()
+                    .cloned()
+                    .unwrap();
+                let render_ctx = RenderContext::new(ctx, layout_data, render_layout);
                 let res = handler(render_ctx, status);
                 Box::pin(res)
             })));
@@ -320,9 +350,10 @@ where
             client_router,
             client_error_router,
             server_error_router,
+            _marker,
         } = self;
 
-        let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
+        let layout = layout.unwrap_or_else(|| Arc::new(render_default_layout));
         let client_router = ClientRouter::from(client_router);
         let client_error_router = Arc::from(client_error_router);
         let inner = AppServiceInner {
@@ -331,13 +362,14 @@ where
             client_router,
             client_error_router,
             server_error_router,
+            _marker,
         };
 
         AppService::new(Rc::new(inner))
     }
 }
 
-fn render_default_layout<C>(_: RequestContext<C>) -> BoxFuture<yew::Html> {
+fn render_default_layout(_: LayoutContext) -> BoxFuture<yew::Html> {
     Box::pin(async {
         yew::html! {
             <RootLayout/>

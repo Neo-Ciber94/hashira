@@ -24,33 +24,33 @@ impl ClientPageRoute {
 /// Represents an HTTP method as a bit field. This is a compact representation
 /// of the HTTP method that allows for efficient matching of multiple methods
 /// at once.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct HttpMethod(u8);
 
 impl HttpMethod {
     /// The HTTP GET method.
-    pub const GET: HttpMethod = HttpMethod(0b0001);
+    pub const GET: HttpMethod =     HttpMethod(0b0001);
 
     /// The HTTP POST method.
-    pub const POST: HttpMethod = HttpMethod(0b0010);
+    pub const POST: HttpMethod =    HttpMethod(0b0010);
 
     /// The HTTP PUT method.
-    pub const PUT: HttpMethod = HttpMethod(0b0100);
+    pub const PUT: HttpMethod =     HttpMethod(0b0100);
 
     /// The HTTP PATCH method.
-    pub const PATCH: HttpMethod = HttpMethod(0b1000);
+    pub const PATCH: HttpMethod =   HttpMethod(0b1000);
 
     /// The HTTP DELETE method.
-    pub const DELETE: HttpMethod = HttpMethod(0b0001_0000);
+    pub const DELETE: HttpMethod =  HttpMethod(0b0001_0000);
 
     /// The HTTP HEAD method.
-    pub const HEAD: HttpMethod = HttpMethod(0b0010_0000);
+    pub const HEAD: HttpMethod =    HttpMethod(0b0010_0000);
 
     /// The HTTP OPTIONS method.
     pub const OPTIONS: HttpMethod = HttpMethod(0b0100_0000);
 
     /// The HTTP TRACE method.
-    pub const TRACE: HttpMethod = HttpMethod(0b1000_0000);
+    pub const TRACE: HttpMethod =   HttpMethod(0b1000_0000);
 
     /// Returns true if this `HttpMethod` matches the given `HttpMethod`.
     ///
@@ -93,18 +93,18 @@ impl From<Method> for HttpMethod {
 
 /// Represents a route for a web server request, including the path, HTTP method,
 /// and handler function for the request.
-pub struct Route<C> {
+pub struct Route {
     /// The path that the route matches, e.g. "/users/:id" or "/login".
     path: String,
     /// The HTTP method that the route matches, e.g. HttpMethod::GET or HttpMethod::POST.
     method: HttpMethod,
     /// The handler function that should be called when this route matches a request.
-    handler: PageHandler<C>,
+    handler: PageHandler,
 }
 
-impl<C> Route<C> {
+impl Route {
     /// Creates a new `ServerPageRoute` with the given path, HTTP method, and handler function.
-    pub fn new(path: &str, method: HttpMethod, handler: PageHandler<C>) -> Self {
+    pub fn new(path: &str, method: HttpMethod, handler: PageHandler) -> Self {
         assert!(path.starts_with("/"), "page path must start with `/`");
 
         Route {
@@ -115,37 +115,37 @@ impl<C> Route<C> {
     }
 
     /// Creates a new `Route` with the HTTP method set to POST.
-    pub fn post(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn post(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::POST, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to GET.
-    pub fn get(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn get(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::GET, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to HEAD.
-    pub fn head(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn head(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::HEAD, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to PUT.
-    pub fn put(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn put(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::PUT, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to DELETE.
-    pub fn delete(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn delete(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::DELETE, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to OPTIONS.
-    pub fn options(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn options(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::OPTIONS, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to PATCH.
-    pub fn patch(path: &str, handler: PageHandler<C>) -> Self {
+    pub fn patch(path: &str, handler: PageHandler) -> Self {
         Self::new(path, HttpMethod::PATCH, handler)
     }
 
@@ -160,7 +160,7 @@ impl<C> Route<C> {
     }
 
     /// Returns a reference to the handler function for this `Route`.
-    pub fn handler(&self) -> &PageHandler<C> {
+    pub fn handler(&self) -> &PageHandler {
         &self.handler
     }
 }

@@ -1,84 +1,47 @@
+use super::layout_data::PageLayoutData;
 use super::{error_router::ErrorRouter, router::ClientRouter, RenderLayout};
 pub use crate::error::ResponseError;
-use crate::{
-    server::{Metadata, PageLinks, PageScripts},
-    web::Request,
-};
+use crate::web::Request;
 use route_recognizer::Params;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use yew::{html::ChildrenProps, BaseComponent};
-
-struct PageLayoutData {
-    // The `<meta>` tags of the page to render
-    metadata: Metadata,
-
-    // the <link> tags of the page to render
-    links: PageLinks,
-
-    // the <script> tags of the page to render
-    scripts: PageScripts,
-}
 
 /// Contains information about the current request.
 #[allow(dead_code)] // TODO: Ignore server only data
-pub struct RequestContext<C> {
+pub struct RequestContext {
     path: String,
     params: Params,
     client_router: ClientRouter,
     error_router: Arc<ErrorRouter>,
     request: Option<Arc<Request>>,
     error: Option<ResponseError>,
-    layout: Option<RenderLayout<C>>,
-    data: Arc<Mutex<PageLayoutData>>,
 }
 
 #[allow(dead_code)] // TODO: Ignore server only data
-impl<C> RequestContext<C> {
+impl RequestContext {
     pub fn new(
         request: Option<Arc<Request>>,
         client_router: ClientRouter,
-        client_error_router: Arc<ErrorRouter>,
+        error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
         path: String,
-        layout: RenderLayout<C>,
         params: Params,
     ) -> Self {
-        let data = PageLayoutData {
-            metadata: Metadata::default(),
-            links: PageLinks::default(),
-            scripts: PageScripts::default(),
-        };
-
         RequestContext {
             path,
             params,
             error,
             request,
             client_router,
-            layout: Some(layout),
-            error_router: client_error_router,
-            data: Arc::new(Mutex::new(data)),
+            error_router,
         }
     }
 }
 
-impl<C> RequestContext<C>
-where
-    C: BaseComponent<Properties = ChildrenProps>,
-{
-    /// Adds a `<meta>` element to the page head.
-    pub fn add_metadata(&mut self, metadata: Metadata) {
-        self.data.lock().unwrap().metadata.extend(metadata);
-    }
-
-    /// Adds a `<link>` element to the page head.
-    pub fn add_links(&mut self, links: PageLinks) {
-        self.data.lock().unwrap().links.extend(links);
-    }
-
-    /// Adds a `<script>` element to the page body.
-    pub fn add_scripts(&mut self, scripts: PageScripts) {
-        self.data.lock().unwrap().scripts.extend(scripts);
+impl RequestContext {
+    /// Returns the path of the current request.
+    pub fn path(&self) -> &str {
+        self.path.as_str()
     }
 
     /// Returns the current request.
@@ -95,28 +58,41 @@ where
 
     /// Renders the given component to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP>(self) -> String
+    pub async fn render<COMP, C>(
+        self,
+        layout_data: PageLayoutData,
+        render_layout: RenderLayout,
+    ) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
+        C: BaseComponent<Properties = ChildrenProps>,
     {
         let props = COMP::Properties::default();
-        self.render_with_props::<COMP>(props).await
+        self.render_with_props::<COMP, C>(props, layout_data, render_layout)
+            .await
     }
 
     /// Renders the given component with the specified props to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_with_props<COMP>(self, props: COMP::Properties) -> String
+    pub async fn render_with_props<COMP, C>(
+        self,
+        props: COMP::Properties,
+        layout_data: PageLayoutData,
+        render_layout: RenderLayout,
+    ) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: serde::Serialize + Send + Clone,
+        C: BaseComponent<Properties = ChildrenProps>,
     {
-        use crate::server::{render_page_to_html, render_to_static_html, RenderPageOptions};
+        use crate::{
+            app::LayoutContext,
+            server::{render_page_to_html, render_to_static_html, RenderPageOptions},
+        };
 
         let Self {
-            layout,
             request,
-            data: inner,
             params,
             client_router,
             error_router,
@@ -124,23 +100,21 @@ where
             error,
         } = self;
 
-        let render_layout = layout.unwrap();
-
-        let layout_ctx = RequestContext {
+        let layout_request_ctx = RequestContext {
             params,
             request,
             path: path.clone(),
-            layout: None,
             error: None, // FIXME: Pass error to layout?
             client_router: client_router.clone(),
             error_router: error_router.clone(),
-            data: inner.clone(),
         };
 
+        let layout_ctx = LayoutContext::new(layout_request_ctx, layout_data.clone());
         let layout_node = render_layout(layout_ctx).await;
         let layout = render_to_static_html(move || layout_node).await;
 
-        let inner = inner.lock().unwrap();
+        // Get page links, meta and scripts
+        let inner = layout_data.0.lock().unwrap();
         let links = inner.links.clone();
         let metadata = inner.metadata.clone();
         let scripts = inner.scripts.clone();

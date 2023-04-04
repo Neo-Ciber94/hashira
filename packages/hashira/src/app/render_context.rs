@@ -1,28 +1,35 @@
-use super::RequestContext;
+use super::{layout_data::PageLayoutData, RenderLayout, RequestContext};
 use crate::error::Error;
 pub use crate::error::ResponseError;
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
-    web::{Request, Response},
+    web::Response,
 };
 use http::StatusCode;
-use route_recognizer::Params;
 use serde::Serialize;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Deref};
 use yew::{html::ChildrenProps, BaseComponent};
 
 /// Contains information about the current request and allow the render the page to respond.
 pub struct RenderContext<COMP, C> {
-    context: RequestContext<C>,
-    _marker: PhantomData<COMP>,
+    context: RequestContext,
+    layout_data: PageLayoutData,
+    render_layout: RenderLayout,
+    _marker: PhantomData<(COMP, C)>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl<COMP, C> RenderContext<COMP, C> {
     /// Constructs a new render context from the given request context.
-    pub(crate) fn new(context: RequestContext<C>) -> Self {
+    pub(crate) fn new(
+        context: RequestContext,
+        layout_data: PageLayoutData,
+        render_layout: RenderLayout,
+    ) -> Self {
         RenderContext {
             context,
+            layout_data,
+            render_layout,
             _marker: PhantomData,
         }
     }
@@ -33,27 +40,25 @@ where
 {
     /// Adds a `<meta>` element to the page head.
     pub fn add_metadata(&mut self, metadata: Metadata) {
-        self.context.add_metadata(metadata);
+        self.layout_data.add_metadata(metadata);
     }
 
     /// Adds a `<link>` element to the page head.
     pub fn add_links(&mut self, links: PageLinks) {
-        self.context.add_links(links);
+        self.layout_data.add_links(links);
     }
 
     /// Adds a `<script>` element to the page body.
     pub fn add_scripts(&mut self, scripts: PageScripts) {
-        self.context.add_scripts(scripts);
+        self.layout_data.add_scripts(scripts);
     }
+}
 
-    /// Returns the current request.
-    pub fn request(&self) -> &Request {
-        self.context.request()
-    }
+impl<COMP, C> Deref for RenderContext<COMP, C> {
+    type Target = RequestContext;
 
-    /// Returns the matching params of the route.
-    pub fn params(&self) -> &Params {
-        self.context.params()
+    fn deref(&self) -> &Self::Target {
+        &self.context
     }
 }
 
@@ -71,7 +76,13 @@ where
     {
         use crate::web::ResponseExt;
 
-        let html = self.context.render::<COMP>().await;
+        let layout_data = self.layout_data;
+        let render_layout = self.render_layout;
+        let html = self
+            .context
+            .render::<COMP, C>(layout_data, render_layout)
+            .await;
+
         Response::html(html)
     }
 
@@ -79,8 +90,14 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
         use crate::web::ResponseExt;
-        
-        let html = self.context.render_with_props::<COMP>(props).await;
+
+        let layout_data = self.layout_data;
+        let render_layout = self.render_layout;
+        let html = self
+            .context
+            .render_with_props::<COMP, C>(props, layout_data, render_layout)
+            .await;
+
         Response::html(html)
     }
 
