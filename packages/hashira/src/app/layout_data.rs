@@ -12,7 +12,7 @@ pub(crate) struct Inner {
     pub(crate) scripts: PageScripts,
 }
 
-pub struct PageLayoutData(pub(crate) Arc<Mutex<Inner>>);
+pub struct PageLayoutData(Arc<Mutex<Inner>>);
 
 impl PageLayoutData {
     pub(crate) fn new() -> Self {
@@ -23,6 +23,15 @@ impl PageLayoutData {
         }));
 
         PageLayoutData(inner)
+    }
+
+    pub(crate) fn into_parts(self) -> (Metadata, PageLinks, PageScripts) {
+        let lock = Arc::unwrap_or_clone(self.0);
+        let inner = lock.into_inner().unwrap();
+        let metadata = inner.metadata.clone();
+        let links = inner.links.clone();
+        let scripts = inner.scripts.clone();
+        (metadata, links, scripts)
     }
 
     /// Adds a `<meta>` element to the page head.

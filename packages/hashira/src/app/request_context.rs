@@ -114,10 +114,7 @@ impl RequestContext {
         let layout = render_to_static_html(move || layout_node).await;
 
         // Get page links, meta and scripts
-        let inner = layout_data.0.lock().unwrap();
-        let links = inner.links.clone();
-        let metadata = inner.metadata.clone();
-        let scripts = inner.scripts.clone();
+        let (metadata, links, scripts) = layout_data.into_parts();
 
         let options = RenderPageOptions {
             path,
