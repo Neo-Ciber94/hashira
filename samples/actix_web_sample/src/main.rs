@@ -1,19 +1,19 @@
 mod app;
-use app::App;
+use app::{hashira, App};
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
-        #[cfg(feature = "build")]
-        mod index;
-
         #[cfg(not(feature = "build"))]
         mod server;
 
         // Generate index.html
         #[cfg(feature = "build")]
         #[actix_web::main]
-        async fn main() {
-            crate::index::generate_html_index::<App>().await;
+        async fn main() -> std::io::Result<()> {
+            env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
+            
+            let service = hashira::<App>();
+            service.generate_index_html().await
         }
 
         // Starts the server
@@ -24,11 +24,13 @@ cfg_if::cfg_if! {
         }
 
 } else {
-        mod client;
-
         // Starts the client
         fn main() {
-            crate::client::start_client::<App>();
+            wasm_logger::init(wasm_logger::Config::default());
+            log::debug!("Hydrating app...");
+
+            let service = hashira::<App>();
+            hashira::client::mount_to(service);
         }
     }
 }

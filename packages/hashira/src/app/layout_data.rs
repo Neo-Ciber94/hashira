@@ -26,8 +26,7 @@ impl PageLayoutData {
     }
 
     pub(crate) fn into_parts(self) -> (Metadata, PageLinks, PageScripts) {
-        let lock = Arc::unwrap_or_clone(self.0);
-        let inner = lock.into_inner().unwrap();
+        let inner = self.0.lock().unwrap();
         let metadata = inner.metadata.clone();
         let links = inner.links.clone();
         let scripts = inner.scripts.clone();

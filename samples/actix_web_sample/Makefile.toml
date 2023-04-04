@@ -16,9 +16,5 @@ args = [
     "--filehash=false"
 ]
 
-[tasks.build_clean]
-command = "rm"
-args = ["../../target/debug/public/index.html"]
-
 [tasks.build]
 dependencies = ["build_html", "build_client"]
