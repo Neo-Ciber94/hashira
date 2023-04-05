@@ -15,14 +15,6 @@ script = "wasm-bindgen --target web --no-typescript --out-dir ../../target/debug
 script_runner = "@shell"
 script = "cp public/* ../../target/debug/public"
 
-[tasks.cleanup]
-script_runner = "@shell"
-script = "rm index.html"
 
 [tasks.build]
-dependencies = [
-    "build_client",
-    "build_wasm",
-    "copy_public_dir",
-    "cleanup",
-]
+dependencies = ["build_client", "build_wasm", "copy_public_dir"]

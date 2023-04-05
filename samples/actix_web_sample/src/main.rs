@@ -1,4 +1,4 @@
-pub use actix_web_sample_web::{hashira, App};
+pub use actix_web_sample_web::App;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod server;
