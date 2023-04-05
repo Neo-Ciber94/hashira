@@ -15,6 +15,11 @@ pub struct RequestContext {
     error_router: Arc<ErrorRouter>,
     request: Option<Arc<Request>>,
     error: Option<ResponseError>,
+
+    // TODO: The request context should not had access to the layout,
+    // but currently this is the way we get the layout to the `RenderContext`,
+    // we should find other way around that
+    render_layout: RenderLayout,
 }
 
 #[allow(dead_code)] // TODO: Ignore server only data
@@ -24,6 +29,7 @@ impl RequestContext {
         client_router: ClientRouter,
         error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
+        render_layout: RenderLayout,
         path: String,
         params: Params,
     ) -> Self {
@@ -34,6 +40,7 @@ impl RequestContext {
             request,
             client_router,
             error_router,
+            render_layout,
         }
     }
 }
@@ -58,19 +65,14 @@ impl RequestContext {
 
     /// Renders the given component to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP, C>(
-        self,
-        layout_data: PageLayoutData,
-        render_layout: RenderLayout,
-    ) -> String
+    pub async fn render<COMP, C>(self, layout_data: PageLayoutData) -> String
     where
         COMP: BaseComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
         C: BaseComponent<Properties = ChildrenProps>,
     {
         let props = COMP::Properties::default();
-        self.render_with_props::<COMP, C>(props, layout_data, render_layout)
-            .await
+        self.render_with_props::<COMP, C>(props, layout_data).await
     }
 
     /// Renders the given component with the specified props to html.
@@ -79,7 +81,6 @@ impl RequestContext {
         self,
         props: COMP::Properties,
         layout_data: PageLayoutData,
-        render_layout: RenderLayout,
     ) -> String
     where
         COMP: BaseComponent,
@@ -98,12 +99,14 @@ impl RequestContext {
             error,
             request,
             params,
+            render_layout,
         } = self;
 
         let layout_request_ctx = RequestContext {
             params,
             request,
             path: path.clone(),
+            render_layout: render_layout.clone(),
             error: None, // FIXME: Pass error to layout?
             client_router: client_router.clone(),
             error_router: error_router.clone(),

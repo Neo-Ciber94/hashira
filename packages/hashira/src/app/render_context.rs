@@ -1,4 +1,4 @@
-use super::{layout_data::PageLayoutData, RenderLayout, RequestContext};
+use super::{layout_data::PageLayoutData, RequestContext};
 use crate::error::Error;
 pub use crate::error::ResponseError;
 use crate::{
@@ -14,22 +14,16 @@ use yew::{html::ChildrenProps, BaseComponent};
 pub struct RenderContext<COMP, C> {
     context: RequestContext,
     layout_data: PageLayoutData,
-    render_layout: RenderLayout,
     _marker: PhantomData<(COMP, C)>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl<COMP, C> RenderContext<COMP, C> {
     /// Constructs a new render context from the given request context.
-    pub(crate) fn new(
-        context: RequestContext,
-        layout_data: PageLayoutData,
-        render_layout: RenderLayout,
-    ) -> Self {
+    pub(crate) fn new(context: RequestContext, layout_data: PageLayoutData) -> Self {
         RenderContext {
             context,
             layout_data,
-            render_layout,
             _marker: PhantomData,
         }
     }
@@ -82,11 +76,7 @@ where
         use crate::web::ResponseExt;
 
         let layout_data = self.layout_data;
-        let render_layout = self.render_layout;
-        let html = self
-            .context
-            .render::<COMP, C>(layout_data, render_layout)
-            .await;
+        let html = self.context.render::<COMP, C>(layout_data).await;
 
         Response::html(html)
     }
@@ -97,10 +87,9 @@ where
         use crate::web::ResponseExt;
 
         let layout_data = self.layout_data;
-        let render_layout = self.render_layout;
         let html = self
             .context
-            .render_with_props::<COMP, C>(props, layout_data, render_layout)
+            .render_with_props::<COMP, C>(props, layout_data)
             .await;
 
         Response::html(html)

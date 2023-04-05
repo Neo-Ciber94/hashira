@@ -34,6 +34,7 @@ impl AppService {
         params: Params,
         error: Option<ResponseError>,
     ) -> RequestContext {
+        let render_layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let error_router = self.0.client_error_router.clone();
 
@@ -42,6 +43,7 @@ impl AppService {
             client_router,
             error_router,
             error,
+            render_layout,
             path,
             params,
         )
@@ -63,11 +65,7 @@ impl AppService {
     }
 
     /// Process the incoming request and return the response.
-    pub async fn handle(&self, mut req: Request, path: &str) -> Response {
-        // Insert request extensions
-        let render_layout = self.0.layout.clone();
-        req.extensions_mut().insert(render_layout);
-
+    pub async fn handle(&self, req: Request, path: &str) -> Response {
         // Request now is read-only
         let req = Arc::new(req);
 
