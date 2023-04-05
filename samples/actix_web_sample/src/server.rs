@@ -21,9 +21,6 @@ where
     println!("⚡ Server started at: http://{host}:{port}");
     println!("⚡ Serving static files from: {}", path.display());
 
-    // Initialize hashira
-    hashira::init();
-
     // Create and run the server
     HttpServer::new(move || {
         App::new()
