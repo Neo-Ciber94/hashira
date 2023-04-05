@@ -9,21 +9,20 @@ use crate::{
 };
 use http::{status, StatusCode};
 use route_recognizer::{Params, Router};
-use std::{marker::PhantomData, rc::Rc, sync::Arc};
+use std::{rc::Rc, sync::Arc};
 
-pub(crate) struct AppServiceInner<C> {
+pub(crate) struct AppServiceInner {
     pub(crate) layout: RenderLayout,
     pub(crate) server_router: Router<Route>,
     pub(crate) client_router: ClientRouter,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
-    pub(crate) _marker: PhantomData<C>, // FIXME: Remove generic?
 }
 
-pub struct AppService<C>(Rc<AppServiceInner<C>>);
+pub struct AppService(Rc<AppServiceInner>);
 
-impl<C> AppService<C> {
-    pub(crate) fn new(inner: Rc<AppServiceInner<C>>) -> Self {
+impl AppService {
+    pub(crate) fn new(inner: Rc<AppServiceInner>) -> Self {
         Self(inner)
     }
 
@@ -128,7 +127,7 @@ impl<C> AppService<C> {
     }
 }
 
-impl<C> Clone for AppService<C> {
+impl Clone for AppService {
     fn clone(&self) -> Self {
         AppService(self.0.clone())
     }

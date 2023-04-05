@@ -343,14 +343,14 @@ where
             }));
     }
 
-    pub fn build(self) -> AppService<C> {
+    pub fn build(self) -> AppService {
         let App {
             layout,
             server_router,
             client_router,
             client_error_router,
             server_error_router,
-            _marker,
+            _marker: _,
         } = self;
 
         let layout = layout.unwrap_or_else(|| Arc::new(render_default_layout));
@@ -362,7 +362,6 @@ where
             client_router,
             client_error_router,
             server_error_router,
-            _marker,
         };
 
         AppService::new(Rc::new(inner))

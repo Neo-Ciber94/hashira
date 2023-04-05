@@ -61,7 +61,7 @@ pub fn HelloPage(props: &HelloPageProps) -> yew::Html {
 }
 
 // Setup all the components
-pub fn hashira<C>() -> AppService<C>
+pub fn hashira<C>() -> AppService
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
@@ -101,5 +101,5 @@ pub fn hydrate() {
     log::debug!("Hydrating app...");
 
     let service = hashira::<App>();
-    hashira::client::mount_to(service);
+    hashira::client::mount::<App>(service);
 }

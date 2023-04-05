@@ -1,16 +1,20 @@
-use actix_web::{web::Bytes, FromRequest, HttpRequest, HttpResponse};
+use actix_web::{web::Bytes, FromRequest, HttpRequest, HttpResponse, Resource};
 use hashira::{
     app::AppService,
     web::{Body, Request, Response},
 };
 
-pub async fn handle_request<C>(req: HttpRequest) -> actix_web::Result<HttpResponse>
-where
-    C: 'static,
-{
+/// Returns a handler that matches all the requests.
+pub fn router() -> Resource {
+    actix_web::web::resource("/{params:.*}")
+        .to(|req: HttpRequest| async { handle_request(req).await })
+}
+
+/// Handle a request.
+pub async fn handle_request(req: HttpRequest) -> actix_web::Result<HttpResponse> {
     let path = req.path().to_string();
     let service = req
-        .app_data::<AppService<C>>()
+        .app_data::<AppService>()
         .cloned()
         .expect("Unable to find hashira `AppService`");
 

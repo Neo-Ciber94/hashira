@@ -1,6 +1,6 @@
-use actix_web_sample_web::hashira;
 use actix_files::{Files, NamedFile};
-use actix_web::{get, web, App, HttpRequest, HttpServer, Responder};
+use actix_web::{get, App, HttpServer, Responder};
+use actix_web_sample_web::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -8,7 +8,7 @@ where
     C: BaseComponent<Properties = ChildrenProps>,
 {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
-    
+
     let current_dir = get_current_dir();
     let host = "127.0.0.1";
     let port = 5000;
@@ -30,11 +30,7 @@ where
             .service(favicon)
             .service(Files::new("static/", &path))
             .app_data(hashira::<C>())
-            .service(
-                web::resource("/{params:.*}").route(web::get().to(|req: HttpRequest| async {
-                    hashira_actix_web::handle_request::<C>(req).await
-                })),
-            )
+            .service(hashira_actix_web::router())
     })
     .bind((host, port))?
     .run()
