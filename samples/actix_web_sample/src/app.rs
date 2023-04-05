@@ -69,11 +69,8 @@ where
         //.app_data(...)
         .use_default_error_pages()
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
-            ctx.add_metadata(
-                Metadata::new()
-                    .title("Hashira Sample App | Counter")
-                    .description("A counter made with hashira actix-web"),
-            );
+            ctx.add_title("Hashira Sample App | Counter");
+            ctx.add_metadata(Metadata::new().description("A counter made with hashira actix-web"));
 
             let res = ctx.render().await;
             Ok(res)
@@ -81,11 +78,8 @@ where
         .page(
             "/hello/:name",
             |mut ctx: RenderContext<HelloPage, C>| async {
-                ctx.add_metadata(
-                    Metadata::new()
-                        .title("Hashira Sample App | Hello")
-                        .description("A hashira greeter"),
-                );
+                ctx.add_title("Hashira Sample App | Hello");
+                ctx.add_metadata(Metadata::new().description("A hashira greeter"));
 
                 let name = ctx.params().find("name").unwrap().to_owned();
 

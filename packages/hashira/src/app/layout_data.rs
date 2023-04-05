@@ -2,6 +2,9 @@ use crate::server::{Metadata, PageLinks, PageScripts};
 use std::sync::{Arc, Mutex};
 
 pub(crate) struct Inner {
+    // The <title> of the page.
+    pub(crate) title: Option<String>,
+
     // The `<meta>` tags of the page to render
     pub(crate) metadata: Metadata,
 
@@ -17,6 +20,7 @@ pub struct PageLayoutData(Arc<Mutex<Inner>>);
 impl PageLayoutData {
     pub(crate) fn new() -> Self {
         let inner = Arc::new(Mutex::new(Inner {
+            title: None,
             metadata: Default::default(),
             links: Default::default(),
             scripts: Default::default(),
@@ -25,12 +29,18 @@ impl PageLayoutData {
         PageLayoutData(inner)
     }
 
-    pub(crate) fn into_parts(self) -> (Metadata, PageLinks, PageScripts) {
-        let inner = self.0.lock().unwrap();
+    pub(crate) fn into_parts(self) -> (Option<String>, Metadata, PageLinks, PageScripts) {
+        let mut inner = self.0.lock().unwrap();
+        let title = inner.title.take();
         let metadata = inner.metadata.clone();
         let links = inner.links.clone();
         let scripts = inner.scripts.clone();
-        (metadata, links, scripts)
+        (title, metadata, links, scripts)
+    }
+
+    /// Adds a `<title>` element to the page head.
+    pub fn add_title(&mut self, title: impl Into<String>) {
+        self.0.lock().unwrap().title.replace(title.into());
     }
 
     /// Adds a `<meta>` element to the page head.

@@ -108,10 +108,11 @@ impl RequestContext {
         // Reads the index.html from the file system
         let index_html = get_index_html();
 
-        // Get page links, meta and scripts
-        let (metadata, links, scripts) = layout_data.into_parts();
+        // Get page title, links, meta and scripts
+        let (title, metadata, links, scripts) = layout_data.into_parts();
 
         let options = RenderPageOptions {
+            title,
             path,
             error,
             index_html,

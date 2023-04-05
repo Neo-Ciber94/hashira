@@ -6,6 +6,7 @@ use crate::app::router::ClientRouter;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
     HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
+    HASHIRA_TITLE_MARKER,
 };
 use crate::error::ResponseError;
 use serde::Serialize;
@@ -16,6 +17,9 @@ use yew::{
 };
 
 pub struct RenderPageOptions {
+    // The title of the page
+    pub(crate) title: Option<String>,
+
     // The current route path of the component to render
     pub(crate) path: String,
 
@@ -51,6 +55,7 @@ where
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let RenderPageOptions {
+        title,
         path,
         error,
         index_html,
@@ -96,6 +101,9 @@ where
     // Build the root html
     result_html = result_html.replace(HASHIRA_CONTENT_MARKER, &page_html);
 
+    // Insert the <title> element
+    insert_title(&mut result_html, title);
+
     // Insert the <meta> elements from `struct Metadata`
     insert_metadata(&mut result_html, metadata);
 
@@ -108,23 +116,20 @@ where
     Ok(result_html)
 }
 
+fn insert_title(html: &mut String, title: Option<String>) {
+    if let Some(title) = title {
+        let tag = format!("<title>{title}</title>");
+        *html = html.replace(HASHIRA_TITLE_MARKER, &tag);
+    }
+}
+
 fn insert_metadata(html: &mut String, metadata: Metadata) {
-    let mut tags_html = metadata
+    let tags_html = metadata
         .meta_tags()
         .map(|meta| meta.to_string())
         .collect::<Vec<_>>();
 
-    // Add <title> from <meta name="title" ...>
-    if let Some(meta) = metadata.meta_tags().find(|x| x.name() == "title") {
-        let (_, content) = meta
-            .attrs()
-            .find(|(name, _)| name.as_str() == "content")
-            .unwrap();
-        tags_html.push(format!("<title>{}</title>", content));
-    }
-
     let tags = tags_html.join("\n");
-
     *html = html.replace(HASHIRA_META_MARKER, &tags);
 }
 

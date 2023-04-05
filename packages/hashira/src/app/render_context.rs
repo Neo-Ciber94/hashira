@@ -38,6 +38,11 @@ impl<COMP, C> RenderContext<COMP, C>
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
+    /// Adds a `<title>` element to the page head.
+    pub fn add_title(&mut self, title: impl Into<String>) {
+        self.layout_data.add_title(title);
+    }
+
     /// Adds a `<meta>` element to the page head.
     pub fn add_metadata(&mut self, metadata: Metadata) {
         self.layout_data.add_metadata(metadata);

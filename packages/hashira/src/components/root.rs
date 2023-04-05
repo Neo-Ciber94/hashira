@@ -1,4 +1,4 @@
-use crate::components::{Content, Links, Main, Meta, Scripts};
+use crate::components::{Content, Links, Main, Meta, Scripts, Title};
 use yew::{function_component, Html};
 
 /// Default root component.
@@ -10,6 +10,7 @@ pub fn RootLayout() -> Html {
     yew::html! {
         <html lang="en">
             <head>
+                <Title/>
                 <Meta/>
                 <Links/>
                 <meta charset="utf-8" />
