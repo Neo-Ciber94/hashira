@@ -1,13 +1,11 @@
-use super::layout_data::PageLayoutData;
 use super::{error_router::ErrorRouter, router::ClientRouter, RenderLayout};
 pub use crate::error::ResponseError;
 use crate::web::Request;
 use route_recognizer::Params;
 use std::sync::Arc;
-use yew::{html::ChildrenProps, BaseComponent};
 
 /// Contains information about the current request.
-#[allow(dead_code)] // TODO: Ignore server only data
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub struct RequestContext {
     path: String,
     params: Params,
@@ -16,13 +14,13 @@ pub struct RequestContext {
     request: Option<Arc<Request>>,
     error: Option<ResponseError>,
 
-    // TODO: The request context should not had access to the layout,
+    // TODO: The request context should no had access to the `RenderLayout`,
     // but currently this is the way we get the layout to the `RenderContext`,
     // we should find other way around that
     render_layout: RenderLayout,
 }
 
-#[allow(dead_code)] // TODO: Ignore server only data
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 impl RequestContext {
     pub fn new(
         request: Option<Arc<Request>>,
@@ -65,11 +63,11 @@ impl RequestContext {
 
     /// Renders the given component to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP, C>(self, layout_data: PageLayoutData) -> String
+    pub async fn render<COMP, C>(self, layout_data: super::layout_data::PageLayoutData) -> String
     where
-        COMP: BaseComponent,
+        COMP: yew::BaseComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
-        C: BaseComponent<Properties = ChildrenProps>,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         let props = COMP::Properties::default();
         self.render_with_props::<COMP, C>(props, layout_data).await
@@ -80,12 +78,12 @@ impl RequestContext {
     pub async fn render_with_props<COMP, C>(
         self,
         props: COMP::Properties,
-        layout_data: PageLayoutData,
+        layout_data: super::layout_data::PageLayoutData,
     ) -> String
     where
-        COMP: BaseComponent,
+        COMP: yew::BaseComponent,
         COMP::Properties: serde::Serialize + Send + Clone,
-        C: BaseComponent<Properties = ChildrenProps>,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         use crate::{
             app::LayoutContext,
