@@ -19,6 +19,7 @@ pub(crate) struct AppServiceInner {
     pub(crate) client_error_router: Arc<ErrorRouter>,
 }
 
+/// The root service used for handling the `hashira` application.
 pub struct AppService(Rc<AppServiceInner>);
 
 impl AppService {

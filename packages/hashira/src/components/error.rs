@@ -2,15 +2,19 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, Properties};
 
+/// Properties for an error page.
 #[derive(Clone, Properties, PartialEq, Serialize, Deserialize)]
 pub struct ErrorPageProps {
+    /// The status code of the error.
     #[serde(with = "crate::web::serde::status_code")]
     pub status: StatusCode,
 
+    /// The message of the error.
     #[prop_or_default]
     pub message: Option<String>,
 }
 
+/// A default error page.
 #[function_component]
 pub fn ErrorPage(props: &ErrorPageProps) -> yew::Html {
     let status = &props.status;
@@ -40,12 +44,15 @@ pub fn ErrorPage(props: &ErrorPageProps) -> yew::Html {
     }
 }
 
+/// Props for the `NotFoundPage`
 #[derive(Clone, Default, Properties, PartialEq, Serialize, Deserialize)]
 pub struct NotFoundPageProps {
+    /// An optional error message.
     #[prop_or_default]
     pub message: Option<String>,
 }
 
+/// An error page for `404` errors.
 #[function_component]
 pub fn NotFoundPage(props: &NotFoundPageProps) -> yew::Html {
     yew::html! {
@@ -53,6 +60,9 @@ pub fn NotFoundPage(props: &NotFoundPageProps) -> yew::Html {
     }
 }
 
+// FIXME: minify styles
+// This styles may collide with the page styles,
+// we should scope this some way, maybe appending an id to the classes
 const ERROR_PAGE_STYLES: &str = r#"
 .error-page-container {
     position: relative;

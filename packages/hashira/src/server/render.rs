@@ -92,7 +92,7 @@ where
         error: page_error,
         props_json: props_json.clone(),
         client_router,
-        client_error_router,
+        error_router: client_error_router,
     };
 
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);

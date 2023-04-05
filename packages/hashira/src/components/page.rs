@@ -1,19 +1,29 @@
-use std::sync::Arc;
-use http::StatusCode;
-use serde::{Deserialize, Serialize};
-use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 use crate::{
-    app::{router::ClientRouter, error_router::ErrorRouter},
+    app::{error_router::ErrorRouter, router::ClientRouter},
     components::error::{ErrorPage, NotFoundPage},
 };
+use http::StatusCode;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
+/// The props for the current page.
 #[derive(PartialEq, Properties)]
 pub struct PageProps {
+    /// The path of the request
     pub path: String,
+
+    /// An error that occurred while processing the request
     pub error: Option<PageError>,
+
+    /// The props of the current page as JSON
     pub props_json: serde_json::Value,
+
+    /// The router to render the page
     pub client_router: ClientRouter,
-    pub client_error_router: Arc<ErrorRouter>,
+
+    /// The router to render the error pages
+    pub error_router: Arc<ErrorRouter>,
 }
 
 #[function_component]
@@ -23,7 +33,7 @@ where
 {
     let path = props.path.as_str();
     let router = &props.client_router;
-    let error_router = &props.client_error_router;
+    let error_router = &props.error_router;
 
     if let Some(error) = &props.error {
         return match error_router.recognize_error(&error.status) {
@@ -42,6 +52,9 @@ where
         };
     }
 
+    // FIXME: We should use an id instead of the path,
+    // that way the server can respond with any component
+    // and we can figure out what to hydrate by using the `id`
     match router.recognize(path) {
         Ok(mtch) => {
             let route = mtch.handler();
