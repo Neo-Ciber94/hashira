@@ -15,7 +15,6 @@ pub fn RootLayout() -> Html {
                 <Links/>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <link data-trunk="" rel="icon" href="./favicon.ico"/>
             </head>
             <body>
                 <Main>

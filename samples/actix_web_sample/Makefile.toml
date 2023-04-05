@@ -13,8 +13,16 @@ args = [
     "../../target/debug/public",
     "--public-url",
     "static/",
-    "--filehash=false"
+    "--filehash=false",
 ]
 
+[tasks.copy_public_dir]
+script_runner = "@shell"
+script = "cp public/* ../../target/debug/public"
+
+[tasks.cleanup]
+script_runner = "@shell"
+script = "rm index.html"
+
 [tasks.build]
-dependencies = ["build_html", "build_client"]
+dependencies = ["build_html", "build_client", "copy_public_dir", "cleanup"]
