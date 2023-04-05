@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, use_state, BaseComponent, Properties};
 
 #[yew::function_component]
-pub(crate) fn App(props: &ChildrenProps) -> yew::Html {
+pub fn App(props: &ChildrenProps) -> yew::Html {
     yew::html! {
        <>
         <header>
@@ -92,4 +92,14 @@ where
             },
         )
         .build()
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn hydrate() {
+    wasm_logger::init(wasm_logger::Config::default());
+    log::debug!("Hydrating app...");
+
+    let service = hashira::<App>();
+    hashira::client::mount_to(service);
 }

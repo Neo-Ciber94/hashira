@@ -1,5 +1,6 @@
-mod app;
-use app::App;
+pub use actix_web_sample_web::{hashira, App};
+
+// katarsis_app
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -12,7 +13,7 @@ cfg_if::cfg_if! {
         async fn main() -> std::io::Result<()> {
             env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
 
-            let service = app::hashira::<App>();
+            let service = hashira::<App>();
             service.generate_index_html().await
         }
 
@@ -26,11 +27,11 @@ cfg_if::cfg_if! {
 } else {
         // Starts the client
         fn main() {
-            wasm_logger::init(wasm_logger::Config::default());
-            log::debug!("Hydrating app...");
+            // wasm_logger::init(wasm_logger::Config::default());
+            // log::debug!("Hydrating app...");
 
-            let service = app::hashira::<App>();
-            hashira::client::mount_to(service);
+            // let service = hashira::<App>();
+            // hashira::client::mount_to(service);
         }
     }
 }

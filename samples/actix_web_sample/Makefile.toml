@@ -1,28 +1,40 @@
 [config]
 default_to_workspace = false
 
-[tasks.build_html]
+[env]
+TARGET_DIR = "../../target"
+
+[tasks.build_client]
+command = "cargo"
+args = ["build", "--target", "wasm32-unknown-unknown"]
+
+[tasks.build_wasm]
+script = "wasm-bindgen --target web --no-typescript --out-dir ../../target/debug/public ../../target/wasm32-unknown-unknown/debug/actix_web_sample_web.wasm"
+
+[tasks.create_index_html]
 command = "cargo"
 args = ["run", "--features", "build"]
 
-[tasks.build_client]
-command = "trunk"
-args = [
-    "build",
-    "--dist",
-    "../../target/debug/public",
-    "--public-url",
-    "static/",
-    "--filehash=false",
-]
+[tasks.copy_index_html]
+script_runner = "@shell"
+script = "cp index.html ../../target/debug/public"
 
 [tasks.copy_public_dir]
 script_runner = "@shell"
 script = "cp public/* ../../target/debug/public"
+
+[tasks.copy_files]
+dependencies = ["copy_index_html", "copy_public_dir"]
 
 [tasks.cleanup]
 script_runner = "@shell"
 script = "rm index.html"
 
 [tasks.build]
-dependencies = ["build_html", "build_client", "copy_public_dir", "cleanup"]
+dependencies = [
+    "build_client",
+    "build_wasm",
+    "create_index_html",
+    "copy_files",
+    "cleanup",
+]

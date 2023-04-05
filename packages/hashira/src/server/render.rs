@@ -159,6 +159,15 @@ where
         tags_html.push(page_data_script);
     }
 
+    if let Ok(crate_name) = std::env::var("CARGO_PKG_NAME") {
+        tags_html.push(format!(r#"
+            <script type="module">
+                import init, {{ hydrate }} from "/static/{crate_name}_web.js";
+                init("/static/{crate_name}_web_bg.wasm").then(hydrate);
+            </script>
+        "#));
+    }
+
     let links = tags_html.join("\n");
     *html = html.replace(HASHIRA_SCRIPTS_MARKER, &links);
     Ok(())
