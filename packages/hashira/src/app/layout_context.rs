@@ -1,26 +1,45 @@
-use super::layout_data::PageLayoutData;
-use std::ops::{Deref, DerefMut};
+use super::{layout_data::PageLayoutData, RequestContext};
+use crate::server::{Metadata, PageLinks, PageScripts};
+use std::ops::Deref;
 
 pub struct LayoutContext {
+    context: RequestContext,
     layout_data: PageLayoutData,
 }
 
 impl LayoutContext {
-    pub fn new(layout_data: PageLayoutData) -> Self {
-        LayoutContext { layout_data }
+    pub fn new(context: RequestContext, layout_data: PageLayoutData) -> Self {
+        LayoutContext {
+            context,
+            layout_data,
+        }
+    }
+
+    /// Adds a `<title>` element to the page head.
+    pub fn add_title(&mut self, title: impl Into<String>) {
+        self.layout_data.add_title(title.into());
+    }
+
+    /// Adds a `<meta>` element to the page head.
+    pub fn add_metadata(&mut self, metadata: Metadata) {
+        self.layout_data.add_metadata(metadata);
+    }
+
+    /// Adds a `<link>` element to the page head.
+    pub fn add_links(&mut self, links: PageLinks) {
+        self.layout_data.add_links(links);
+    }
+
+    /// Adds a `<script>` element to the page body.
+    pub fn add_scripts(&mut self, scripts: PageScripts) {
+        self.layout_data.add_scripts(scripts);
     }
 }
 
 impl Deref for LayoutContext {
-    type Target = PageLayoutData;
+    type Target = RequestContext;
 
     fn deref(&self) -> &Self::Target {
-        &self.layout_data
-    }
-}
-
-impl DerefMut for LayoutContext {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.layout_data
+        &self.context
     }
 }

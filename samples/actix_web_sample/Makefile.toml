@@ -11,20 +11,9 @@ args = ["build", "--target", "wasm32-unknown-unknown"]
 [tasks.build_wasm]
 script = "wasm-bindgen --target web --no-typescript --out-dir ../../target/debug/public ../../target/wasm32-unknown-unknown/debug/actix_web_sample_web.wasm"
 
-[tasks.create_index_html]
-command = "cargo"
-args = ["run", "--features", "build"]
-
-[tasks.copy_index_html]
-script_runner = "@shell"
-script = "cp index.html ../../target/debug/public"
-
 [tasks.copy_public_dir]
 script_runner = "@shell"
 script = "cp public/* ../../target/debug/public"
-
-[tasks.copy_files]
-dependencies = ["copy_index_html", "copy_public_dir"]
 
 [tasks.cleanup]
 script_runner = "@shell"
@@ -34,7 +23,6 @@ script = "rm index.html"
 dependencies = [
     "build_client",
     "build_wasm",
-    "create_index_html",
-    "copy_files",
+    "copy_public_dir",
     "cleanup",
 ]

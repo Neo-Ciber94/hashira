@@ -88,7 +88,7 @@ impl RequestContext {
     {
         use crate::{
             app::LayoutContext,
-            server::{render_page_to_html, RenderPageOptions},
+            server::{render_page_to_html, render_to_static_html, RenderPageOptions},
         };
 
         let Self {
@@ -96,17 +96,23 @@ impl RequestContext {
             error_router,
             path,
             error,
-            request: _,
-            params: _,
+            request,
+            params,
         } = self;
 
-        let layout_ctx = LayoutContext::new(layout_data.clone());
+        let layout_request_ctx = RequestContext {
+            params,
+            request,
+            path: path.clone(),
+            error: None, // FIXME: Pass error to layout?
+            client_router: client_router.clone(),
+            error_router: error_router.clone(),
+        };
 
-        // Call the layout to ensure it sets the metadata
-        let _ = render_layout(layout_ctx).await;
+        let layout_ctx = LayoutContext::new(layout_request_ctx, layout_data.clone());
 
-        // Reads the index.html from the file system
-        let index_html = get_index_html();
+        let layout_node = render_layout(layout_ctx).await;
+        let index_html = render_to_static_html(move || layout_node).await;
 
         // Get page title, links, meta and scripts
         let (title, metadata, links, scripts) = layout_data.into_parts();
@@ -128,25 +134,4 @@ impl RequestContext {
             .unwrap();
         result_html
     }
-}
-
-fn get_index_html() -> String {
-    use once_cell::sync::OnceCell;
-
-    static INDEX_HTML: OnceCell<String> = OnceCell::new();
-
-    INDEX_HTML
-        .get_or_init(|| {
-            let mut public_dir = crate::server::env::get_public_dir();
-
-            if !public_dir.exists() {
-                panic!("Public directory was not found: {}", public_dir.display());
-            }
-
-            public_dir.push("index.html");
-            let index_html = std::fs::read_to_string(public_dir)
-                .unwrap_or_else(|e| panic!("failed to read index.html: {e}"));
-            index_html
-        })
-        .clone()
 }

@@ -9,7 +9,7 @@ use crate::{
 };
 use http::{status, StatusCode};
 use route_recognizer::{Params, Router};
-use std::{io::Write, marker::PhantomData, rc::Rc, sync::Arc};
+use std::{marker::PhantomData, rc::Rc, sync::Arc};
 
 pub(crate) struct AppServiceInner<C> {
     pub(crate) layout: RenderLayout,
@@ -125,34 +125,6 @@ impl<C> AppService<C> {
             }
             None => Response::with_status(status),
         }
-    }
-
-    /// Returns the `html` template of the layout
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn get_layout_html(&self) -> String {
-        use crate::{
-            app::{layout_data::PageLayoutData, LayoutContext},
-            server::render_to_static_html,
-        };
-
-        let layout_ctx = LayoutContext::new(PageLayoutData::new());
-        let render_layout = &self.0.layout;
-        let layout_html = render_layout(layout_ctx).await;
-        let html_string = render_to_static_html(move || layout_html).await;
-        html_string
-    }
-
-    /// Generates the `index.html` file to use for the pages.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn generate_index_html(&self) -> std::io::Result<()> {
-        let index_html = self.get_layout_html().await;
-        let mut file_path = std::env::current_dir()?;
-        file_path.push("index.html");
-        let mut file = std::fs::File::create(&file_path)?;
-
-        file.write(index_html.as_bytes())?;
-        log::info!("Written index.html file to {}", file_path.display());
-        Ok(())
     }
 }
 

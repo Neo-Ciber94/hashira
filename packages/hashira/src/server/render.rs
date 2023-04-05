@@ -150,22 +150,25 @@ where
 {
     let mut tags_html = scripts.iter().map(|x| x.to_string()).collect::<Vec<_>>();
 
-    // Add the component data to the page
-    if crate::is_initialized() {
-        let json_data = serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
-        let page_data_script = format!(
-            "<script type=\"application/json\" id={HASHIRA_PAGE_DATA}>{json_data}</script>"
-        );
-        tags_html.push(page_data_script);
-    }
+    // Adds the page data
+    let json_data = serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
+    tags_html.push(format!(
+        "<script type=\"application/json\" id={HASHIRA_PAGE_DATA}>{json_data}</script>"
+    ));
 
-    if let Ok(crate_name) = std::env::var("CARGO_PKG_NAME") {
-        tags_html.push(format!(r#"
+    // Adds the wasm bundle
+    if let Ok(mut crate_name) = std::env::var("CARGO_PKG_NAME") {
+        // In case the crate is named in the format: my-crate => my_crate
+        crate_name = crate_name.replace("-", "_");
+
+        tags_html.push(format!(
+            r#"
             <script type="module">
                 import init, {{ hydrate }} from "/static/{crate_name}_web.js";
                 init("/static/{crate_name}_web_bg.wasm").then(hydrate);
             </script>
-        "#));
+        "#
+        ));
     }
 
     let links = tags_html.join("\n");
