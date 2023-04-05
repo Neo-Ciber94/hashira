@@ -131,7 +131,9 @@ impl Metadata {
     }
 }
 
+/// Converts an element to a `MetaTag`.
 pub trait IntoMetaTag {
+    /// Returns a `MetaTag` from this element.
     fn into_meta_tag(self) -> MetaTag;
 }
 

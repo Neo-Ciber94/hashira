@@ -1,8 +1,12 @@
 use std::fmt::Display;
 
+/// An error that ocurred while rendering.
 #[derive(Debug)]
 pub enum RenderError {
+    /// Not root found
     NoRoot,
+
+    /// Failed to parse the props
     InvalidProps(serde_json::Error),
 }
 

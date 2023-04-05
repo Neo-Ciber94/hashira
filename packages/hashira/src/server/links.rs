@@ -32,25 +32,30 @@ impl Display for LinkTag {
     }
 }
 
+/// A collection of `<link>` elements.
 #[derive(Default, Debug, Clone)]
 pub struct PageLinks {
     tags: Vec<LinkTag>,
 }
 
 impl PageLinks {
+    /// Constructs an empty `PageLinks`.
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Returns an iterator over the link elements.
     pub fn iter(&self) -> std::slice::Iter<LinkTag> {
         self.tags.iter()
     }
 
+    /// Adds a link element.
     pub fn add(mut self, link: LinkTag) -> Self {
         self.tags.push(link);
         self
     }
 
+    /// Adds other page links.
     pub fn extend(&mut self, other: PageLinks) {
         self.tags.extend(other.tags);
     }
