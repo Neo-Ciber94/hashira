@@ -2,6 +2,7 @@ mod cli;
 mod commands;
 mod env;
 mod utils;
+mod pipelines;
 
 use clap::Parser;
 use cli::{Cli, Commands};

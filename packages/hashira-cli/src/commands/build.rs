@@ -1,3 +1,5 @@
+use crate::pipelines::copy_files::CopyFilesPipeline;
+use crate::pipelines::Pipeline;
 use crate::utils::{get_cargo_lib_name, get_target_dir};
 use anyhow::Context;
 use clap::Args;
@@ -161,6 +163,7 @@ async fn cargo_build_wasm(opts: &BuildOptions) -> anyhow::Result<()> {
 }
 
 async fn wasm_bindgen_build(opts: &BuildOptions) -> anyhow::Result<()> {
+    // TODO: Download wasm-bindgen is don't exists on the system
     let mut cmd = Command::new("wasm-bindgen");
 
     // args
@@ -250,14 +253,14 @@ async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
 
     dest_dir.push(&opts.public_dir);
 
-    copy_files(&include_files, dest_dir.as_path())
+    process_files(&include_files, dest_dir.as_path())
         .await
         .context("Failed to copy files")?;
 
     Ok(())
 }
 
-async fn copy_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Result<()> {
+async fn process_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Result<()> {
     let mut globs = Vec::new();
 
     for file in files {
@@ -276,41 +279,77 @@ async fn copy_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Result<(
     for glob_str in globs {
         for entry in glob(glob_str).expect("Failed to read glob pattern") {
             let path = entry?;
+
+            // We ignore directories
             if path.is_dir() {
                 continue;
             }
 
-            log::debug!("Entry to copy: {}", path.display());
+            log::debug!("Entry: {}", path.display());
             files.push(path);
         }
     }
 
     if files.is_empty() {
-        log::info!("No files to copy");
+        log::info!("No files to process");
         return Ok(());
     }
 
+    let mut pipelines = get_pipelines();
     let mut tasks = Vec::new();
 
-    for file in files {
-        let dest_file = dest_dir.join(file.file_name().unwrap());
-        log::debug!("Copying `{}` to `{}`", file.display(), dest_file.display());
+    loop {
+        if files.is_empty() {
+            if !pipelines.is_empty() {
+                let pipeline_names = pipelines.iter().map(|p| p.name()).collect::<Vec<_>>();
+                log::info!(
+                    "No more files to process, the next pipelines were not run: {}",
+                    pipeline_names.join(", ")
+                );
+            }
 
-        let mut reader = tokio::fs::File::open(&file).await?;
-        let mut writer = tokio::fs::File::create(dest_file).await?;
+            break;
+        }
 
-        tasks.push(tokio::spawn(async move {
-            tokio::io::copy(&mut reader, &mut writer).await?;
-            Ok::<(), tokio::io::Error>(())
-        }));
+        let Some(pipeline) = pipelines.pop() else {
+            break;
+        };
+
+        let mut target_files = vec![];
+        let mut i = 0;
+
+        while i < files.len() {
+            if pipeline.can_process(&files[i], dest_dir) {
+                let file = files.remove(i);
+                target_files.push(file);
+            } else {
+                i += 1;
+            }
+        }
+
+        tasks.push(async {
+            let pipeline_name = pipeline.name().to_owned();
+            pipeline
+                .spawn(target_files, dest_dir)
+                .await
+                .with_context(|| format!("error processing `{pipeline_name}` pipeline"))
+        });
     }
 
     let results = futures::future::join_all(tasks).await;
     for ret in results {
         if let Err(err) = ret {
-            log::error!("Failed to copy file: {}", err);
+            log::error!("{err}");
         }
     }
 
     Ok(())
+}
+
+// TODO: Should we just process the pipeline in order and forget about using a Box<dyn Pipeline>?
+fn get_pipelines() -> Vec<Box<dyn Pipeline>> {
+    vec![
+        // Add any additional pipelines, all should be place before copy
+        Box::new(CopyFilesPipeline),
+    ]
 }
