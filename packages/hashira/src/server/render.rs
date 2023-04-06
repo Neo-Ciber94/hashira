@@ -157,15 +157,14 @@ where
     ));
 
     // Adds the wasm bundle
-    if let Ok(mut crate_name) = std::env::var("CARGO_PKG_NAME") {
-        // In case the crate is named in the format: my-crate => my_crate
-        crate_name = crate_name.replace("-", "_");
+    if let Some(crate_name) = crate::env::get_crate_name() {
+        let static_dir = crate::env::get_static_dir();
 
         tags_html.push(format!(
             r#"
             <script type="module">
-                import init, {{ hydrate }} from "/static/{crate_name}_web.js";
-                init("/static/{crate_name}_web_bg.wasm").then(hydrate);
+                import init, {{ hydrate }} from "{static_dir}/{crate_name}_web.js";
+                init("{static_dir}/{crate_name}_web_bg.wasm").then(hydrate);
             </script>
         "#
         ));

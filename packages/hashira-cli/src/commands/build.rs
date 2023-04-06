@@ -1,12 +1,10 @@
+use crate::utils::{get_cargo_lib_name, get_target_dir};
 use anyhow::Context;
 use clap::Args;
 use glob::glob;
 use std::path::Path;
 use std::path::PathBuf;
 use tokio::process::Command;
-
-use crate::utils::get_cargo_metadata;
-use crate::utils::{get_cargo_lib_name, get_target_dir};
 
 #[derive(Args, Debug)]
 pub struct BuildOptions {
@@ -34,16 +32,21 @@ pub struct BuildOptions {
         default_value_t = false
     )]
     pub release: bool,
+
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Whether if output the commands output"
+    )]
+    pub quiet: bool,
 }
 
 impl BuildOptions {
     pub fn resolved_target_dir(&self) -> anyhow::Result<PathBuf> {
-        let target_dir = match &self.target_dir {
-            Some(path) => path.clone(),
-            None => get_target_dir(self.release)?,
-        };
-
-        Ok(target_dir)
+        match &self.target_dir {
+            Some(path) => Ok(path.clone()),
+            None => get_target_dir(),
+        }
     }
 }
 
@@ -84,7 +87,7 @@ pub async fn build_wasm(opts: &BuildOptions) -> anyhow::Result<()> {
 async fn prepare_public_dir(opts: &BuildOptions) -> anyhow::Result<()> {
     let mut public_dir = match &opts.target_dir {
         Some(path) => path.clone(),
-        None => get_target_dir(opts.release)?,
+        None => get_target_dir()?,
     };
     public_dir.push(&opts.public_dir);
 
@@ -100,7 +103,11 @@ async fn cargo_build(opts: &BuildOptions) -> anyhow::Result<()> {
     let mut cmd = Command::new("cargo");
 
     // args
-    cmd.arg("build").arg("--quiet");
+    cmd.arg("build");
+
+    if opts.quiet {
+        cmd.arg("--quiet");
+    }
 
     // target dir
     let target_dir = opts.resolved_target_dir()?;
@@ -127,8 +134,11 @@ async fn cargo_build_wasm(opts: &BuildOptions) -> anyhow::Result<()> {
 
     // args
     cmd.arg("build")
-        .args(["--target", "wasm32-unknown-unknown"])
-        .arg("--quiet");
+        .args(["--target", "wasm32-unknown-unknown"]);
+
+    if opts.quiet {
+        cmd.arg("--quiet");
+    }
 
     // target dir
     let target_dir = opts.resolved_target_dir()?;
@@ -157,18 +167,28 @@ async fn wasm_bindgen_build(opts: &BuildOptions) -> anyhow::Result<()> {
     cmd.args(["--target", "web"]).arg("--no-typescript");
 
     // out dir
-    let mut out_dir = opts.resolved_target_dir()?;
+    let mut out_dir = opts.resolved_target_dir()?.join({
+        if opts.release {
+            "release"
+        } else {
+            "debug"
+        }
+    });
+
     out_dir.push(&opts.public_dir);
     log::debug!("wasm-bindgen out-dir: {}", out_dir.display());
 
     cmd.arg("--out-dir").arg(out_dir);
 
     // wasm to bundle
-    // The wasm is located in ${target_dir}/wasm32-unknown-unknown/{mode}/{project_name}.wasm
-    let wasm_target_dir = match &opts.target_dir {
-        Some(path) => path.clone(),
-        None => get_wasm_target_dir(opts.release)?,
-    };
+    // The wasm is located in ${target_dir}/wasm32-unknown-unknown/{profile}/{project_name}.wasm
+    let wasm_target_dir = opts.resolved_target_dir()?.join({
+        if opts.release {
+            "wasm32-unknown-unknown/release"
+        } else {
+            "wasm32-unknown-unknown/debug"
+        }
+    });
 
     let mut wasm_dir = wasm_target_dir.clone();
     let lib_name = get_cargo_lib_name().context("Failed to get lib name")?;
@@ -191,20 +211,23 @@ struct IncludeFiles {
 }
 
 async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
-    let mut include_files = Vec::new();
+    let include_files: Vec<IncludeFiles>;
 
     if opts.include.is_empty() {
-        include_files.push(IncludeFiles {
-            glob: "public/*".to_string(),
-            is_default: true,
-        });
+        const DEFAULT_INCLUDES: &[&str] = &["public/*", "assets/*", "styles/*"];
+        include_files = DEFAULT_INCLUDES
+            .into_iter()
+            .map(|s| (*s).to_owned())
+            .map(|glob| IncludeFiles {
+                glob,
+                is_default: true,
+            })
+            .collect();
 
-        include_files.push(IncludeFiles {
-            glob: "assets/*".to_string(),
-            is_default: true,
-        });
-
-        log::debug!("Copying `public/*` and `assets/*` to public directory");
+        log::debug!(
+            "Copying `{}` to public directory",
+            DEFAULT_INCLUDES.join(", ")
+        );
     } else {
         include_files = opts
             .include
@@ -217,10 +240,14 @@ async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
             .collect()
     }
 
-    let mut dest_dir = match &opts.target_dir {
-        Some(path) => path.clone(),
-        None => get_target_dir(opts.release)?,
-    };
+    let mut dest_dir = opts.resolved_target_dir()?.join({
+        if opts.release {
+            "release"
+        } else {
+            "debug"
+        }
+    });
+
     dest_dir.push(&opts.public_dir);
 
     copy_files(&include_files, dest_dir.as_path())
@@ -286,18 +313,4 @@ async fn copy_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Result<(
     }
 
     Ok(())
-}
-
-fn get_wasm_target_dir(is_release: bool) -> anyhow::Result<PathBuf> {
-    let metadata = get_cargo_metadata()?;
-    let mut target_dir = metadata.target_directory.as_std_path().to_path_buf();
-    target_dir.push("wasm32-unknown-unknown");
-
-    if is_release {
-        target_dir.push("release");
-    } else {
-        target_dir.push("debug");
-    }
-
-    Ok(target_dir)
 }

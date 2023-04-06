@@ -14,16 +14,9 @@ pub fn get_cargo_metadata() -> anyhow::Result<Metadata> {
 }
 
 /// Returns the default `target_dir` for the given release mode.
-pub fn get_target_dir(is_release: bool) -> anyhow::Result<PathBuf> {
+pub fn get_target_dir() -> anyhow::Result<PathBuf> {
     let metadata = get_cargo_metadata()?;
-    let mut target_dir = metadata.target_directory.as_std_path().to_path_buf();
-
-    if is_release {
-        target_dir.push("release");
-    } else {
-        target_dir.push("debug");
-    }
-
+    let target_dir = metadata.target_directory.as_std_path().to_path_buf();
     Ok(target_dir)
 }
 
@@ -31,7 +24,7 @@ pub fn get_target_dir(is_release: bool) -> anyhow::Result<PathBuf> {
 pub fn get_cargo_toml() -> anyhow::Result<Manifest> {
     let mut dir = std::env::current_dir()?;
     dir.push("Cargo.toml");
-    
+
     let manifest = Manifest::from_path(&dir)
         .with_context(|| format!("Failed to read Cargo.toml file on: {}", dir.display()))?;
     Ok(manifest)
