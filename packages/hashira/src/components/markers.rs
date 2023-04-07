@@ -57,12 +57,17 @@ pub fn LiveReload() -> yew::Html {
 
     use crate::env::{HASHIRA_LIVE_RELOAD_HOST, HASHIRA_LIVE_RELOAD_PORT};
 
+    // Not live reload
+    if !crate::env::is_live_reload() {
+        return yew::Html::default();
+    }
+
     let host = std::env::var(HASHIRA_LIVE_RELOAD_HOST)
         .map(|env| format!("'{}'", env))
         .unwrap_or_else(|_| format!("undefined"));
 
     let port = std::env::var(HASHIRA_LIVE_RELOAD_PORT)
-        .map(|env| format!("'{}'", env))
+        .map(|env| format!("{}", env))
         .unwrap_or_else(|_| format!("0"));
 
     yew::Html::from_html_unchecked(AttrValue::from(format!(

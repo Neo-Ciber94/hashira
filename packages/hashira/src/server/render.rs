@@ -202,6 +202,7 @@ where
     renderer.hydratable(false).render().await
 }
 
+#[allow(dead_code)]
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(debug_assertions)]
 fn prettify_html(html: &mut String) {

@@ -86,7 +86,7 @@ pub async fn run(opts: RunOptions) -> anyhow::Result<()> {
 
 pub(crate) async fn run_with_envs(
     opts: RunOptions,
-    envs: HashMap<String, String>,
+    additional_envs: HashMap<&'static str, String>,
 ) -> anyhow::Result<()> {
     let build_opts = BuildOptions {
         public_dir: opts.public_dir.clone(),
@@ -101,37 +101,38 @@ pub(crate) async fn run_with_envs(
     super::build_wasm(&build_opts).await?;
 
     log::info!("Running application");
-    cargo_run(&opts, envs).await?;
-
-    log::info!("✅ Done...");
+    cargo_run(&opts, additional_envs).await?;
     Ok(())
 }
 
 async fn cargo_run(
     opts: &RunOptions,
-    additional_envs: HashMap<String, String>,
+    additional_envs: HashMap<&'static str, String>,
 ) -> anyhow::Result<()> {
-    let mut spawn = spawn_cargo_run(opts, additional_envs)?;
     let mut int = RUN_INTERRUPT.with(|int| int.subscribe());
+    let mut spawn = spawn_cargo_run(opts, additional_envs)?;
+
+    tokio::spawn(async move { loop {} });
 
     tokio::select! {
         status = spawn.wait() => {
             anyhow::ensure!(status?.success(), "failed to run server");
         },
         ret = int.recv() => {
-            spawn.kill().await?;
+            spawn.kill().await.ok();
             if let Err(err) = ret {
                 log::error!("failed to kill server: {err}");
             }
         }
     }
 
+    log::info!("Exit cargo run");
     Ok(())
 }
 
 fn spawn_cargo_run(
     opts: &RunOptions,
-    additional_envs: HashMap<String, String>,
+    additional_envs: HashMap<&'static str, String>,
 ) -> anyhow::Result<Child> {
     let mut cmd = Command::new("cargo");
 

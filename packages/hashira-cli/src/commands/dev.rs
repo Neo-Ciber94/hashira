@@ -224,15 +224,13 @@ async fn run_watch_mode(
     // TODO: We should decide what operation to perform depending on the files affected,
     // if only a `public_dir` file changed, maybe we don't need to rebuild the entire app
 
+    let host = opts.reload_host;
+    let port = opts.reload_port.to_string();
+    
     let envs = HashMap::from_iter([
-        (
-            crate::env::HASHIRA_LIVE_RELOAD_HOST.into(),
-            opts.reload_host,
-        ),
-        (
-            crate::env::HASHIRA_LIVE_RELOAD_PORT.into(),
-            opts.reload_port.to_string(),
-        ),
+        (crate::env::HASHIRA_LIVE_RELOAD_HOST, host),
+        (crate::env::HASHIRA_LIVE_RELOAD_PORT, port),
+        (crate::env::HASHIRA_LIVE_RELOAD, String::from("1")),
     ]);
 
     if let Err(err) = crate::commands::run_with_envs(run_opts, envs).await {
@@ -261,6 +259,16 @@ fn start_watcher(
 
     let opts = opts.clone();
 
+    let run_interrupt = RUN_INTERRUPT.with(|x| x.clone());
+    let mut subs = run_interrupt.subscribe();
+
+    tokio::spawn(async move {
+        loop {
+            let ret = subs.recv().await;
+            log::warn!("received signal: {ret:?}");
+        }
+    });
+
     // Starts
     {
         let opts = opts.clone();
@@ -270,8 +278,6 @@ fn start_watcher(
             run_watch_mode(tx_notification, vec![], opts).await;
         });
     }
-
-    let run_interrupt = RUN_INTERRUPT.with(|x| x.clone());
 
     // Listen for the changes
     tokio::spawn(async move {
