@@ -1,8 +1,8 @@
+use super::BuildOptions;
+use crate::utils::get_target_dir;
 use clap::Args;
 use std::path::PathBuf;
 use tokio::process::Command;
-use crate::utils::get_target_dir;
-use super::BuildOptions;
 
 #[derive(Args, Debug)]
 pub struct RunOptions {
@@ -19,13 +19,6 @@ pub struct RunOptions {
 
     #[arg(
         long,
-        help = "A list of files to copy in the `public_dir` by default include the `public` and `assets` directories, if found"
-    )]
-    pub include: Vec<String>,
-
-    #[arg(
-        short,
-        long,
         help = "Build artifacts in release mode, with optimizations",
         default_value_t = false
     )]
@@ -33,10 +26,32 @@ pub struct RunOptions {
 
     #[arg(
         long,
+        help = "A list of files to copy in the `public_dir` by default include the `public` and `assets` directories, if found"
+    )]
+    pub include: Vec<String>,
+
+    #[arg(
+        long,
+        help = "Allow to include files outside the current directory",
+        default_value_t = false
+    )]
+    pub allow_include_external: bool,
+
+    #[arg(
+        long,
+        help = "Allow to include files inside src/ directory",
+        default_value_t = false
+    )]
+    pub allow_include_src: bool,
+
+    #[arg(
+        long,
         default_value_t = false,
         help = "Whether if output the commands output"
     )]
     pub quiet: bool,
+
+    // ## Options above come from the `BuildOptions` ##
 
     #[arg(
         short,
@@ -71,8 +86,10 @@ pub async fn run(opts: RunOptions) -> anyhow::Result<()> {
         public_dir: opts.public_dir.clone(),
         target_dir: opts.target_dir.clone(),
         release: opts.release,
-        include: opts.include.clone(),
         quiet: opts.quiet,
+        include: opts.include.clone(),
+        allow_include_external: opts.allow_include_external,
+        allow_include_src: opts.allow_include_src,
     };
 
     super::build_wasm(&build_opts).await?;

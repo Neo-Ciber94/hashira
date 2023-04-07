@@ -23,17 +23,30 @@ pub struct BuildOptions {
 
     #[arg(
         long,
+        help = "Build artifacts in release mode, with optimizations",
+        default_value_t = false
+    )]
+    pub release: bool,
+
+    #[arg(
+        long,
         help = "A list of files to copy in the `public_dir` by default include the `public` and `assets` directories, if found"
     )]
     pub include: Vec<String>,
 
     #[arg(
-        short,
         long,
-        help = "Build artifacts in release mode, with optimizations",
+        help = "Allow to include files outside the current directory",
         default_value_t = false
     )]
-    pub release: bool,
+    pub allow_include_external: bool,
+
+    #[arg(
+        long,
+        help = "Allow to include files inside src/ directory",
+        default_value_t = false
+    )]
+    pub allow_include_src: bool,
 
     #[arg(
         long,
@@ -91,11 +104,22 @@ async fn prepare_public_dir(opts: &BuildOptions) -> anyhow::Result<()> {
         Some(path) => path.clone(),
         None => get_target_dir()?,
     };
+
+    if opts.release {
+        public_dir.push("release");
+    } else {
+        public_dir.push("debug");
+    }
+
     public_dir.push(&opts.public_dir);
+
+    log::debug!("Cleaning public directory: {}", public_dir.display());
 
     if public_dir.exists() {
         log::info!("Preparing public directory...");
         tokio::fs::remove_dir_all(public_dir).await?
+    } else {
+        log::debug!("Public directory was not found");
     }
 
     Ok(())
@@ -163,7 +187,7 @@ async fn cargo_build_wasm(opts: &BuildOptions) -> anyhow::Result<()> {
 }
 
 async fn wasm_bindgen_build(opts: &BuildOptions) -> anyhow::Result<()> {
-    // TODO: Download wasm-bindgen is don't exists on the system
+    // TODO: Download wasm-bindgen if doesn't exists on the machine
     let mut cmd = Command::new("wasm-bindgen");
 
     // args
@@ -214,25 +238,18 @@ struct IncludeFiles {
 }
 
 async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
-    let include_files: Vec<IncludeFiles>;
+    const DEFAULT_INCLUDES: &[&str] = &["public/*", "assets/*", "styles/*", "favicon.ico"];
+    let mut include_files = DEFAULT_INCLUDES
+        .into_iter()
+        .map(|s| (*s).to_owned())
+        .map(|glob| IncludeFiles {
+            glob,
+            is_default: true,
+        })
+        .collect::<Vec<_>>();
 
-    if opts.include.is_empty() {
-        const DEFAULT_INCLUDES: &[&str] = &["public/*", "assets/*", "styles/*"];
-        include_files = DEFAULT_INCLUDES
-            .into_iter()
-            .map(|s| (*s).to_owned())
-            .map(|glob| IncludeFiles {
-                glob,
-                is_default: true,
-            })
-            .collect();
-
-        log::debug!(
-            "Copying `{}` to public directory",
-            DEFAULT_INCLUDES.join(", ")
-        );
-    } else {
-        include_files = opts
+    if !opts.include.is_empty() {
+        let include = opts
             .include
             .clone()
             .into_iter()
@@ -240,7 +257,9 @@ async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
                 glob,
                 is_default: false,
             })
-            .collect()
+            .collect::<Vec<_>>();
+
+        include_files.extend(include);
     }
 
     let mut dest_dir = opts.resolved_target_dir()?.join({
@@ -253,14 +272,19 @@ async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
 
     dest_dir.push(&opts.public_dir);
 
-    process_files(&include_files, dest_dir.as_path())
+    process_files(&include_files, dest_dir.as_path(), opts)
         .await
         .context("Failed to copy files")?;
 
     Ok(())
 }
 
-async fn process_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Result<()> {
+async fn process_files(
+    files: &[IncludeFiles],
+    dest_dir: &Path,
+    opts: &BuildOptions,
+) -> anyhow::Result<()> {
+    let cwd = std::env::current_dir().context("failed to get current working directory")?;
     let mut globs = Vec::new();
 
     for file in files {
@@ -283,6 +307,22 @@ async fn process_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Resul
             // We ignore directories
             if path.is_dir() {
                 continue;
+            }
+
+            if !opts.allow_include_external && is_outside_directory(&cwd, &path)? {
+                log::error!("{} is outside {}", path.display(), cwd.display());
+
+                anyhow::bail!(
+                    "Path to include cannot be outside the current directory, use `--allow-include-external` to include files outside the current directory"
+                );
+            }
+
+            if !opts.allow_include_src && is_inside_src(&cwd, &path)? {
+                log::error!("{} is inside `src` directory", path.display());
+
+                anyhow::bail!(
+                    "Path to include cannot be inside the src directory, use `--allow-include-src` to include files inside the src directory"
+                );
             }
 
             log::debug!("Entry: {}", path.display());
@@ -346,9 +386,42 @@ async fn process_files(files: &[IncludeFiles], dest_dir: &Path) -> anyhow::Resul
     Ok(())
 }
 
+fn is_outside_directory(base: &Path, path: &Path) -> anyhow::Result<bool> {
+    let base_dir = base.canonicalize()?;
+    let path_dir = path.canonicalize()?;
+
+    match path_dir.strip_prefix(base_dir) {
+        Ok(_) => Ok(false),
+        Err(_) => Ok(true),
+    }
+}
+
+fn is_inside_src(base: &Path, path: &Path) -> anyhow::Result<bool> {
+    if !base.join("src").exists() {
+        log::debug!("`src` directory not found");
+        return Ok(false);
+    }
+
+    let base_dir = base.canonicalize()?;
+    let path_dir = path.canonicalize()?;
+
+    match path_dir.strip_prefix(base_dir) {
+        Ok(remaining) => {
+            if remaining.starts_with("src") {
+                return Ok(true);
+            }
+
+            Ok(false)
+        }
+        Err(_) => Ok(false),
+    }
+}
+
 // TODO: Should we just process the pipeline in order and forget about using a Box<dyn Pipeline>?
 fn get_pipelines() -> Vec<Box<dyn Pipeline>> {
     vec![
+        // TODO: Add pipeline to process SCSS, SASS
+
         // Add any additional pipelines, all should be place before copy
         Box::new(CopyFilesPipeline),
     ]
