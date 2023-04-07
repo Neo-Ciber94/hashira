@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use tokio::process::Command;
 
 // directories and files included as default in the `public_dir` if not valid is specified.
-pub const DEFAULT_INCLUDES: &[&str] = &["public/*", "assets/*", "styles/*", "favicon.ico"];
+const DEFAULT_INCLUDES: &[&str] = &["public/*", "favicon.ico"];
 
 #[derive(Args, Debug, Clone)]
 pub struct BuildOptions {
@@ -33,7 +33,7 @@ pub struct BuildOptions {
 
     #[arg(
         long,
-        help = "A list of files to copy in the `public_dir`, by default include the public/, assets/, styles/ and favicon.ico"
+        help = "A list of files to copy in the `public_dir`, by default include the `public/` and `favicon.ico` if found"
     )]
     pub include: Vec<String>,
 
