@@ -1,10 +1,10 @@
 use super::BuildOptions;
 use crate::utils::get_target_dir;
 use clap::Args;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 use tokio::process::Command;
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct RunOptions {
     #[arg(short, long, help = "Base directory for the artifacts")]
     pub target_dir: Option<PathBuf>,
@@ -52,7 +52,6 @@ pub struct RunOptions {
     pub quiet: bool,
 
     // ## Options above come from the `BuildOptions` ##
-
     #[arg(
         short,
         long,
@@ -82,6 +81,13 @@ impl RunOptions {
 }
 
 pub async fn run(opts: RunOptions) -> anyhow::Result<()> {
+    run_with_envs(opts, Default::default()).await
+}
+
+pub(crate) async fn run_with_envs(
+    opts: RunOptions,
+    envs: HashMap<String, String>,
+) -> anyhow::Result<()> {
     let build_opts = BuildOptions {
         public_dir: opts.public_dir.clone(),
         target_dir: opts.target_dir.clone(),
@@ -95,13 +101,16 @@ pub async fn run(opts: RunOptions) -> anyhow::Result<()> {
     super::build_wasm(&build_opts).await?;
 
     log::info!("Running application");
-    cargo_run(&opts).await?;
+    cargo_run(&opts, envs).await?;
 
     log::info!("✅ Done...");
     Ok(())
 }
 
-async fn cargo_run(opts: &RunOptions) -> anyhow::Result<()> {
+async fn cargo_run(
+    opts: &RunOptions,
+    additional_envs: HashMap<String, String>,
+) -> anyhow::Result<()> {
     let mut cmd = Command::new("cargo");
 
     // args
@@ -131,6 +140,10 @@ async fn cargo_run(opts: &RunOptions) -> anyhow::Result<()> {
     cmd.env(crate::env::HASHIRA_HOST, &opts.host);
     cmd.env(crate::env::HASHIRA_PORT, opts.port.to_string());
     cmd.env(crate::env::HASHIRA_STATIC_DIR, &opts.static_dir);
+
+    for (name, value) in additional_envs {
+        cmd.env(name, value);
+    }
 
     // Run
     let mut child = cmd.spawn()?;

@@ -8,7 +8,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use tokio::process::Command;
 
-#[derive(Args, Debug)]
+// directories and files included as default in the `public_dir` if not valid is specified.
+pub const DEFAULT_INCLUDES: &[&str] = &["public/*", "assets/*", "styles/*", "favicon.ico"];
+
+#[derive(Args, Debug, Clone)]
 pub struct BuildOptions {
     #[arg(short, long, help = "Base directory for the artifacts")]
     pub target_dir: Option<PathBuf>,
@@ -30,7 +33,7 @@ pub struct BuildOptions {
 
     #[arg(
         long,
-        help = "A list of files to copy in the `public_dir` by default include the `public` and `assets` directories, if found"
+        help = "A list of files to copy in the `public_dir`, by default include the public/, assets/, styles/ and favicon.ico"
     )]
     pub include: Vec<String>,
 
@@ -238,18 +241,19 @@ struct IncludeFiles {
 }
 
 async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
-    const DEFAULT_INCLUDES: &[&str] = &["public/*", "assets/*", "styles/*", "favicon.ico"];
-    let mut include_files = DEFAULT_INCLUDES
-        .into_iter()
-        .map(|s| (*s).to_owned())
-        .map(|glob| IncludeFiles {
-            glob,
-            is_default: true,
-        })
-        .collect::<Vec<_>>();
+    let include_files: Vec<IncludeFiles>;
 
-    if !opts.include.is_empty() {
-        let include = opts
+    if opts.include.is_empty() {
+        include_files = DEFAULT_INCLUDES
+            .into_iter()
+            .map(|s| (*s).to_owned())
+            .map(|glob| IncludeFiles {
+                glob,
+                is_default: true,
+            })
+            .collect::<Vec<_>>();
+    } else {
+        include_files = opts
             .include
             .clone()
             .into_iter()
@@ -258,8 +262,6 @@ async fn include_files(opts: &BuildOptions) -> anyhow::Result<()> {
                 is_default: false,
             })
             .collect::<Vec<_>>();
-
-        include_files.extend(include);
     }
 
     let mut dest_dir = opts.resolved_target_dir()?.join({
@@ -418,7 +420,7 @@ fn is_inside_src(base: &Path, path: &Path) -> anyhow::Result<bool> {
 }
 
 // TODO: Should we just process the pipeline in order and forget about using a Box<dyn Pipeline>?
-fn get_pipelines() -> Vec<Box<dyn Pipeline>> {
+fn get_pipelines() -> Vec<Box<dyn Pipeline + Send>> {
     vec![
         // TODO: Add pipeline to process SCSS, SASS
 

@@ -1,5 +1,5 @@
+pub mod interruct;
 use std::path::PathBuf;
-
 use anyhow::Context;
 use cargo_metadata::{Metadata, MetadataCommand};
 use cargo_toml::Manifest;

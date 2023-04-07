@@ -1,7 +1,29 @@
+use super::RunOptions;
+use crate::utils::interruct::Interrupt;
+use anyhow::Context;
+use axum::extract::ws::Message;
+use axum::extract::WebSocketUpgrade;
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::Extension;
+use axum::Router;
 use clap::Args;
+use futures::SinkExt;
+use futures::StreamExt;
+use notify::RecursiveMode;
+use notify_debouncer_mini::new_debouncer;
+use notify_debouncer_mini::DebouncedEvent;
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::mpsc::channel;
+use tokio::sync::Mutex;
+use tokio_stream::wrappers::ReceiverStream;
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct DevOptions {
     #[arg(short, long, help = "Base directory for the artifacts")]
     pub target_dir: Option<PathBuf>,
@@ -13,12 +35,6 @@ pub struct DevOptions {
         default_value = "public"
     )]
     pub public_dir: PathBuf,
-
-    #[arg(
-        long,
-        help = "A list of files to copy in the `public_dir` by default include the `public` and `assets` directories, if found"
-    )]
-    pub include: Vec<String>,
 
     #[arg(
         short,
@@ -45,6 +61,26 @@ pub struct DevOptions {
 
     #[arg(
         long,
+        help = "A list of files to copy in the `public_dir` by default include the `public` and `assets` directories, if found"
+    )]
+    pub include: Vec<String>,
+
+    #[arg(
+        long,
+        help = "Allow to include files outside the current directory",
+        default_value_t = false
+    )]
+    pub allow_include_external: bool,
+
+    #[arg(
+        long,
+        help = "Allow to include files inside src/ directory",
+        default_value_t = false
+    )]
+    pub allow_include_src: bool,
+
+    #[arg(
+        long,
         help = "The host to run the application",
         default_value = "127.0.0.1"
     )]
@@ -68,7 +104,194 @@ pub struct DevOptions {
     pub reload_port: u16,
 }
 
-pub async fn dev(_opts: DevOptions) -> anyhow::Result<()> {
-    log::info!("hashira dev... (not implemented)");
+pub async fn dev(opts: DevOptions) -> anyhow::Result<()> {
+    start_server(&opts).await?;
+    Ok(())
+}
+
+enum Notification {
+    Reload,
+    Close,
+}
+
+async fn start_server(opts: &DevOptions) -> anyhow::Result<()> {
+    let (tx, rx) = channel::<Notification>(32);
+
+    tokio::spawn({
+        let tx = tx.clone();
+        async move {
+            tokio::signal::ctrl_c().await.ok();
+            log::info!("Exiting...");
+            tx.send(Notification::Close)
+                .await
+                .unwrap_or_else(|_| panic!("failed to send close event"));
+
+            std::process::exit(0);
+        }
+    });
+
+    // Starts the watcher
+    start_watcher(tx, opts)?;
+
+    let receiver = ReceiverStream::new(rx);
+
+    // create a router with a websocket handler
+    let app = Router::new()
+        .route("/ws", get(websocket_handler))
+        .layer(Extension(Arc::new(Mutex::new(receiver))));
+
+    // parse address
+    let host = opts.host.clone();
+    let port = opts.reload_port;
+    let addr = format!("{host}:{port}",)
+        .parse::<SocketAddr>()
+        .with_context(|| format!("invalid hot reload server address: {host}:{port}"))?;
+
+    log::info!("Starting hot reload server on: http://{addr}");
+
+    // Start server
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+
+    Ok(())
+}
+
+// this function handles websocket connections
+async fn websocket_handler(
+    upgrade: WebSocketUpgrade,
+    stream: Extension<Arc<Mutex<ReceiverStream<Notification>>>>,
+) -> impl IntoResponse {
+    upgrade.on_upgrade(|ws| async move {
+        // split the websocket into a sender and a receiver
+        let (mut sender, _receiver) = ws.split();
+
+        loop {
+            let mut receiver = stream.lock().await;
+            if let Some(event) = receiver.next().await {
+                match event {
+                    Notification::Reload => {
+                        let msg = Message::Text("Hello, world!".into());
+                        if let Err(err) = sender.send(msg).await {
+                            log::error!("Failed to send web socket message: {err}");
+                        }
+                    }
+                    Notification::Close => break,
+                }
+            }
+        }
+    })
+}
+
+async fn run_watch_mode(
+    tx: tokio::sync::mpsc::Sender<Notification>,
+    _events: Vec<DebouncedEvent>,
+    opts: DevOptions,
+    interrupt: Interrupt,
+) {
+    log::info!("Starting application watch mode");
+
+    if let Err(err) = tx.send(Notification::Reload).await {
+        log::error!("Error sending change event: {err}");
+    }
+
+    // Build options to send
+    let run_opts = RunOptions {
+        quiet: opts.quiet,
+        release: opts.release,
+        public_dir: opts.public_dir,
+        target_dir: opts.target_dir,
+        include: opts.include,
+        allow_include_external: opts.allow_include_external,
+        allow_include_src: opts.allow_include_src,
+        host: opts.host,
+        port: opts.port,
+        static_dir: opts.static_dir,
+    };
+
+    // TODO: We should decide what operation to perform depending on the files affected,
+    // if only a `public_dir` file changed, maybe we don't need to rebuild the entire app
+
+    let mut signal = interrupt.subscribe();
+    let envs = HashMap::from_iter([
+        (
+            crate::env::HASHIRA_LIVE_RELOAD_HOST.into(),
+            opts.reload_host,
+        ),
+        (
+            crate::env::HASHIRA_LIVE_RELOAD_PORT.into(),
+            opts.reload_port.to_string(),
+        ),
+    ]);
+
+    tokio::select! {
+        ret = crate::commands::run_with_envs(run_opts, envs) => {
+            if let Err(err) = ret {
+                log::error!("Build failed: {err}");
+            }
+        },
+        _ = signal.recv() => {
+            log::info!("Interrupted");
+        }
+    };
+}
+
+fn start_watcher(
+    tx: tokio::sync::mpsc::Sender<Notification>,
+    opts: &DevOptions,
+) -> Result<(), anyhow::Error> {
+    let (tx_debounced, rx_debounced) = std::sync::mpsc::channel();
+
+    let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx_debounced)
+        .with_context(|| "failed to start watcher")?;
+
+    let watch_path = Path::new(".").canonicalize()?;
+    log::info!("Starting watcher at: {}", watch_path.display());
+
+    debouncer
+        .watcher()
+        .watch(&watch_path, RecursiveMode::Recursive)
+        .unwrap();
+
+    let opts = opts.clone();
+    let interrupt = Interrupt::new();
+
+    // Starts
+    {
+        let opts = opts.clone();
+        let tx = tx.clone();
+        let interrupt = interrupt.clone();
+        tokio::spawn(async move {
+            log::debug!("First start...");
+            run_watch_mode(tx, vec![], opts, interrupt).await;
+        });
+    }
+
+    // Listen for the changes
+    tokio::spawn(async move {
+        let _debouncer = debouncer;
+
+        loop {
+            match rx_debounced.recv() {
+                Ok(ret) => {
+                    let events = ret.unwrap();
+                    let tx = tx.clone();
+                    let opts = opts.clone();
+                    let interrupt = interrupt.clone();
+                    interrupt.interrupt(); // Interrupt the current running task
+
+                    tokio::spawn(async move {
+                        run_watch_mode(tx, events, opts, interrupt).await;
+                    });
+                }
+                Err(err) => {
+                    log::info!("Exit?: {err}");
+                    break;
+                }
+            }
+        }
+    });
+
     Ok(())
 }

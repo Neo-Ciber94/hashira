@@ -16,7 +16,7 @@ where
 
     println!("⚡ Server started at: http://{host}:{port}");
     println!("⚡ Serving static files from: {} to `{static_dir}`", current_dir.display());
-
+    
     // Create and run the server
     HttpServer::new(move || {
         App::new()

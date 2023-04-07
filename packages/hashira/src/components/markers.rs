@@ -47,3 +47,43 @@ pub fn Main(props: &ChildrenProps) -> yew::Html {
         </main>
     }
 }
+
+/// A component to handle the live reload on the client.
+#[cfg(debug_assertions)]
+#[yew::function_component]
+pub fn LiveReload() -> yew::Html {
+    // Include the script for reloading
+    const LIVE_RELOAD_SCRIPT: &str = include_str!("./livereload.js");
+
+    use crate::env::{
+        HASHIRA_LIVE_RELOAD_HOST, HASHIRA_LIVE_RELOAD_POLL_INTERVAL, HASHIRA_LIVE_RELOAD_PORT,
+    };
+
+    let host = std::env::var(HASHIRA_LIVE_RELOAD_HOST)
+        .map(|env| format!("'{}'", env))
+        .unwrap_or_else(|_| format!("undefined"));
+
+    let port = std::env::var(HASHIRA_LIVE_RELOAD_PORT)
+        .map(|env| format!("'{}'", env))
+        .unwrap_or_else(|_| format!("0"));
+
+    let poll_interval = std::env::var(HASHIRA_LIVE_RELOAD_POLL_INTERVAL)
+        .map(|env| format!("{}", env))
+        .unwrap_or_else(|_| format!("0"));
+
+    yew::Html::from_html_unchecked(AttrValue::from(format!(r#"
+        <script>
+            window.{HASHIRA_LIVE_RELOAD_HOST} = {host};
+            window.{HASHIRA_LIVE_RELOAD_PORT} = {port};
+            window.{HASHIRA_LIVE_RELOAD_POLL_INTERVAL} = {poll_interval};
+
+            {LIVE_RELOAD_SCRIPT}
+        </script>"#)))
+}
+
+/// A component to handle the live reload on the client.
+#[cfg(not(debug_assertions))]
+#[yew::function_component]
+pub fn LiveReload() -> yew::Html {
+    yew::Html::default()
+}

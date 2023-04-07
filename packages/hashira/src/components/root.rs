@@ -1,4 +1,4 @@
-use crate::components::{Content, Links, Main, Meta, Scripts, Title};
+use crate::components::{Content, Links, Main, Meta, Scripts, Title, LiveReload};
 use yew::{function_component, Html};
 
 /// Default root component.
@@ -34,6 +34,10 @@ pub fn RootLayout() -> Html {
                 // Adds the page <script> elements and also the script to hydrate the page
                 // to provide interactivity
                 <Scripts/>
+
+                // Script used for reloading the client during development
+                // in release mode if renders nothing
+                <LiveReload/>
             </body>
         </html>
     }
