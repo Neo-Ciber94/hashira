@@ -56,7 +56,7 @@ pub struct HelloPageProps {
 #[yew::function_component]
 pub fn HelloPage(props: &HelloPageProps) -> yew::Html {
     yew::html! {
-        <h1>{format!("Hello {}!", props.name)}</h1>
+        <h1>{format!("Hello {}, how are you?", props.name)}</h1>
     }
 }
 
@@ -69,7 +69,7 @@ where
         //.app_data(...)
         .use_default_error_pages()
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
-            ctx.add_title("Hashira Sample App | Counter");
+            ctx.add_title("Counter");
             ctx.add_metadata(Metadata::new().description("A counter made with hashira actix-web"));
 
             let res = ctx.render().await;

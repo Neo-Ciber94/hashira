@@ -11,8 +11,6 @@ pub const HASHIRA_LIVE_RELOAD_HOST: &str = "HASHIRA_LIVE_RELOAD_HOST";
 
 pub const HASHIRA_LIVE_RELOAD_PORT: &str = "HASHIRA_LIVE_RELOAD_PORT";
 
-pub const HASHIRA_LIVE_RELOAD_POLL_INTERVAL: &str = "HASHIRA_LIVE_RELOAD_POLL_INTERVAL";
-
 /// Returns the name of the crate running.
 pub fn get_crate_name() -> Option<String> {
     fn crate_name() -> Option<String> {

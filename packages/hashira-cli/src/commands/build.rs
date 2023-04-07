@@ -116,11 +116,13 @@ async fn prepare_public_dir(opts: &BuildOptions) -> anyhow::Result<()> {
 
     public_dir.push(&opts.public_dir);
 
-    log::debug!("Cleaning public directory: {}", public_dir.display());
+    log::debug!("Trying to clean public directory: {}", public_dir.display());
 
     if public_dir.exists() {
-        log::info!("Preparing public directory...");
-        tokio::fs::remove_dir_all(public_dir).await?
+        log::info!("Preparing public directory: {}", public_dir.display());
+        tokio::fs::remove_dir_all(&public_dir)
+            .await
+            .with_context(|| format!("failed to remove dir: {}", public_dir.display()))?;
     } else {
         log::debug!("Public directory was not found");
     }

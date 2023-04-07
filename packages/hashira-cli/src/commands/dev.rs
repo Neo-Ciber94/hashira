@@ -1,5 +1,5 @@
 use super::RunOptions;
-use crate::utils::interruct::Interrupt;
+use crate::utils::interruct::RUN_INTERRUPT;
 use anyhow::Context;
 use axum::extract::ws::Message;
 use axum::extract::WebSocketUpgrade;
@@ -158,6 +158,11 @@ async fn start_server(opts: &DevOptions) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct ReloadMessage {
+    reload: bool,
+}
+
 // this function handles websocket connections
 async fn websocket_handler(
     upgrade: WebSocketUpgrade,
@@ -172,7 +177,9 @@ async fn websocket_handler(
             if let Some(event) = receiver.next().await {
                 match event {
                     Notification::Reload => {
-                        let msg = Message::Text("Hello, world!".into());
+                        let json = serde_json::to_string(&ReloadMessage { reload: true })
+                            .expect("Failed to serialize message");
+                        let msg = Message::Text(json);
                         if let Err(err) = sender.send(msg).await {
                             log::error!("Failed to send web socket message: {err}");
                         }
@@ -185,15 +192,19 @@ async fn websocket_handler(
 }
 
 async fn run_watch_mode(
-    tx: tokio::sync::mpsc::Sender<Notification>,
-    _events: Vec<DebouncedEvent>,
+    tx_notification: tokio::sync::mpsc::Sender<Notification>,
+    events: Vec<DebouncedEvent>,
     opts: DevOptions,
-    interrupt: Interrupt,
 ) {
     log::info!("Starting application watch mode");
 
-    if let Err(err) = tx.send(Notification::Reload).await {
+    if let Err(err) = tx_notification.send(Notification::Reload).await {
         log::error!("Error sending change event: {err}");
+    }
+
+    if !events.is_empty() {
+        let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
+        log::info!("change detected on paths: {:?}", paths);
     }
 
     // Build options to send
@@ -213,7 +224,6 @@ async fn run_watch_mode(
     // TODO: We should decide what operation to perform depending on the files affected,
     // if only a `public_dir` file changed, maybe we don't need to rebuild the entire app
 
-    let mut signal = interrupt.subscribe();
     let envs = HashMap::from_iter([
         (
             crate::env::HASHIRA_LIVE_RELOAD_HOST.into(),
@@ -225,20 +235,15 @@ async fn run_watch_mode(
         ),
     ]);
 
-    tokio::select! {
-        ret = crate::commands::run_with_envs(run_opts, envs) => {
-            if let Err(err) = ret {
-                log::error!("Build failed: {err}");
-            }
-        },
-        _ = signal.recv() => {
-            log::info!("Interrupted");
-        }
-    };
+    if let Err(err) = crate::commands::run_with_envs(run_opts, envs).await {
+        log::error!("Watch run failed: {err}");
+    }
+
+    log::info!("Exiting dev execution...");
 }
 
 fn start_watcher(
-    tx: tokio::sync::mpsc::Sender<Notification>,
+    tx_notification: tokio::sync::mpsc::Sender<Notification>,
     opts: &DevOptions,
 ) -> Result<(), anyhow::Error> {
     let (tx_debounced, rx_debounced) = std::sync::mpsc::channel();
@@ -255,18 +260,18 @@ fn start_watcher(
         .unwrap();
 
     let opts = opts.clone();
-    let interrupt = Interrupt::new();
 
     // Starts
     {
         let opts = opts.clone();
-        let tx = tx.clone();
-        let interrupt = interrupt.clone();
+        let tx_notification = tx_notification.clone();
         tokio::spawn(async move {
-            log::debug!("First start...");
-            run_watch_mode(tx, vec![], opts, interrupt).await;
+            log::debug!("Starting dev...");
+            run_watch_mode(tx_notification, vec![], opts).await;
         });
     }
+
+    let run_interrupt = RUN_INTERRUPT.with(|x| x.clone());
 
     // Listen for the changes
     tokio::spawn(async move {
@@ -276,13 +281,16 @@ fn start_watcher(
             match rx_debounced.recv() {
                 Ok(ret) => {
                     let events = ret.unwrap();
-                    let tx = tx.clone();
+                    let tx_notification = tx_notification.clone();
                     let opts = opts.clone();
-                    let interrupt = interrupt.clone();
-                    interrupt.interrupt(); // Interrupt the current running task
+
+                    // Interrupt the current running task
+                    run_interrupt.interrupt();
 
                     tokio::spawn(async move {
-                        run_watch_mode(tx, events, opts, interrupt).await;
+                        log::info!("Restarting dev...");
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        run_watch_mode(tx_notification, events, opts).await;
                     });
                 }
                 Err(err) => {

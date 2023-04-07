@@ -1,8 +1,8 @@
 use super::BuildOptions;
-use crate::utils::get_target_dir;
+use crate::utils::{get_target_dir, interruct::RUN_INTERRUPT};
 use clap::Args;
 use std::{collections::HashMap, path::PathBuf};
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 
 #[derive(Args, Debug, Clone)]
 pub struct RunOptions {
@@ -111,6 +111,28 @@ async fn cargo_run(
     opts: &RunOptions,
     additional_envs: HashMap<String, String>,
 ) -> anyhow::Result<()> {
+    let mut spawn = spawn_cargo_run(opts, additional_envs)?;
+    let mut int = RUN_INTERRUPT.with(|int| int.subscribe());
+
+    tokio::select! {
+        status = spawn.wait() => {
+            anyhow::ensure!(status?.success(), "failed to run server");
+        },
+        ret = int.recv() => {
+            spawn.kill().await?;
+            if let Err(err) = ret {
+                log::error!("failed to kill server: {err}");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn spawn_cargo_run(
+    opts: &RunOptions,
+    additional_envs: HashMap<String, String>,
+) -> anyhow::Result<Child> {
     let mut cmd = Command::new("cargo");
 
     // args
@@ -146,9 +168,6 @@ async fn cargo_run(
     }
 
     // Run
-    let mut child = cmd.spawn()?;
-    let status = child.wait().await?;
-    anyhow::ensure!(status.success(), "failed to run");
-
-    Ok(())
+    let child = cmd.spawn()?;
+    Ok(child)
 }

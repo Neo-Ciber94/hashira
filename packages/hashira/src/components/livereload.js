@@ -1,10 +1,10 @@
 const HOST = window.HASHIRA_LIVE_RELOAD_HOST || "127.0.0.1";
 const PORT = window.HASHIRA_LIVE_RELOAD_PORT || 5002;
 const ADDR = `${HOST}:${PORT}`;
-const pollInterval = window.HASHIRA_LIVE_RELOAD_POLL_INTERVAL || 5000;
 
 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const url = protocol + "//" + ADDR + "/ws";
+const pollInterval = 2000;
 
 function handleReconnect() {
   setTimeout(() => {

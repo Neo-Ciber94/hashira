@@ -6,6 +6,10 @@ edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
 license = "MIT"
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+html5ever = "0.26.0"
+markup5ever_rcdom = "0.2.0"
+
 [dependencies]
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }
 cookie = { version = "0.17.0", features = ["percent-encode"] }

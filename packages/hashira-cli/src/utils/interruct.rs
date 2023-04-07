@@ -1,6 +1,10 @@
 use std::sync::Arc;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
+thread_local! {
+    pub static RUN_INTERRUPT: Interrupt = Interrupt::new();
+}
+
 #[derive(Clone)]
 pub struct Interrupt {
     signal: Arc<Sender<()>>,
@@ -8,7 +12,7 @@ pub struct Interrupt {
 
 impl Interrupt {
     pub fn new() -> Self {
-        let (sender, _) = channel(1);
+        let (sender, _) = channel(8);
         Interrupt {
             signal: Arc::new(sender),
         }
