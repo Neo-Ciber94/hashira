@@ -109,24 +109,24 @@ async fn cargo_run(
     opts: &RunOptions,
     additional_envs: HashMap<&'static str, String>,
 ) -> anyhow::Result<()> {
-    let mut int = RUN_INTERRUPT.with(|int| int.subscribe());
+    let mut int = RUN_INTERRUPT.subscribe();
     let mut spawn = spawn_cargo_run(opts, additional_envs)?;
-
-    tokio::spawn(async move { loop {} });
 
     tokio::select! {
         status = spawn.wait() => {
+            log::debug!("Exited");
             anyhow::ensure!(status?.success(), "failed to run server");
         },
         ret = int.recv() => {
-            spawn.kill().await.ok();
+            log::debug!("Interrupt signal received");
+            spawn.kill().await?;
+
             if let Err(err) = ret {
                 log::error!("failed to kill server: {err}");
             }
         }
     }
 
-    log::info!("Exit cargo run");
     Ok(())
 }
 

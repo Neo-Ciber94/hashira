@@ -10,7 +10,7 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
     yew::html! {
        <>
         <header>
-            <nav>
+            <nav style="display: flex; flex-direction: row; gap: 2px;">
                 <a href="/">{"Home"}</a>
                 <a href="/hello/freddy">{"Hello"}</a>
             </nav>
@@ -69,7 +69,7 @@ where
         //.app_data(...)
         .use_default_error_pages()
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
-            ctx.add_title("Counter | Web");
+            ctx.add_title("Hashira | Counter");
             ctx.add_metadata(Metadata::new().description("A counter made with hashira actix-web"));
 
             let res = ctx.render().await;
@@ -78,7 +78,7 @@ where
         .page(
             "/hello/:name",
             |mut ctx: RenderContext<HelloPage, C>| async {
-                ctx.add_title("Hashira Sample App | Hello");
+                ctx.add_title("Hashira | Hello");
                 ctx.add_metadata(Metadata::new().description("A hashira greeter"));
 
                 let name = ctx.params().find("name").unwrap().to_owned();

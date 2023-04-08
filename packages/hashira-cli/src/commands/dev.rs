@@ -169,6 +169,8 @@ async fn websocket_handler(
     stream: Extension<Arc<Mutex<ReceiverStream<Notification>>>>,
 ) -> impl IntoResponse {
     upgrade.on_upgrade(|ws| async move {
+        log::debug!("Web socket upgrade");
+
         // split the websocket into a sender and a receiver
         let (mut sender, _receiver) = ws.split();
 
@@ -177,6 +179,8 @@ async fn websocket_handler(
             if let Some(event) = receiver.next().await {
                 match event {
                     Notification::Reload => {
+                        log::debug!("Sending reload message...");
+
                         let json = serde_json::to_string(&ReloadMessage { reload: true })
                             .expect("Failed to serialize message");
                         let msg = Message::Text(json);
@@ -184,7 +188,10 @@ async fn websocket_handler(
                             log::error!("Failed to send web socket message: {err}");
                         }
                     }
-                    Notification::Close => break,
+                    Notification::Close => {
+                        log::debug!("Closing web socket");
+                        break;
+                    }
                 }
             }
         }
@@ -226,7 +233,7 @@ async fn run_watch_mode(
 
     let host = opts.reload_host;
     let port = opts.reload_port.to_string();
-    
+
     let envs = HashMap::from_iter([
         (crate::env::HASHIRA_LIVE_RELOAD_HOST, host),
         (crate::env::HASHIRA_LIVE_RELOAD_PORT, port),
@@ -237,13 +244,28 @@ async fn run_watch_mode(
         log::error!("Watch run failed: {err}");
     }
 
-    log::info!("Exiting dev execution...");
+    // let mut int = RUN_INTERRUPT.subscribe();
+
+    // tokio::select! {
+    //     ret = crate::commands::run_with_envs(run_opts, envs) => {
+    //         if let Err(err) = ret {
+    //             log::error!("Watch run failed: {err}");
+    //         }
+    //     },
+    //     ret = int.recv() => {
+    //         if let Err(err) = ret {
+    //             log::error!("interruption error: {err}");
+    //         }
+    //     }
+    // }
+
+    // log::info!("Exiting dev execution...");
 }
 
 fn start_watcher(
     tx_notification: tokio::sync::mpsc::Sender<Notification>,
     opts: &DevOptions,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let (tx_debounced, rx_debounced) = std::sync::mpsc::channel();
 
     let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx_debounced)
@@ -258,16 +280,7 @@ fn start_watcher(
         .unwrap();
 
     let opts = opts.clone();
-
-    let run_interrupt = RUN_INTERRUPT.with(|x| x.clone());
-    let mut subs = run_interrupt.subscribe();
-
-    tokio::spawn(async move {
-        loop {
-            let ret = subs.recv().await;
-            log::warn!("received signal: {ret:?}");
-        }
-    });
+    let run_interrupt = RUN_INTERRUPT.clone();
 
     // Starts
     {
@@ -290,12 +303,12 @@ fn start_watcher(
                     let tx_notification = tx_notification.clone();
                     let opts = opts.clone();
 
+                    log::debug!("change detected!");
                     // Interrupt the current running task
                     run_interrupt.interrupt();
 
                     tokio::spawn(async move {
                         log::info!("Restarting dev...");
-                        tokio::time::sleep(Duration::from_secs(1)).await;
                         run_watch_mode(tx_notification, events, opts).await;
                     });
                 }

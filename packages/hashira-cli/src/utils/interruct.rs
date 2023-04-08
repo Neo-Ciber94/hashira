@@ -1,9 +1,8 @@
 use std::sync::Arc;
+use once_cell::sync::Lazy;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
-thread_local! {
-    pub static RUN_INTERRUPT: Interrupt = Interrupt::new();
-}
+pub static RUN_INTERRUPT : Lazy<Interrupt> = Lazy::new(|| Interrupt::new());
 
 #[derive(Clone)]
 pub struct Interrupt {

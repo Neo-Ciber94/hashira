@@ -9,6 +9,7 @@ license = "MIT"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 html5ever = "0.26.0"
 markup5ever_rcdom = "0.2.0"
+lol_html = "0.3.3"
 
 [dependencies]
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }

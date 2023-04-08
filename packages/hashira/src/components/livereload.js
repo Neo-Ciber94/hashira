@@ -28,9 +28,9 @@ function startWebsocket() {
     }
   };
 
-  ws.onclose = handleReconnect;
   // FIXME: reconnect on error?
-  return ws;
+  ws.onerror = () => console.log("📛 connection error");
+  ws.onclose = handleReconnect;
 }
 
 startWebsocket();

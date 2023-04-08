@@ -118,7 +118,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(debug_assertions)]
     {
-        //prettify_html(&mut result_html);
+        prettify_html(&mut result_html);
     }
 
     Ok(result_html)
@@ -202,10 +202,39 @@ where
     renderer.hydratable(false).render().await
 }
 
-#[allow(dead_code)]
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(debug_assertions)]
 fn prettify_html(html: &mut String) {
+    use lol_html::{HtmlRewriter, Settings};
+
+    let mut output = vec![];
+    let mut rewriter =
+        HtmlRewriter::new(Settings::default(), |c: &[u8]| output.extend_from_slice(c));
+
+    if let Err(err) = rewriter.write(html.as_bytes()) {
+        log::warn!("Failed to write html for prettify: {err}");
+        return;
+    }
+
+    if let Err(err) = rewriter.end() {
+        log::warn!("Failed to close html writer for prettify: {err}");
+        return;
+    }
+
+    match String::from_utf8(output) {
+        Ok(pretty_html) => {
+            *html = pretty_html;
+        }
+        Err(err) => {
+            log::warn!("Failed to write pretty html: {err}");
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(debug_assertions)]
+fn __prettify_html(html: &mut String) {
     use html5ever::parse_document;
     use html5ever::serialize::{serialize, SerializeOpts};
     use markup5ever_rcdom::{RcDom, SerializableHandle};
