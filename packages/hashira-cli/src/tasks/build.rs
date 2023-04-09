@@ -1,12 +1,8 @@
-use std::path::Path;
-
+use crate::cli::BuildOptions;
+use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use anyhow::Context;
+use std::path::Path;
 use tokio::process::{Child, Command};
-
-use crate::{
-    commands::BuildOptions,
-    pipelines::{copy_files::CopyFilesPipeline, Pipeline},
-};
 
 struct IncludeFiles {
     glob: String,

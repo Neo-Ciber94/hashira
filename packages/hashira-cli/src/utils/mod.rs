@@ -1,4 +1,3 @@
-pub mod interrupt;
 use anyhow::Context;
 use cargo_metadata::{Metadata, MetadataCommand};
 use cargo_toml::Manifest;

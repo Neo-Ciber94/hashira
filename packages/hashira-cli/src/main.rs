@@ -1,5 +1,4 @@
 mod cli;
-mod commands;
 mod env;
 mod pipelines;
 mod tasks;
@@ -8,7 +7,7 @@ mod utils;
 use clap::Parser;
 use cli::{Cli, Commands};
 use env_logger::Env;
-use tasks::{build_task::BuildTask, run_task::RunTask, dev_task::DevTask};
+use tasks::{build::BuildTask, dev::DevTask, run::RunTask};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

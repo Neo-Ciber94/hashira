@@ -1,14 +1,11 @@
 use std::{collections::HashMap, path::PathBuf};
-
 use anyhow::Context;
 use tokio::{
     process::{Child, Command},
     sync::broadcast::Sender,
 };
-
-use crate::commands::{BuildOptions, RunOptions};
-
-use super::build_task::BuildTask;
+use crate::cli::{RunOptions, BuildOptions};
+use super::build::BuildTask;
 
 pub struct RunTask {
     // Options for running the application

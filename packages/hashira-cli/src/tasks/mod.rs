@@ -1,3 +1,3 @@
-pub mod build_task;
-pub mod run_task;
-pub mod dev_task;
+pub mod build;
+pub mod dev;
+pub mod run;

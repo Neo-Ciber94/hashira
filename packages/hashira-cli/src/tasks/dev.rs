@@ -1,3 +1,7 @@
+use crate::{
+    cli::{DevOptions, RunOptions},
+    tasks::run::RunTask,
+};
 use anyhow::Context;
 use axum::{
     extract::{ws::Message, WebSocketUpgrade},
@@ -12,11 +16,6 @@ use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::Path, time::Duration};
 use tokio::sync::broadcast::{channel, Sender};
 use tokio_stream::wrappers::BroadcastStream;
-
-use crate::{
-    commands::{DevOptions, RunOptions},
-    tasks::{build_task::BuildTask, run_task::RunTask},
-};
 
 #[derive(Clone, Debug)]
 enum Notification {
@@ -69,8 +68,9 @@ impl DevTask {
             let tx_notify = tx_notify.clone();
             tokio::spawn(async move {
                 loop {
-                    let events = build_done_rx.recv().await.unwrap();
+                    build_done_rx.recv().await.unwrap();
                     log::debug!("Received build done signal");
+                    
                     if let Err(err) = tx_notify.send(Notification::Reload) {
                         log::error!("Error sending change event: {err}");
                     }
