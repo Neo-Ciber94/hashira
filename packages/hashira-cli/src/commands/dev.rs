@@ -1,5 +1,5 @@
 use super::RunOptions;
-use crate::utils::interruct::RUN_INTERRUPT;
+use crate::utils::interrupt::RUN_INTERRUPT;
 use anyhow::Context;
 use axum::extract::ws::Message;
 use axum::extract::WebSocketUpgrade;
@@ -17,11 +17,9 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::channel;
-use tokio::sync::Mutex;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::broadcast::{channel, Sender};
+use tokio_stream::wrappers::BroadcastStream;
 
 #[derive(Args, Debug, Clone)]
 pub struct DevOptions {
@@ -109,21 +107,21 @@ pub async fn dev(opts: DevOptions) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Clone, Debug)]
 enum Notification {
     Reload,
     Close,
 }
 
 async fn start_server(opts: &DevOptions) -> anyhow::Result<()> {
-    let (tx, rx) = channel::<Notification>(32);
+    let (tx_notify, _rx_notify) = channel::<Notification>(16);
 
     tokio::spawn({
-        let tx = tx.clone();
+        let tx = tx_notify.clone();
         async move {
             tokio::signal::ctrl_c().await.ok();
             log::info!("Exiting...");
             tx.send(Notification::Close)
-                .await
                 .unwrap_or_else(|_| panic!("failed to send close event"));
 
             std::process::exit(0);
@@ -131,14 +129,12 @@ async fn start_server(opts: &DevOptions) -> anyhow::Result<()> {
     });
 
     // Starts the watcher
-    start_watcher(tx, opts)?;
-
-    let receiver = ReceiverStream::new(rx);
+    start_watcher(tx_notify.clone(), opts)?;
 
     // create a router with a websocket handler
     let app = Router::new()
         .route("/ws", get(websocket_handler))
-        .layer(Extension(Arc::new(Mutex::new(receiver))));
+        .layer(Extension(tx_notify));
 
     // parse address
     let host = opts.host.clone();
@@ -166,17 +162,18 @@ struct ReloadMessage {
 // this function handles websocket connections
 async fn websocket_handler(
     upgrade: WebSocketUpgrade,
-    stream: Extension<Arc<Mutex<ReceiverStream<Notification>>>>,
+    observable: Extension<Sender<Notification>>,
 ) -> impl IntoResponse {
     upgrade.on_upgrade(|ws| async move {
         log::debug!("Web socket upgrade");
 
         // split the websocket into a sender and a receiver
         let (mut sender, _receiver) = ws.split();
+        let receiver = observable.subscribe();
+        let mut stream = BroadcastStream::new(receiver);
 
         loop {
-            let mut receiver = stream.lock().await;
-            if let Some(event) = receiver.next().await {
+            if let Some(Ok(event)) = stream.next().await {
                 match event {
                     Notification::Reload => {
                         log::debug!("Sending reload message...");
@@ -198,16 +195,12 @@ async fn websocket_handler(
     })
 }
 
-async fn run_watch_mode(
-    tx_notification: tokio::sync::mpsc::Sender<Notification>,
+async fn build_and_run(
+    build_done_tx: tokio::sync::broadcast::Sender<()>,
     events: Vec<DebouncedEvent>,
     opts: DevOptions,
 ) {
     log::info!("Starting application watch mode");
-
-    if let Err(err) = tx_notification.send(Notification::Reload).await {
-        log::error!("Error sending change event: {err}");
-    }
 
     if !events.is_empty() {
         let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
@@ -240,34 +233,17 @@ async fn run_watch_mode(
         (crate::env::HASHIRA_LIVE_RELOAD, String::from("1")),
     ]);
 
-    if let Err(err) = crate::commands::run_with_envs(run_opts, envs).await {
+    if let Err(err) = crate::commands::run_with_envs(run_opts, envs, Some(build_done_tx)).await {
         log::error!("Watch run failed: {err}");
     }
-
-    // let mut int = RUN_INTERRUPT.subscribe();
-
-    // tokio::select! {
-    //     ret = crate::commands::run_with_envs(run_opts, envs) => {
-    //         if let Err(err) = ret {
-    //             log::error!("Watch run failed: {err}");
-    //         }
-    //     },
-    //     ret = int.recv() => {
-    //         if let Err(err) = ret {
-    //             log::error!("interruption error: {err}");
-    //         }
-    //     }
-    // }
-
-    // log::info!("Exiting dev execution...");
 }
 
 fn start_watcher(
-    tx_notification: tokio::sync::mpsc::Sender<Notification>,
+    tx_notification: tokio::sync::broadcast::Sender<Notification>,
     opts: &DevOptions,
 ) -> anyhow::Result<()> {
+    let (build_done_tx, mut build_done_rx) = tokio::sync::broadcast::channel(8);
     let (tx_debounced, rx_debounced) = std::sync::mpsc::channel();
-
     let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx_debounced)
         .with_context(|| "failed to start watcher")?;
 
@@ -282,34 +258,53 @@ fn start_watcher(
     let opts = opts.clone();
     let run_interrupt = RUN_INTERRUPT.clone();
 
+    {
+        tokio::spawn(async move {
+            match build_done_rx.recv().await {
+                Ok(_) => {
+                    log::debug!("Received build done signal");
+                    if let Err(err) = tx_notification.send(Notification::Reload) {
+                        log::error!("Error sending change event: {err}");
+                    }
+                }
+                Err(err) => {
+                    log::error!("Failed when receiving build event: {err}");
+                }
+            }
+        });
+    }
+
     // Starts
     {
         let opts = opts.clone();
-        let tx_notification = tx_notification.clone();
+        let build_done_tx = build_done_tx.clone();
         tokio::spawn(async move {
             log::debug!("Starting dev...");
-            run_watch_mode(tx_notification, vec![], opts).await;
+            build_and_run(build_done_tx, vec![], opts).await;
         });
     }
 
     // Listen for the changes
     tokio::spawn(async move {
         let _debouncer = debouncer;
+        log::debug!("Watching...");
 
         loop {
             match rx_debounced.recv() {
                 Ok(ret) => {
                     let events = ret.unwrap();
-                    let tx_notification = tx_notification.clone();
+                    let build_done_tx = build_done_tx.clone();
                     let opts = opts.clone();
 
                     log::debug!("change detected!");
+
                     // Interrupt the current running task
                     run_interrupt.interrupt();
 
+                    log::debug!("Interrupted, now go to restart");
                     tokio::spawn(async move {
                         log::info!("Restarting dev...");
-                        run_watch_mode(tx_notification, events, opts).await;
+                        build_and_run(build_done_tx, events, opts).await;
                     });
                 }
                 Err(err) => {

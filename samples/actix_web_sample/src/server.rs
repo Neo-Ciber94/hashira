@@ -7,7 +7,7 @@ pub async fn start_server<C>() -> std::io::Result<()>
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("debug"));
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let current_dir = get_current_dir().join("public");
     let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
@@ -15,7 +15,7 @@ where
     let static_dir = hashira::env::get_static_dir();
 
     println!("⚡ Server started at: http://{host}:{port}");
-    println!("⚡ Serving static files from: {} to `{static_dir}`", current_dir.display());
+    println!("⚡ Serving static files from: `{}` to `{static_dir}`", current_dir.display());
     
     // Create and run the server
     HttpServer::new(move || {

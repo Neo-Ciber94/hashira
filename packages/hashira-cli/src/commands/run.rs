@@ -1,8 +1,12 @@
 use super::BuildOptions;
-use crate::utils::{get_target_dir, interruct::RUN_INTERRUPT};
+use crate::utils::{get_target_dir, interrupt::RUN_INTERRUPT};
+use anyhow::Context;
 use clap::Args;
 use std::{collections::HashMap, path::PathBuf};
-use tokio::process::{Child, Command};
+use tokio::{
+    process::{Child, Command},
+    sync::broadcast::Sender,
+};
 
 #[derive(Args, Debug, Clone)]
 pub struct RunOptions {
@@ -81,12 +85,13 @@ impl RunOptions {
 }
 
 pub async fn run(opts: RunOptions) -> anyhow::Result<()> {
-    run_with_envs(opts, Default::default()).await
+    run_with_envs(opts, Default::default(), None).await
 }
 
 pub(crate) async fn run_with_envs(
     opts: RunOptions,
     additional_envs: HashMap<&'static str, String>,
+    build_done_signal: Option<Sender<()>>,
 ) -> anyhow::Result<()> {
     let build_opts = BuildOptions {
         public_dir: opts.public_dir.clone(),
@@ -98,19 +103,25 @@ pub(crate) async fn run_with_envs(
         allow_include_src: opts.allow_include_src,
     };
 
-    super::build_wasm(&build_opts).await?;
+    // Build the wasm and server
+    crate::commands::build(build_opts).await?;
 
-    log::info!("Running application");
-    cargo_run(&opts, additional_envs).await?;
+    if let Some(build_done_signal) = build_done_signal {
+        let _ = build_done_signal.send(());
+    }
+
+    // Run the generated exe
+    run_server_exec(&opts, additional_envs).await?;
+
     Ok(())
 }
 
-async fn cargo_run(
+async fn run_server_exec(
     opts: &RunOptions,
     additional_envs: HashMap<&'static str, String>,
 ) -> anyhow::Result<()> {
     let mut int = RUN_INTERRUPT.subscribe();
-    let mut spawn = spawn_cargo_run(opts, additional_envs)?;
+    let mut spawn = spawn_server_exec(opts, additional_envs)?;
 
     tokio::select! {
         status = spawn.wait() => {
@@ -120,6 +131,7 @@ async fn cargo_run(
         ret = int.recv() => {
             log::debug!("Interrupt signal received");
             spawn.kill().await?;
+            log::debug!("Process killed");
 
             if let Err(err) = ret {
                 log::error!("failed to kill server: {err}");
@@ -127,33 +139,19 @@ async fn cargo_run(
         }
     }
 
+    log::debug!("Exit run");
     Ok(())
 }
 
-fn spawn_cargo_run(
+fn spawn_server_exec(
     opts: &RunOptions,
     additional_envs: HashMap<&'static str, String>,
 ) -> anyhow::Result<Child> {
-    let mut cmd = Command::new("cargo");
+    let exec_path = get_executable_path(&opts).context("Failed to get executable path")?;
 
-    // args
-    cmd.arg("run");
+    log::debug!("Executable path: {}", exec_path.display());
 
-    if opts.quiet {
-        cmd.arg("--quiet");
-    }
-
-    // target dir
-    let target_dir = opts.resolved_target_dir()?;
-    log::debug!("target dir: {}", target_dir.display());
-
-    cmd.arg("--target-dir");
-    cmd.arg(target_dir);
-
-    // release mode?
-    if opts.release {
-        cmd.arg("--release");
-    }
+    let mut cmd = Command::new(exec_path);
 
     // environment variables
     log::debug!("host: {}", opts.host);
@@ -168,7 +166,20 @@ fn spawn_cargo_run(
         cmd.env(name, value);
     }
 
-    // Run
     let child = cmd.spawn()?;
     Ok(child)
+}
+
+fn get_executable_path(opts: &RunOptions) -> anyhow::Result<PathBuf> {
+    let exec_name = crate::utils::get_exec_name()?;
+    let mut target_dir = opts.resolved_target_dir()?;
+
+    if opts.release {
+        target_dir.push("release");
+    } else {
+        target_dir.push("debug");
+    }
+
+    let exec_path = target_dir.join(format!("{exec_name}.exe"));
+    Ok(exec_path)
 }
