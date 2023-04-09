@@ -68,13 +68,7 @@ impl BuildTask {
 
     async fn prepare_public_dir(&self) -> anyhow::Result<()> {
         let opts = &self.options;
-        let mut public_dir = opts.resolved_target_dir()?;
-
-        if opts.release {
-            public_dir.push("release");
-        } else {
-            public_dir.push("debug");
-        }
+        let mut public_dir = opts.profile_target_dir()?;
 
         public_dir.push(&opts.public_dir);
         log::info!("Preparing public directory: {}", public_dir.display());
@@ -193,14 +187,7 @@ impl BuildTask {
                 .collect::<Vec<_>>();
         }
 
-        let mut dest_dir = opts.resolved_target_dir()?.join({
-            if opts.release {
-                "release"
-            } else {
-                "debug"
-            }
-        });
-
+        let mut dest_dir = opts.profile_target_dir()?;
         dest_dir.push(&opts.public_dir);
 
         process_files(&include_files, dest_dir.as_path(), opts)
@@ -277,13 +264,7 @@ impl BuildTask {
         cmd.args(["--target", "web"]).arg("--no-typescript");
 
         // out dir
-        let mut out_dir = opts.resolved_target_dir()?.join({
-            if opts.release {
-                "release"
-            } else {
-                "debug"
-            }
-        });
+        let mut out_dir = opts.profile_target_dir()?;
 
         out_dir.push(&opts.public_dir);
         log::debug!("wasm-bindgen out-dir: {}", out_dir.display());

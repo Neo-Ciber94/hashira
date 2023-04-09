@@ -16,8 +16,11 @@ pub const HASHIRA_LIVE_RELOAD_HOST: &str = "HASHIRA_LIVE_RELOAD_HOST";
 /// Name of the environment variable with the port of the live reload.
 pub const HASHIRA_LIVE_RELOAD_PORT: &str = "HASHIRA_LIVE_RELOAD_PORT";
 
-/// Returns the name of the crate running.
-pub fn get_crate_name() -> Option<String> {
+/// Name of the environment variable with the name of the wasm library.
+pub const HASHIRA_WASM_LIB: &str = "HASHIRA_WASM_LIB";
+
+/// Returns the name of the wasm client library.
+pub fn get_wasm_name() -> Option<String> {
     fn crate_name() -> Option<String> {
         // By default we take the crate name from cargo
         if let Ok(name) = std::env::var("CARGO_PKG_NAME") {

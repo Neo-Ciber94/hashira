@@ -165,7 +165,7 @@ where
     ));
 
     // Adds the wasm bundle
-    if let Some(crate_name) = crate::env::get_crate_name() {
+    if let Some(crate_name) = crate::env::get_wasm_name() {
         let static_dir = crate::env::get_static_dir();
 
         tags_html.push(format!(

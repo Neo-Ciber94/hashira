@@ -148,14 +148,7 @@ impl RunTask {
     fn get_executable_path(&self) -> anyhow::Result<PathBuf> {
         let opts = &self.options;
         let exec_name = crate::utils::get_exec_name()?;
-        let mut target_dir = opts.resolved_target_dir()?;
-
-        if opts.release {
-            target_dir.push("release");
-        } else {
-            target_dir.push("debug");
-        }
-
+        let target_dir = opts.profile_target_dir()?;
         let exec_path = target_dir.join(format!("{exec_name}.exe"));
         Ok(exec_path)
     }

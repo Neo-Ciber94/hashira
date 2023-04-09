@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use clap::Args;
+use std::path::PathBuf;
 
 #[derive(Args, Debug, Clone)]
 pub struct RunOptions {
@@ -69,10 +69,18 @@ pub struct RunOptions {
 }
 
 impl RunOptions {
-    pub fn resolved_target_dir(&self) -> anyhow::Result<PathBuf> {
-        match &self.target_dir {
-            Some(path) => Ok(path.clone()),
-            None => crate::utils::get_target_dir(),
-        }
+    pub fn profile_target_dir(&self) -> anyhow::Result<PathBuf> {
+        let mut dir = match &self.target_dir {
+            Some(path) => path.clone(),
+            None => crate::utils::get_target_dir()?,
+        };
+
+        if self.release {
+            dir.push("release");
+        } else {
+            dir.push("debug");
+        };
+
+        Ok(dir)
     }
 }
