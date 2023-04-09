@@ -32,7 +32,8 @@ pub fn get_crate_name() -> Option<String> {
         None
     }
 
-    // We cleanup the name in case is in the form: `crate-name`
+    // The library name which is where we execute the wasm cannot contains hyphens
+    // and the format by default is `{package_name}_web`
     match crate_name().map(|n| n.replace("-", "_")) {
         Some(name) => Some(name),
         None => {
