@@ -32,6 +32,9 @@ pub fn get_crate_name() -> Option<String> {
         None
     }
 
+    // TODO: We should get a more cleaner way to get the wasm library name,
+    // we could inject the name from the `hashira-cli` as a ENV.
+
     // The library name which is where we execute the wasm cannot contains hyphens
     // and the format by default is `{package_name}_web`
     match crate_name().map(|n| n.replace("-", "_")) {
