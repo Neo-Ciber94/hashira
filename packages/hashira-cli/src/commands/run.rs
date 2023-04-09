@@ -107,7 +107,10 @@ pub(crate) async fn run_with_envs(
     crate::commands::build(build_opts).await?;
 
     if let Some(build_done_signal) = build_done_signal {
-        let _ = build_done_signal.send(());
+        //let _ = build_done_signal.send(());
+        build_done_signal
+            .send(())
+            .expect("failed to send build done signal");
     }
 
     // Run the generated exe

@@ -243,6 +243,69 @@ fn start_watcher(
     opts: &DevOptions,
 ) -> anyhow::Result<()> {
     let (build_done_tx, mut build_done_rx) = tokio::sync::broadcast::channel(8);
+    let (tx_watch, mut rx_watch) = tokio::sync::broadcast::channel::<Vec<DebouncedEvent>>(8);
+
+    let opts = opts.clone();
+    let run_interrupt = RUN_INTERRUPT.clone();
+
+    {
+        tokio::spawn(async move {
+            loop {
+                match build_done_rx.recv().await {
+                    Ok(_) => {
+                        log::debug!("Received build done signal");
+                        if let Err(err) = tx_notification.send(Notification::Reload) {
+                            log::error!("Error sending change event: {err}");
+                        }
+                    }
+                    Err(err) => {
+                        log::error!("Failed when receiving build event: {err}");
+                    }
+                }
+            }
+        });
+    }
+
+    // Listen for the changes
+    build_watcher(tx_watch)?;
+
+    // Starts
+    {
+        let opts = opts.clone();
+        let build_done_tx = build_done_tx.clone();
+        tokio::spawn(async move {
+            log::debug!("Starting dev...");
+            build_and_run(build_done_tx, vec![], opts).await;
+        });
+    }
+
+    // Start notifier loop
+    tokio::task::spawn(async move {
+        loop {
+            // Wait for change event
+            let events = rx_watch
+                .recv()
+                .await
+                .expect("failed to read debounce event");
+
+            // Interrupt the current running task
+            run_interrupt.interrupt();
+
+            // Rerun
+            let build_done_tx = build_done_tx.clone();
+            let opts = opts.clone();
+            log::debug!("Interrupted, now go to restart");
+            tokio::spawn(async move {
+                log::info!("Restarting dev...");
+                build_and_run(build_done_tx, events, opts).await;
+            });
+        }
+    });
+
+    Ok(())
+}
+
+fn build_watcher(tx_watch: Sender<Vec<DebouncedEvent>>) -> anyhow::Result<()> {
     let (tx_debounced, rx_debounced) = std::sync::mpsc::channel();
     let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx_debounced)
         .with_context(|| "failed to start watcher")?;
@@ -255,60 +318,20 @@ fn start_watcher(
         .watch(&watch_path, RecursiveMode::Recursive)
         .unwrap();
 
-    let opts = opts.clone();
-    let run_interrupt = RUN_INTERRUPT.clone();
-
-    {
-        tokio::spawn(async move {
-            match build_done_rx.recv().await {
-                Ok(_) => {
-                    log::debug!("Received build done signal");
-                    if let Err(err) = tx_notification.send(Notification::Reload) {
-                        log::error!("Error sending change event: {err}");
-                    }
-                }
-                Err(err) => {
-                    log::error!("Failed when receiving build event: {err}");
-                }
-            }
-        });
-    }
-
-    // Starts
-    {
-        let opts = opts.clone();
-        let build_done_tx = build_done_tx.clone();
-        tokio::spawn(async move {
-            log::debug!("Starting dev...");
-            build_and_run(build_done_tx, vec![], opts).await;
-        });
-    }
-
-    // Listen for the changes
-    tokio::spawn(async move {
+    std::thread::spawn(move || {
         let _debouncer = debouncer;
-        log::debug!("Watching...");
 
         loop {
             match rx_debounced.recv() {
-                Ok(ret) => {
-                    let events = ret.unwrap();
-                    let build_done_tx = build_done_tx.clone();
-                    let opts = opts.clone();
-
-                    log::debug!("change detected!");
-
-                    // Interrupt the current running task
-                    run_interrupt.interrupt();
-
-                    log::debug!("Interrupted, now go to restart");
-                    tokio::spawn(async move {
-                        log::info!("Restarting dev...");
-                        build_and_run(build_done_tx, events, opts).await;
-                    });
+                Ok(event) => {
+                    if let Ok(evt) = event {
+                        if let Err(err) = tx_watch.send(evt) {
+                            log::error!("Failed to send debounced event: {err}");
+                        }
+                    }
                 }
                 Err(err) => {
-                    log::info!("Exit?: {err}");
+                    log::error!("Failed to received debounce event: {err}");
                     break;
                 }
             }
