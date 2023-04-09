@@ -1,12 +1,14 @@
 mod cli;
 mod commands;
 mod env;
-mod utils;
 mod pipelines;
+mod tasks;
+mod utils;
 
 use clap::Parser;
 use cli::{Cli, Commands};
 use env_logger::Env;
+use tasks::{build_task::BuildTask, run_task::RunTask, dev_task::DevTask};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -15,8 +17,8 @@ async fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or(&cli.log_level)).init();
 
     match cli.command {
-        Commands::Build(opts) => commands::build(opts).await,
-        Commands::Run(opts) => commands::run(opts).await,
-        Commands::Dev(opts) => commands::dev(opts).await,
+        Commands::Build(opts) => BuildTask::new(opts).run().await,
+        Commands::Run(opts) => RunTask::new(opts).run().await,
+        Commands::Dev(opts) => DevTask::new(opts).run().await,
     }
 }
