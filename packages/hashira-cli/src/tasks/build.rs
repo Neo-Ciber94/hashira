@@ -3,6 +3,7 @@ use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use anyhow::Context;
 use std::path::Path;
 use tokio::process::{Child, Command};
+use tokio::sync::broadcast::Sender;
 
 struct IncludeFiles {
     glob: String,
@@ -15,11 +16,17 @@ const DEFAULT_INCLUDES: &[&str] = &["public/*", "favicon.ico"];
 pub struct BuildTask {
     // Options used to build the project
     pub options: BuildOptions,
+
+    // A receiver for shutdown the executing process
+    pub shutdown_signal: Option<Sender<()>>,
 }
 
 impl BuildTask {
     pub fn new(options: BuildOptions) -> Self {
-        BuildTask { options }
+        BuildTask {
+            options,
+            shutdown_signal: None,
+        }
     }
 
     /// Runs the build operation
@@ -82,23 +89,81 @@ impl BuildTask {
     }
 
     async fn cargo_build_wasm(&self) -> anyhow::Result<()> {
-        let mut child = self.spawn_cargo_build_wasm()?;
-        let status = child.wait().await?;
-        anyhow::ensure!(status.success(), "failed to build wasm crate");
+        let mut spawn = self.spawn_cargo_build_wasm()?;
+
+        let Some(shutdown_signal) = &self.shutdown_signal else {
+            let status = spawn.wait().await?;
+            anyhow::ensure!(status.success(), "failed to build wasm crate");
+            return Ok(());
+        };
+
+        let mut int = shutdown_signal.subscribe();
+        tokio::select! {
+            status = spawn.wait() => {
+                log::debug!("Exited: {status:?}");
+            },
+            ret = int.recv() => {
+                spawn.kill().await?;
+
+                if let Err(err) = ret {
+                    log::error!("failed to kill build wasm task: {err}");
+                }
+            }
+        }
+
         Ok(())
     }
 
     async fn wasm_bindgen(&self) -> anyhow::Result<()> {
-        let mut child = self.spawn_wasm_bindgen()?;
-        let status = child.wait().await?;
-        anyhow::ensure!(status.success(), "failed to build wasm");
+        let mut spawn = self.spawn_wasm_bindgen()?;
+
+        let Some(shutdown_signal) = &self.shutdown_signal else {
+            let status = spawn.wait().await?;
+            anyhow::ensure!(status.success(), "failed to build wasm crate");
+            return Ok(());
+        };
+
+        let mut int = shutdown_signal.subscribe();
+
+        tokio::select! {
+            status = spawn.wait() => {
+                log::debug!("Exited: {status:?}");
+            },
+            ret = int.recv() => {
+                spawn.kill().await?;
+
+                if let Err(err) = ret {
+                    log::error!("failed to kill build wasm-bingen task: {err}");
+                }
+            }
+        }
+
         Ok(())
     }
 
     async fn cargo_build(&self) -> anyhow::Result<()> {
-        let mut process = self.spawn_cargo_build()?;
-        let status = process.wait().await?;
-        anyhow::ensure!(status.success(), "failed to build crate");
+        let mut spawn = self.spawn_cargo_build()?;
+
+        let Some(shutdown_signal) = &self.shutdown_signal else {
+            let status = spawn.wait().await?;
+            anyhow::ensure!(status.success(), "failed to build server");
+            return Ok(());
+        };
+
+        let mut int = shutdown_signal.subscribe();
+
+        tokio::select! {
+            status = spawn.wait() => {
+                log::debug!("Exited: {status:?}");
+            },
+            ret = int.recv() => {
+                spawn.kill().await?;
+
+                if let Err(err) = ret {
+                    log::error!("failed to kill cargo build task: {err}");
+                }
+            }
+        }
 
         Ok(())
     }

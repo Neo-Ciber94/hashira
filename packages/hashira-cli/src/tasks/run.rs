@@ -1,11 +1,11 @@
-use std::{collections::HashMap, path::PathBuf};
+use super::build::BuildTask;
+use crate::cli::{BuildOptions, RunOptions};
 use anyhow::Context;
+use std::{collections::HashMap, path::PathBuf};
 use tokio::{
     process::{Child, Command},
     sync::broadcast::Sender,
 };
-use crate::cli::{RunOptions, BuildOptions};
-use super::build::BuildTask;
 
 pub struct RunTask {
     // Options for running the application
@@ -71,6 +71,7 @@ impl RunTask {
                 allow_include_external: opts.allow_include_external,
                 allow_include_src: opts.allow_include_src,
             },
+            shutdown_signal: self.shutdown_signal.clone(),
         };
 
         build_task.run().await?;
@@ -86,18 +87,17 @@ impl RunTask {
     }
 
     async fn exec(&self) -> anyhow::Result<()> {
+        let mut spawn = self.spawn_server_exec()?;
+
         // Run normally if not shutdown signal is send
         let Some(shutdown_signal) = &self.shutdown_signal else {
-            let mut spawn = self.spawn_server_exec()?;
             let status = spawn.wait().await?;
             anyhow::ensure!(status.success(), "failed to run server");
             return Ok(());
         };
 
-        let mut int = shutdown_signal.subscribe();
-        let mut spawn = self.spawn_server_exec()?;
-
         // Run until a shutdown signal is received
+        let mut int = shutdown_signal.subscribe();
 
         tokio::select! {
             status = spawn.wait() => {
