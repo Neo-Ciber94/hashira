@@ -127,6 +127,7 @@ impl RunTask {
         log::debug!("Executable path: {}", exec_path.display());
 
         let mut cmd = Command::new(exec_path);
+        let wasm_lib = crate::utils::get_cargo_lib_name()?;
 
         // environment variables
         log::debug!("host: {}", opts.host);
@@ -136,6 +137,7 @@ impl RunTask {
         cmd.env(crate::env::HASHIRA_HOST, &opts.host);
         cmd.env(crate::env::HASHIRA_PORT, opts.port.to_string());
         cmd.env(crate::env::HASHIRA_STATIC_DIR, &opts.static_dir);
+        cmd.env(crate::env::HASHIRA_WASM_LIB, wasm_lib);
 
         for (name, value) in self.envs.iter() {
             cmd.env(name, value);

@@ -15,3 +15,6 @@ pub const HASHIRA_LIVE_RELOAD_HOST: &str = "HASHIRA_LIVE_RELOAD_HOST";
 
 /// Name of the environment variable with the port of the live reload.
 pub const HASHIRA_LIVE_RELOAD_PORT: &str = "HASHIRA_LIVE_RELOAD_PORT";
+
+/// Name of the environment variable with the name of the wasm library.
+pub const HASHIRA_WASM_LIB: &str = "HASHIRA_WASM_LIB";

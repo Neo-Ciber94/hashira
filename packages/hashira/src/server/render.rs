@@ -171,8 +171,8 @@ where
         tags_html.push(format!(
             r#"
             <script type="module">
-                import init, {{ hydrate }} from "{static_dir}/{crate_name}_web.js";
-                init("{static_dir}/{crate_name}_web_bg.wasm").then(hydrate);
+                import init, {{ hydrate }} from "{static_dir}/{crate_name}.js";
+                init("{static_dir}/{crate_name}_bg.wasm").then(hydrate);
             </script>
         "#
         ));

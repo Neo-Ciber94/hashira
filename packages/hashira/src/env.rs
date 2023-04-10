@@ -21,32 +21,12 @@ pub const HASHIRA_WASM_LIB: &str = "HASHIRA_WASM_LIB";
 
 /// Returns the name of the wasm client library.
 pub fn get_wasm_name() -> Option<String> {
-    fn crate_name() -> Option<String> {
-        // By default we take the crate name from cargo
-        if let Ok(name) = std::env::var("CARGO_PKG_NAME") {
-            return Some(name);
-        }
-
-        if let Ok(exe_dir) = std::env::current_exe() {
-            let file_name = exe_dir.file_stem().unwrap().to_str().unwrap().to_owned();
-            return Some(file_name);
-        }
-
-        None
+    if let Ok(name) = std::env::var(HASHIRA_WASM_LIB) {
+        return Some(name);
     }
 
-    // TODO: We should get a more cleaner way to get the wasm library name,
-    // we could inject the name from the `hashira-cli` as a ENV.
-
-    // The library name which is where we execute the wasm cannot contains hyphens
-    // and the format by default is `{package_name}_web`
-    match crate_name().map(|n| n.replace("-", "_")) {
-        Some(name) => Some(name),
-        None => {
-            log::warn!("Unable to find crate name");
-            None
-        }
-    }
+    log::warn!("Unable to find wasm client library name, `HASHIRA_WASM_LIB` environment variable was not set");
+    None
 }
 
 /// Returns the application host.
