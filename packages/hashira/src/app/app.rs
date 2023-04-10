@@ -1,6 +1,6 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
-    router::ClientRouter,
+    router::{PageRouterWrapper, PageRouter},
     AppService, AppServiceInner, BoxFuture, ClientPageRoute, LayoutContext, RenderContext,
     RequestContext, Route,
 };
@@ -51,7 +51,7 @@ impl ErrorPageHandler {
 pub struct App<C> {
     layout: Option<RenderLayout>,
     server_router: Router<Route>,
-    client_router: Router<ClientPageRoute>,
+    page_router: PageRouter,
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
     _marker: PhantomData<C>,
@@ -66,7 +66,7 @@ where
         App {
             layout: None,
             server_router: Router::new(),
-            client_router: Router::new(),
+            page_router: PageRouter::new(),
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
             _marker: PhantomData,
@@ -276,14 +276,14 @@ where
         let App {
             layout,
             server_router,
-            client_router,
+            page_router: client_router,
             client_error_router,
             server_error_router,
             _marker: _,
         } = self;
 
         let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
-        let client_router = ClientRouter::from(client_router);
+        let client_router = PageRouterWrapper::from(client_router);
         let client_error_router = Arc::from(client_error_router);
         let inner = AppServiceInner {
             layout,
@@ -308,10 +308,11 @@ where
             std::any::type_name::<COMP>()
         );
 
-        self.client_router.add(
+        self.page_router.add(
             path,
             ClientPageRoute {
                 path: path.to_string(),
+                component_id: std::any::type_name::<COMP>().to_owned(),
                 component: AnyComponent::<serde_json::Value>::new(|props_json| {
                     let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
                         panic!(

@@ -1,4 +1,4 @@
-use super::{error_router::ErrorRouter, router::ClientRouter, RenderLayout};
+use super::{error_router::ErrorRouter, router::PageRouterWrapper, RenderLayout};
 pub use crate::error::ResponseError;
 use crate::web::Request;
 use route_recognizer::Params;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 pub struct RequestContext {
     path: String,
     params: Params,
-    client_router: ClientRouter,
+    client_router: PageRouterWrapper,
     error_router: Arc<ErrorRouter>,
     request: Option<Arc<Request>>,
     error: Option<ResponseError>,
@@ -24,7 +24,7 @@ pub struct RequestContext {
 impl RequestContext {
     pub fn new(
         request: Option<Arc<Request>>,
-        client_router: ClientRouter,
+        client_router: PageRouterWrapper,
         error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
         render_layout: RenderLayout,
@@ -126,7 +126,7 @@ impl RequestContext {
             metadata,
             links,
             scripts,
-            client_router,
+            router: client_router,
             error_router,
         };
 

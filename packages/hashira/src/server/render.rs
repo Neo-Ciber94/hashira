@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::error_router::ErrorRouter;
-use crate::app::router::ClientRouter;
+use crate::app::router::PageRouterWrapper;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
     HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
@@ -27,7 +27,7 @@ pub struct RenderPageOptions {
     pub(crate) error: Option<ResponseError>,
 
     // The router used to render the page
-    pub(crate) client_router: ClientRouter,
+    pub(crate) router: PageRouterWrapper,
 
     // The router used to render errors
     pub(crate) error_router: Arc<ErrorRouter>,
@@ -62,8 +62,8 @@ where
         metadata,
         links,
         scripts,
-        client_router,
-        error_router: client_error_router,
+        router,
+        error_router,
     } = options;
 
     // The base layout
@@ -91,8 +91,8 @@ where
         path: path.clone(),
         error: page_error,
         props_json: props_json.clone(),
-        client_router,
-        error_router: client_error_router,
+        router,
+        error_router,
     };
 
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);

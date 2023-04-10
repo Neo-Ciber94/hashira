@@ -1,4 +1,5 @@
 mod app;
+mod app_scope;
 mod app_service;
 mod layout_context;
 mod layout_data;
@@ -7,6 +8,7 @@ mod request_context;
 mod route;
 
 pub use app::*;
+pub use app_scope::*;
 pub use app_service::*;
 pub use layout_context::*;
 pub use render_context::*;

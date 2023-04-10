@@ -1,5 +1,5 @@
 use crate::{
-    app::{error_router::ErrorRouter, router::ClientRouter},
+    app::{error_router::ErrorRouter, router::PageRouterWrapper},
     components::error::{ErrorPage, NotFoundPage},
 };
 use http::StatusCode;
@@ -20,7 +20,7 @@ pub struct PageProps {
     pub props_json: serde_json::Value,
 
     /// The router to render the page
-    pub client_router: ClientRouter,
+    pub router: PageRouterWrapper,
 
     /// The router to render the error pages
     pub error_router: Arc<ErrorRouter>,
@@ -32,7 +32,7 @@ where
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let path = props.path.as_str();
-    let router = &props.client_router;
+    let router = &props.router;
     let error_router = &props.error_router;
 
     if let Some(error) = &props.error {
@@ -56,7 +56,7 @@ where
     // that way the server can respond with any component
     // and we can figure out what to hydrate by using the `id`
     match router.recognize(path) {
-        Ok(mtch) => {
+        Some(mtch) => {
             let route = mtch.handler();
             let props = props.props_json.clone();
 
@@ -66,7 +66,7 @@ where
                 </ROOT>
             }
         }
-        Err(_) => match error_router.recognize_error(&StatusCode::NOT_FOUND) {
+        None => match error_router.recognize_error(&StatusCode::NOT_FOUND) {
             Some(comp) => {
                 let props = props.props_json.clone();
                 yew::html! {

@@ -4,12 +4,19 @@ use super::PageHandler;
 use crate::components::AnyComponent;
 
 // Represents a client-side page route, containing a component and a path pattern.
+#[derive(Clone)]
 pub struct ClientPageRoute {
+    pub(crate) component_id: String,
     pub(crate) component: AnyComponent<serde_json::Value>, // The component for this page route.
     pub(crate) path: String,                               // The path pattern for this page route.
 }
 
 impl ClientPageRoute {
+    /// Returns the id of the component of this route.
+    pub fn id(&self) -> &str {
+        self.component_id.as_str()
+    }
+
     // Renders the component for this page route with the given props.
     pub fn render(&self, props: serde_json::Value) -> yew::Html {
         self.component.render_with_props(props)
@@ -29,28 +36,28 @@ pub struct HttpMethod(u8);
 
 impl HttpMethod {
     /// The HTTP GET method.
-    pub const GET: HttpMethod =     HttpMethod(0b0001);
+    pub const GET: HttpMethod = HttpMethod(0b0001);
 
     /// The HTTP POST method.
-    pub const POST: HttpMethod =    HttpMethod(0b0010);
+    pub const POST: HttpMethod = HttpMethod(0b0010);
 
     /// The HTTP PUT method.
-    pub const PUT: HttpMethod =     HttpMethod(0b0100);
+    pub const PUT: HttpMethod = HttpMethod(0b0100);
 
     /// The HTTP PATCH method.
-    pub const PATCH: HttpMethod =   HttpMethod(0b1000);
+    pub const PATCH: HttpMethod = HttpMethod(0b1000);
 
     /// The HTTP DELETE method.
-    pub const DELETE: HttpMethod =  HttpMethod(0b0001_0000);
+    pub const DELETE: HttpMethod = HttpMethod(0b0001_0000);
 
     /// The HTTP HEAD method.
-    pub const HEAD: HttpMethod =    HttpMethod(0b0010_0000);
+    pub const HEAD: HttpMethod = HttpMethod(0b0010_0000);
 
     /// The HTTP OPTIONS method.
     pub const OPTIONS: HttpMethod = HttpMethod(0b0100_0000);
 
     /// The HTTP TRACE method.
-    pub const TRACE: HttpMethod =   HttpMethod(0b1000_0000);
+    pub const TRACE: HttpMethod = HttpMethod(0b1000_0000);
 
     /// Returns true if this `HttpMethod` matches the given `HttpMethod`.
     ///
@@ -105,7 +112,7 @@ pub struct Route {
 impl Route {
     /// Creates a new `ServerPageRoute` with the given path, HTTP method, and handler function.
     pub fn new(path: &str, method: HttpMethod, handler: PageHandler) -> Self {
-        assert!(path.starts_with("/"), "page path must start with `/`");
+        assert_valid_path(path);
 
         Route {
             path: path.to_owned(),
@@ -162,5 +169,26 @@ impl Route {
     /// Returns a reference to the handler function for this `Route`.
     pub fn handler(&self) -> &PageHandler {
         &self.handler
+    }
+}
+
+fn assert_valid_path(path: &str) {
+    assert!(!path.is_empty(), "route path cannot be empty");
+
+    assert!(
+        !path.starts_with(" ") || !path.ends_with(" "),
+        "route path cannot starts or end with a whitespace but was: {path}"
+    );
+
+    assert!(
+        path.starts_with("/"),
+        "route path must start with `/`, but was: {path}"
+    );
+
+    if path.len() > 1 {
+        assert!(
+            !path.ends_with("/"),
+            "route path cannot end with `/` but was: {path}"
+        );
     }
 }

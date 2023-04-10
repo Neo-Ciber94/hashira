@@ -17,14 +17,14 @@ where
     let page_data =
         serde_json::from_str::<PageData>(&content).expect("failed to deserialize page data");
 
-    let client_router = service.client_router().clone();
-    let client_error_router = service.client_error_router().clone();
+    let router = service.page_router().clone();
+    let error_router = service.error_router().clone();
     let props = PageProps {
         path: page_data.path.clone(),
         props_json: page_data.props,
         error: page_data.error,
-        error_router: client_error_router,
-        client_router,
+        error_router,
+        router,
     };
 
     let root = find_element_by_id(HASHIRA_ROOT);
