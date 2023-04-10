@@ -21,6 +21,7 @@ pub fn RootLayout() -> Html {
                 // A marker for the <link> elements of the page
                 <Links/>
                 <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             </head>
 
             // The <body>
