@@ -1,4 +1,4 @@
-use crate::cli::BuildOptions;
+use crate::cli::{BuildOptions, DEFAULT_INCLUDES};
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use anyhow::Context;
 use std::path::Path;
@@ -10,8 +10,6 @@ struct IncludeFiles {
     is_default: bool,
 }
 
-// directories and files included as default in the `public_dir` if not valid is specified.
-const DEFAULT_INCLUDES: &[&str] = &["public/*", "favicon.ico"];
 
 pub struct BuildTask {
     // Options used to build the project
