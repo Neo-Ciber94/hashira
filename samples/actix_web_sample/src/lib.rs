@@ -1,6 +1,7 @@
 use hashira::{
-    app::{App as HashiraApp, AppService, RenderContext},
+    app::{App as HashiraApp, AppService, PageHandler, RenderContext, Route},
     server::Metadata,
+    web::{Response, ResponseExt},
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, use_state, BaseComponent, Properties};
@@ -68,6 +69,19 @@ where
     HashiraApp::<C>::new()
         //.app_data(...)
         .use_default_error_pages()
+        .scope(
+            "/api",
+            hashira::app::scope().route(Route::post(
+                "/reverse",
+                PageHandler::new(|ctx| async move {
+                    let body = ctx.request().body().to_vec();
+                    let str = String::from_utf8(body)?;
+                    let rev = str.chars().rev().collect::<String>();
+                    let res = Response::text(rev);
+                    Ok(res)
+                }),
+            )),
+        )
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
             ctx.add_title("Hashira | Counter");
             ctx.add_metadata(Metadata::new().description("A counter made with hashira actix-web"));

@@ -1,5 +1,5 @@
 use actix_files::{Files, NamedFile};
-use actix_web::{get, App, HttpServer, Responder};
+use actix_web::{get, App, HttpResponse, HttpServer, Responder};
 use actix_web_sample_web::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
@@ -15,8 +15,11 @@ where
     let static_dir = hashira::env::get_static_dir();
 
     println!("⚡ Server started at: http://{host}:{port}");
-    println!("⚡ Serving static files from: `{}` to `{static_dir}`", current_dir.display());
-    
+    println!(
+        "⚡ Serving static files from: `{}` to `{static_dir}`",
+        current_dir.display()
+    );
+
     // Create and run the server
     HttpServer::new(move || {
         App::new()

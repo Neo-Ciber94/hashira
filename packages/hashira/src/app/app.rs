@@ -1,13 +1,14 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
-    router::{PageRouterWrapper, PageRouter},
-    AppService, AppServiceInner, BoxFuture, ClientPageRoute, LayoutContext, RenderContext,
-    RequestContext, Route,
+    router::{PageRouter, PageRouterWrapper},
+    AppScope, AppService, AppServiceInner, BoxFuture, ClientPageRoute, LayoutContext,
+    RenderContext, RequestContext, Route,
 };
 use crate::{
     components::{
         error::{ErrorPage, ErrorPageProps, NotFoundPage},
-        RootLayout, id::ComponentId,
+        id::ComponentId,
+        RootLayout,
     },
     error::Error,
     web::Response,
@@ -27,6 +28,17 @@ pub struct PageHandler(
 );
 
 impl PageHandler {
+    pub fn new<H, Fut>(handler: H) -> Self
+    where
+        H: Fn(RequestContext) -> Fut + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
+    {
+        PageHandler(Box::new(move |ctx| {
+            let fut = handler(ctx);
+            Box::pin(fut)
+        }))
+    }
+
     pub fn call(&self, ctx: RequestContext) -> BoxFuture<Result<Response, Error>> {
         (self.0)(ctx)
     }
@@ -38,6 +50,17 @@ pub struct ErrorPageHandler(
 );
 
 impl ErrorPageHandler {
+    pub fn new<H, Fut>(handler: H) -> Self
+    where
+        H: Fn(RequestContext, StatusCode) -> Fut + 'static,
+        Fut: Future<Output = Result<Response, Error>> + 'static,
+    {
+        ErrorPageHandler(Box::new(move |ctx, status| {
+            let fut = handler(ctx, status);
+            Box::pin(fut)
+        }))
+    }
+
     pub fn call(
         &self,
         ctx: RequestContext,
@@ -122,6 +145,33 @@ where
         self
     }
 
+    /// Adds nested routes for the given path.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn scope(mut self, base_path: &str, scope: AppScope<C>) -> Self {
+        for (child_path, route) in scope.server_router {
+            let path = format!("{base_path}{child_path}");
+            self.server_router.add(&path, route);
+        }
+
+        for (child_path, route) in scope.page_router {
+            let path = format!("{base_path}{child_path}");
+            self.page_router.add(&path, route);
+        }
+
+        self
+    }
+
+    /// Adds nested routes for the given path.
+    #[cfg(target_arch = "wasm32")]
+    pub fn scope(mut self, base_path: &str, scope: AppScope<C>) -> Self {
+        for (child_path, route) in scope.page_router {
+            let path = format!("{base_path}{child_path}");
+            self.page_router.add(&path, route);
+        }
+
+        self
+    }
+
     /// Adds a page for the given route.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
@@ -134,15 +184,14 @@ where
         use super::layout_data::PageLayoutData;
 
         self.add_component::<COMP>(path);
-
         self.route(Route::get(
             path,
-            PageHandler(Box::new(move |ctx| {
+            PageHandler::new(move |ctx| {
                 let layout_data = PageLayoutData::new();
                 let render_ctx = RenderContext::new(ctx, layout_data);
-                let res = handler(render_ctx);
-                Box::pin(res)
-            })),
+                let fut = handler(render_ctx);
+                async { fut.await }
+            }),
         ))
     }
 
@@ -172,12 +221,12 @@ where
 
         self.server_error_router.add(
             status,
-            ErrorPageHandler(Box::new(move |ctx, status| {
+            ErrorPageHandler::new(move |ctx, status| {
                 let layout_data = PageLayoutData::new();
                 let render_ctx = RenderContext::new(ctx, layout_data);
-                let res = handler(render_ctx, status);
-                Box::pin(res)
-            })),
+                let fut = handler(render_ctx, status);
+                async { fut.await }
+            }),
         );
 
         self.add_error_component::<COMP>(status);
@@ -384,6 +433,11 @@ where
                 }
             }));
     }
+}
+
+/// Creates a new app scope.
+pub fn scope<C>() -> AppScope<C> {
+    AppScope::new()
 }
 
 fn render_default_layout(_: LayoutContext) -> BoxFuture<yew::Html> {
