@@ -1,4 +1,4 @@
-use actix_web::{web::Bytes, FromRequest, HttpRequest, HttpResponse, Resource};
+use actix_web::{web::Bytes, HttpRequest, HttpResponse, Resource};
 use hashira::{
     app::AppService,
     web::{Body, Request, Response},
@@ -7,25 +7,24 @@ use hashira::{
 /// Returns a handler that matches all the requests.
 pub fn router() -> Resource {
     actix_web::web::resource("/{params:.*}")
-        .to(|req: HttpRequest| async { handle_request(req).await })
+        .to(|req: HttpRequest, bytes: Bytes| async { handle_request(req, bytes).await })
 }
 
 /// Handle a request.
-pub async fn handle_request(req: HttpRequest) -> actix_web::Result<HttpResponse> {
+pub async fn handle_request(req: HttpRequest, bytes: Bytes) -> actix_web::Result<HttpResponse> {
     let path = req.path().to_string();
     let service = req
         .app_data::<AppService>()
         .cloned()
         .expect("Unable to find hashira `AppService`");
 
-    let req = map_request(req).await?;
+    let req = map_request(req, bytes).await?;
     let res = service.handle(req, &path).await;
     let actix_web_response = map_response(res);
     Ok(actix_web_response)
 }
 
-async fn map_request(src: HttpRequest) -> actix_web::Result<Request> {
-    let bytes = Bytes::extract(&src).await?;
+async fn map_request(src: HttpRequest, bytes: Bytes) -> actix_web::Result<Request> {
     let body = Body::from(bytes);
 
     let mut request = Request::builder()
