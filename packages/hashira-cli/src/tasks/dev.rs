@@ -13,7 +13,11 @@ use futures::{SinkExt, StreamExt};
 use notify::RecursiveMode;
 use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, path::Path, time::Duration};
+use std::{
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use tokio::sync::broadcast::{channel, Sender};
 use tokio_stream::wrappers::BroadcastStream;
 
@@ -70,7 +74,7 @@ impl DevTask {
                 loop {
                     build_done_rx.recv().await.unwrap();
                     log::debug!("Received build done signal");
-                    
+
                     if let Err(err) = tx_notify.send(Notification::Reload) {
                         log::error!("Error sending change event: {err}");
                     }
@@ -90,6 +94,8 @@ impl DevTask {
     }
 
     fn start_watcher(&self, build_done_tx: Sender<()>) -> anyhow::Result<()> {
+        log::info!("Starting application watch mode");
+
         let opts = &self.options;
         let shutdown_signal = self.shutdown_signal.clone();
         let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(4);
@@ -105,7 +111,7 @@ impl DevTask {
 
             tokio::spawn(async move {
                 log::debug!("Starting dev...");
-                build_and_run(opts, shutdown_signal, build_done_tx, vec![]).await;
+                build_and_run(opts, shutdown_signal, build_done_tx, vec![], true).await;
             });
         }
 
@@ -131,7 +137,7 @@ impl DevTask {
 
                 tokio::spawn(async move {
                     log::info!("Restarting dev...");
-                    build_and_run(opts, shutdown_signal, build_done_tx, events).await;
+                    build_and_run(opts, shutdown_signal, build_done_tx, events, false).await;
                 });
             }
         });
@@ -176,18 +182,66 @@ impl DevTask {
     }
 }
 
+fn remove_ignored_paths(opts: &DevOptions, events: &mut Vec<DebouncedEvent>) {
+    if events.is_empty() {
+        return;
+    }
+
+    let mut ignore_paths = opts.ignore.clone();
+    ignore_paths.push(PathBuf::from(".git"));
+    ignore_paths.push(PathBuf::from(".gitignore"));
+
+    if let Some(target_dir) = opts.target_dir.clone() {
+        ignore_paths.push(target_dir);
+    }
+
+    // Remove any path that is within the paths to ignore
+    let mut idx = 0;
+
+    'outer: loop {
+        if idx >= events.len() {
+            break;
+        }
+
+        let event = &events[idx];
+
+        for ignore_path in &ignore_paths {
+            if !ignore_path.exists() {
+                continue;
+            }
+
+            match (ignore_path.canonicalize(), event.path.canonicalize()) {
+                (Ok(ignore_path), Ok(event_path)) => {
+                    // If the ignore path contains the affected path, we remove the path from the event list
+                    if let Ok(_) = event_path.strip_prefix(ignore_path) {
+                        log::debug!("Ignoring path: {}", event.path.display());
+                        events.remove(idx);
+                        break 'outer;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        idx += 1;
+    }
+}
+
 async fn build_and_run(
     opts: DevOptions,
     shutdown_signal: Sender<()>,
     build_done_tx: Sender<()>,
-    events: Vec<DebouncedEvent>,
+    mut events: Vec<DebouncedEvent>,
+    is_first_run: bool,
 ) {
-    log::info!("Starting application watch mode");
+    remove_ignored_paths(&opts, &mut events);
 
-    if !events.is_empty() {
-        let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
-        log::info!("change detected on paths: {:?}", paths);
+    if events.is_empty() && !is_first_run {
+        return;
     }
+
+    let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
+    log::info!("change detected on paths: {:?}", paths);
 
     // Build task
     let mut run_task = RunTask::with_signal(

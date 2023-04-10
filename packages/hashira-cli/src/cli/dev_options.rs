@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use clap::Args;
+use std::path::PathBuf;
 
 #[derive(Args, Debug, Clone)]
 pub struct DevOptions {
@@ -80,4 +80,7 @@ pub struct DevOptions {
         default_value_t = 5002
     )]
     pub reload_port: u16,
+
+    #[arg(long, help = "Path to ignore when looking for changes")]
+    pub ignore: Vec<PathBuf>,
 }
