@@ -17,9 +17,11 @@ pub(crate) const HASHIRA_LIVE_RELOAD_HOST: &str = "HASHIRA_LIVE_RELOAD_HOST";
 pub(crate) const HASHIRA_LIVE_RELOAD_PORT: &str = "HASHIRA_LIVE_RELOAD_PORT";
 
 /// Name of the environment variable with the name of the wasm library.
+#[cfg_attr(target_arch="wasm32", allow(dead_code))]
 pub(crate) const HASHIRA_WASM_LIB: &str = "HASHIRA_WASM_LIB";
 
 /// Returns the name of the wasm client library.
+#[cfg_attr(target_arch="wasm32", allow(dead_code))]
 pub(crate) fn get_wasm_name() -> Option<String> {
     if let Ok(name) = std::env::var(HASHIRA_WASM_LIB) {
         return Some(name);
