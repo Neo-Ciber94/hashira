@@ -9,7 +9,6 @@ use crate::components::{
     HASHIRA_TITLE_MARKER,
 };
 use crate::error::ResponseError;
-use html5ever::tendril::TendrilSink;
 use serde::Serialize;
 use yew::{
     function_component,
@@ -227,58 +226,6 @@ fn prettify_html(html: &mut String) {
         }
         Err(err) => {
             log::warn!("Failed to write pretty html: {err}");
-        }
-    }
-}
-
-#[allow(dead_code)]
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(debug_assertions)]
-fn __prettify_html(html: &mut String) {
-    use html5ever::parse_document;
-    use html5ever::serialize::{serialize, SerializeOpts};
-    use markup5ever_rcdom::{RcDom, SerializableHandle};
-
-    // If any of this functions fail we should continue as normally,
-    // this is just for a pretty html and should not stop the render function
-
-    let dom = match parse_document(RcDom::default(), Default::default())
-        .from_utf8()
-        .read_from(&mut html.as_bytes())
-    {
-        Ok(dom) => dom,
-        Err(err) => {
-            log::error!("Failed to parse html for prettify it: {err}");
-            return;
-        }
-    };
-
-    // Serialize the DOM tree into a string with some formatting options
-
-    let opts = SerializeOpts {
-        scripting_enabled: true,
-        traversal_scope: html5ever::serialize::TraversalScope::IncludeNode,
-        create_missing_parent: false,
-        // indent_char: Some(b' '),
-        // indent_size: 2,
-        // newline: Some(b'\n'),
-    };
-
-    let mut output = vec![];
-    let node = SerializableHandle::from(dom.document.clone());
-
-    if let Err(err) = serialize(&mut output, &node, opts) {
-        log::error!("failed to prettify html: {err}");
-        return;
-    }
-
-    match String::from_utf8(output) {
-        Ok(pretty_html) => {
-            // Sets the new pretty html
-            *html = pretty_html
-        }
-        Err(err) => {
-            log::error!("failed to prettify html: {err}")
         }
     }
 }
