@@ -7,8 +7,14 @@ use yew::BaseComponent;
 
 /// Represents a nested route in a `App`.
 pub struct AppScope<C> {
+    // Inner server routes
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) server_router: HashMap<String, Route>,
+
+    // Inner page router
     pub(crate) page_router: HashMap<String, ClientPageRoute>,
+
+    //
     _marker: PhantomData<C>,
 }
 
@@ -16,6 +22,7 @@ impl<C> AppScope<C> {
     /// Creates a new nested route.
     pub fn new() -> Self {
         AppScope {
+            #[cfg(not(target_arch = "wasm32"))]
             server_router: HashMap::new(),
             page_router: HashMap::new(),
             _marker: PhantomData,
