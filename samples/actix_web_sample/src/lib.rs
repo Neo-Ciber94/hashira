@@ -56,7 +56,7 @@ pub struct HelloPageProps {
 #[yew::function_component]
 pub fn HelloPage(props: &HelloPageProps) -> yew::Html {
     yew::html! {
-        <h1>{format!("Hello {}?", props.name)}</h1>
+        <h1>{format!("Hello {}, how r ya?", props.name)}</h1>
     }
 }
 
