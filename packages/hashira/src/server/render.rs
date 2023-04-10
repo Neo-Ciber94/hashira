@@ -3,6 +3,7 @@ use std::sync::Arc;
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::error_router::ErrorRouter;
 use crate::app::router::PageRouterWrapper;
+use crate::components::id::ComponentId;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
     HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
@@ -74,20 +75,21 @@ where
     }
 
     let props_json = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
-
+    let component_id = ComponentId::of::<COMP>();
     let page_error = error.map(|e| PageError {
         status: e.status(),
         message: e.message().map(|s| s.to_owned()),
     });
 
     let page_data = PageData {
-        component_name: std::any::type_name::<COMP>().to_string(),
+        id: component_id.clone(),
         props: props_json.clone(),
         path: path.clone(),
         error: page_error.clone(),
     };
 
     let page_props = PageProps {
+        id: component_id,
         path: path.clone(),
         error: page_error,
         props_json: props_json.clone(),

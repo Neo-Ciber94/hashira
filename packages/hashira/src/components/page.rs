@@ -7,9 +7,14 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
+use super::id::ComponentId;
+
 /// The props for the current page.
 #[derive(PartialEq, Properties)]
 pub struct PageProps {
+    /// The id of the current page component.
+    pub id: ComponentId,
+
     /// The path of the request
     pub path: String,
 
@@ -31,7 +36,6 @@ pub fn Page<ROOT>(props: &PageProps) -> Html
 where
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
-    let path = props.path.as_str();
     let router = &props.router;
     let error_router = &props.error_router;
 
@@ -52,12 +56,8 @@ where
         };
     }
 
-    // FIXME: We should use an id instead of the path,
-    // that way the server can respond with any component
-    // and we can figure out what to hydrate by using the `id`
-    match router.recognize(path) {
-        Some(mtch) => {
-            let route = mtch.handler();
+    match router.recognize_by_id(&props.id) {
+        Some(route) => {
             let props = props.props_json.clone();
 
             yew::html! {
@@ -97,14 +97,14 @@ pub struct PageError {
 /// Represents the data of the current page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageData {
+    /// The id of the component of this page.
+    pub id: ComponentId,
+
     /// The path of the component.
     pub path: String,
 
     /// An error that ocurred in the route.
     pub error: Option<PageError>,
-
-    /// Component being rendered, (remove?)
-    pub component_name: String,
 
     /// Properties of the current component.
     pub props: serde_json::Value,

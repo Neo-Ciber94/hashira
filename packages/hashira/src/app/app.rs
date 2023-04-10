@@ -7,7 +7,7 @@ use super::{
 use crate::{
     components::{
         error::{ErrorPage, ErrorPageProps, NotFoundPage},
-        RootLayout,
+        RootLayout, id::ComponentId,
     },
     error::Error,
     web::Response,
@@ -312,7 +312,7 @@ where
             path,
             ClientPageRoute {
                 path: path.to_string(),
-                component_id: std::any::type_name::<COMP>().to_owned(),
+                component_id: ComponentId::of::<COMP>(),
                 component: AnyComponent::<serde_json::Value>::new(|props_json| {
                     let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
                         panic!(

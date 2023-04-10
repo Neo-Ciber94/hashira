@@ -1,10 +1,12 @@
+use crate::components::id::ComponentId;
+
 use super::ClientPageRoute;
 use route_recognizer::{Match, Router};
 use std::collections::HashMap;
 use std::{ops::Deref, sync::Arc};
 use yew::Properties;
 
-/// A wrapper arround `PageRouter` to allow it to be used as a `Properties`.
+/// A wrapper around `PageRouter` to allow it to be used as a `Properties`.
 #[derive(Properties)]
 pub struct PageRouterWrapper {
     inner: Arc<PageRouter>,
@@ -42,8 +44,8 @@ impl Clone for PageRouterWrapper {
 
 /// Represents a router for the client.
 pub struct PageRouter {
-    path_to_id: Router<String>,
-    id_to_page: HashMap<String, ClientPageRoute>,
+    path_to_id: Router<ComponentId>,
+    id_to_page: HashMap<ComponentId, ClientPageRoute>,
 }
 
 impl PageRouter {
@@ -57,7 +59,7 @@ impl PageRouter {
 
     /// Adds a route for the given path.
     pub fn add(&mut self, path: &str, dest: ClientPageRoute) {
-        let id = dest.id().to_owned();
+        let id = dest.id().clone();
         self.id_to_page.insert(id.clone(), dest);
         self.path_to_id.add(path, id);
     }
@@ -74,7 +76,7 @@ impl PageRouter {
     }
 
     /// Returns the component with the given id.
-    pub fn recognize_by_id(&self, id: &str) -> Option<&ClientPageRoute> {
+    pub fn recognize_by_id(&self, id: &ComponentId) -> Option<&ClientPageRoute> {
         self.id_to_page.get(id)
     }
 }
