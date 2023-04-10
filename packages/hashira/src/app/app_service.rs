@@ -66,7 +66,20 @@ impl AppService {
     }
 
     /// Process the incoming request and return the response.
-    pub async fn handle(&self, req: Request, path: &str) -> Response {
+    pub async fn handle(&self, req: Request, mut path: &str) -> Response {
+        // We remove the trailing slash from the path,
+        // when adding a path we ensure it cannot end with a slash
+        // and should start with a slash
+
+        path = path.trim();
+
+        // FIXME: Ensure the path always starts with `/`
+        debug_assert!(path.starts_with("/"));
+
+        if path.len() > 1 && path.ends_with("/") {
+            path = path.trim_end_matches("/");
+        }
+
         // Request now is read-only
         let req = Arc::new(req);
 

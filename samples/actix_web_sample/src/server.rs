@@ -1,5 +1,5 @@
 use actix_files::{Files, NamedFile};
-use actix_web::{get, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpServer, Responder, middleware};
 use actix_web_sample_web::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
@@ -23,6 +23,7 @@ where
     // Create and run the server
     HttpServer::new(move || {
         App::new()
+            .wrap(middleware::NormalizePath::trim())
             .service(favicon)
             .service(Files::new(&static_dir, &current_dir))
             .app_data(hashira::<C>())
@@ -33,7 +34,7 @@ where
     .await
 }
 
-#[get("/favicon.ico")]
+#[actix_web::get("/favicon.ico")]
 async fn favicon() -> actix_web::Result<impl Responder> {
     let favicon = NamedFile::open_async("./public/favicon.ico").await?;
     Ok(favicon)
