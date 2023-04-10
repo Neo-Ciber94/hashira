@@ -73,11 +73,15 @@ impl BuildTask {
         public_dir.push(&opts.public_dir);
         log::info!("Preparing public directory: {}", public_dir.display());
 
-        anyhow::ensure!(public_dir.exists(), "Public directory was not found on");
+        if public_dir.exists() {
+            tokio::fs::remove_dir_all(&public_dir)
+                .await
+                .with_context(|| format!("failed to remove dir: {}", public_dir.display()))?;
+        }
 
-        tokio::fs::remove_dir_all(&public_dir)
+        tokio::fs::create_dir_all(public_dir)
             .await
-            .with_context(|| format!("failed to remove dir: {}", public_dir.display()))?;
+            .context("failed to create public directory")?;
 
         Ok(())
     }
