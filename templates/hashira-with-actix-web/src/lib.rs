@@ -24,6 +24,7 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
     }
 }
 
+
 #[derive(PartialEq, Clone, Properties, Serialize, Deserialize)]
 pub struct HomePageProps {
     #[prop_or_default]
@@ -36,6 +37,7 @@ pub fn HomePage(props: &HomePageProps) -> yew::Html {
         <Counter value={props.counter_start}/>
     }
 }
+
 
 // Setup all the components
 pub fn hashira<C>() -> AppService

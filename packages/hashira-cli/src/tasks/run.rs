@@ -65,15 +65,7 @@ impl RunTask {
         let opts = &self.options;
         let build_done_signal = &self.build_done_signal;
         let build_task = BuildTask {
-            options: BuildOptions {
-                public_dir: opts.public_dir.clone(),
-                target_dir: opts.target_dir.clone(),
-                release: opts.release,
-                quiet: opts.quiet,
-                include: opts.include.clone(),
-                allow_include_external: opts.allow_include_external,
-                allow_include_src: opts.allow_include_src,
-            },
+            options: BuildOptions::from(opts),
             interrupt_signal: self.interrupt_signal.clone(),
         };
 

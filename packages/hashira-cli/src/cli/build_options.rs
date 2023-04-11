@@ -1,6 +1,8 @@
 use clap::Args;
 use std::path::PathBuf;
 
+use super::{DevOptions, RunOptions};
+
 // directories and files included as default in the `public_dir` if not valid is specified.
 pub const DEFAULT_INCLUDES: &[&str] = &["public/", "styles/", "favicon.ico"];
 
@@ -70,5 +72,33 @@ impl BuildOptions {
         };
 
         Ok(dir)
+    }
+}
+
+impl From<&DevOptions> for BuildOptions {
+    fn from(dev_opts: &DevOptions) -> Self {
+        Self {
+            target_dir: dev_opts.target_dir.clone(),
+            public_dir: dev_opts.public_dir.clone(),
+            release: dev_opts.release,
+            include: dev_opts.include.clone(),
+            allow_include_external: dev_opts.allow_include_external,
+            allow_include_src: dev_opts.allow_include_src,
+            quiet: dev_opts.quiet,
+        }
+    }
+}
+
+impl From<&RunOptions> for BuildOptions {
+    fn from(dev_opts: &RunOptions) -> Self {
+        Self {
+            target_dir: dev_opts.target_dir.clone(),
+            public_dir: dev_opts.public_dir.clone(),
+            release: dev_opts.release,
+            include: dev_opts.include.clone(),
+            allow_include_external: dev_opts.allow_include_external,
+            allow_include_src: dev_opts.allow_include_src,
+            quiet: dev_opts.quiet,
+        }
     }
 }

@@ -1,6 +1,8 @@
 use clap::Args;
 use std::path::PathBuf;
 
+use super::DevOptions;
+
 #[derive(Args, Debug, Clone)]
 pub struct RunOptions {
     #[arg(short, long, help = "Base directory for the artifacts")]
@@ -82,5 +84,22 @@ impl RunOptions {
         };
 
         Ok(dir)
+    }
+}
+
+impl From<&DevOptions> for RunOptions {
+    fn from(dev_opts: &DevOptions) -> Self {
+        Self {
+            target_dir: dev_opts.target_dir.clone(),
+            public_dir: dev_opts.public_dir.clone(),
+            release: dev_opts.release,
+            include: dev_opts.include.clone(),
+            allow_include_external: dev_opts.allow_include_external,
+            allow_include_src: dev_opts.allow_include_src,
+            quiet: dev_opts.quiet,
+            static_dir: dev_opts.static_dir.clone(),
+            host: dev_opts.host.clone(),
+            port: dev_opts.port,
+        }
     }
 }

@@ -16,16 +16,11 @@ use serde::{Deserialize, Serialize};
 use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
+    sync::Arc,
     time::Duration,
 };
 use tokio::sync::broadcast::{channel, Sender};
 use tokio_stream::wrappers::BroadcastStream;
-
-#[derive(Clone, Debug)]
-enum Notification {
-    Reload,
-    Close,
-}
 
 pub struct DevTask {
     // Options for running the application in watch mode
@@ -37,7 +32,7 @@ pub struct DevTask {
 
 impl DevTask {
     pub fn new(options: DevOptions) -> Self {
-        let (interrupt_signal, _) = channel(1);
+        let (interrupt_signal, _) = channel(8);
         DevTask {
             options,
             interrupt_signal,
@@ -46,21 +41,23 @@ impl DevTask {
 
     pub async fn run(&self) -> anyhow::Result<()> {
         let opts = &self.options;
-        let interrupt_signal = self.interrupt_signal.clone();
+        let (tx_shutdown, _) = channel::<()>(1);
         let (build_done_tx, mut build_done_rx) = channel::<()>(1);
-        let (tx_notify, _rx_notify) = channel::<Notification>(16);
+        let (tx_notify, _rx_notify) = channel::<()>(16);
 
         {
             let tx_notify = tx_notify.clone();
+            let tx_shutdown = tx_shutdown.clone();
             tokio::spawn({
                 async move {
                     tokio::signal::ctrl_c().await.ok();
                     log::info!("Exiting...");
-                    let _ = interrupt_signal.send(());
+                    let _ = tx_shutdown.send(());
                     tx_notify
-                        .send(Notification::Close)
-                        .unwrap_or_else(|_| panic!("failed to send close event"));
+                        .send(())
+                        .unwrap_or_else(|_| panic!("failed to send shutdown signal"));
 
+                    // FIXME: Maybe is redundant to send a shutdown signal if we are exiting the process
                     std::process::exit(0);
                 }
             });
@@ -77,7 +74,7 @@ impl DevTask {
                     }
                     log::debug!("Received build done signal");
 
-                    if let Err(err) = tx_notify.send(Notification::Reload) {
+                    if let Err(err) = tx_notify.send(()) {
                         log::error!("Error sending change event: {err}");
                     }
                 }
@@ -91,7 +88,12 @@ impl DevTask {
         let host = opts.reload_host.as_str();
         let port = opts.reload_port;
 
-        start_server(tx_notify, host, port).await?;
+        let state = State {
+            tx_notify,
+            tx_shutdown,
+        };
+
+        start_server(state, host, port).await?;
         Ok(())
     }
 
@@ -100,7 +102,7 @@ impl DevTask {
 
         let opts = &self.options;
         let interrupt_signal = self.interrupt_signal.clone();
-        let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(4);
+        let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(8);
 
         // Starts the file system watcher
         self.build_watcher(tx_watch)?;
@@ -111,10 +113,14 @@ impl DevTask {
             let build_done_tx = build_done_tx.clone();
             let shutdown_signal = interrupt_signal.clone();
 
-            tokio::spawn(async move {
-                log::debug!("Starting dev...");
-                build_and_run(opts, shutdown_signal, build_done_tx, vec![], true).await;
-            });
+            log::debug!("Starting dev...");
+            tokio::spawn(build_and_run(
+                opts,
+                shutdown_signal,
+                build_done_tx,
+                vec![],
+                true,
+            ));
         }
 
         // Start notifier loop
@@ -122,7 +128,7 @@ impl DevTask {
 
         tokio::task::spawn(async move {
             loop {
-                let shutdown_signal = interrupt_signal.clone();
+                let interrupt_signal = interrupt_signal.clone();
 
                 // Wait for change event
                 let events = rx_watch
@@ -131,15 +137,22 @@ impl DevTask {
                     .expect("failed to read debounce event");
 
                 // Interrupt the current running task
-                let _ = shutdown_signal.send(());
+                let _ = interrupt_signal.send(());
 
                 // Rerun
                 let build_done_tx = build_done_tx.clone();
                 let opts = opts.clone();
 
+                log::info!("Restarting dev...");
                 tokio::spawn(async move {
-                    log::info!("Restarting dev...");
-                    build_and_run(opts, shutdown_signal, build_done_tx, events, false).await;
+                    let mut int = interrupt_signal.subscribe();
+                    tokio::select! {
+                        _ = build_and_run(opts, interrupt_signal, build_done_tx, events, false) => {},
+                        _ = int.recv() => {
+                            log::debug!("Received interrupt!");
+                        }
+
+                    }
                 });
             }
         });
@@ -247,18 +260,7 @@ async fn build_and_run(
 
     // Build task
     let mut run_task = RunTask::with_signal(
-        RunOptions {
-            quiet: opts.quiet,
-            release: opts.release,
-            public_dir: opts.public_dir.clone(),
-            target_dir: opts.target_dir.clone(),
-            include: opts.include.clone(),
-            allow_include_external: opts.allow_include_external,
-            allow_include_src: opts.allow_include_src,
-            host: opts.host.clone(),
-            port: opts.port,
-            static_dir: opts.static_dir.clone(),
-        },
+        RunOptions::from(&opts),
         shutdown_signal.clone(),
         build_done_tx.clone(),
     );
@@ -278,15 +280,21 @@ async fn build_and_run(
     }
 }
 
-async fn start_server(
-    tx_notify: Sender<Notification>,
-    host: &str,
-    port: u16,
-) -> anyhow::Result<()> {
+#[derive(Debug, Serialize, Deserialize)]
+struct ReloadMessage {
+    reload: bool,
+}
+
+struct State {
+    tx_notify: Sender<()>,
+    tx_shutdown: Sender<()>,
+}
+
+async fn start_server(state: State, host: &str, port: u16) -> anyhow::Result<()> {
     // create a router with a websocket handler
     let app = Router::new()
         .route("/ws", get(websocket_handler))
-        .layer(Extension(tx_notify));
+        .layer(Extension(Arc::new(state)));
 
     // parse address
     let addr = format!("{host}:{port}",)
@@ -304,41 +312,38 @@ async fn start_server(
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct ReloadMessage {
-    reload: bool,
-}
-
 // this function handles websocket connections
 async fn websocket_handler(
     upgrade: WebSocketUpgrade,
-    tx_notify: Extension<Sender<Notification>>,
+    state: Extension<Arc<State>>,
 ) -> impl IntoResponse {
     upgrade.on_upgrade(|ws| async move {
         log::debug!("Web socket upgrade");
 
+        let tx_notify = state.tx_notify.clone();
+        let tx_shutdown = state.tx_shutdown.clone();
+
         // split the websocket into a sender and a receiver
         let (mut sender, _receiver) = ws.split();
         let receiver = tx_notify.subscribe();
+        let mut shutdown = tx_shutdown.subscribe();
         let mut stream = BroadcastStream::new(receiver);
 
         loop {
-            if let Some(Ok(event)) = stream.next().await {
-                match event {
-                    Notification::Reload => {
-                        log::debug!("Sending reload message...");
+            tokio::select! {
+                _ = stream.next() => {
+                    log::debug!("Sending reload message...");
 
-                        let json = serde_json::to_string(&ReloadMessage { reload: true })
-                            .expect("Failed to serialize message");
-                        let msg = Message::Text(json);
-                        if let Err(err) = sender.send(msg).await {
-                            log::error!("Failed to send web socket message: {err}");
-                        }
+                    let json = serde_json::to_string(&ReloadMessage { reload: true })
+                        .expect("Failed to serialize message");
+                    let msg = Message::Text(json);
+                    if let Err(err) = sender.send(msg).await {
+                        log::error!("Failed to send web socket message: {err}");
                     }
-                    Notification::Close => {
-                        log::debug!("Closing web socket");
-                        break;
-                    }
+                }
+                _ = shutdown.recv() => {
+                    log::debug!("Closing web socket");
+                    return;
                 }
             }
         }
