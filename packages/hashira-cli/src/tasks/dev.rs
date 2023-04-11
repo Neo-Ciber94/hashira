@@ -32,21 +32,21 @@ pub struct DevTask {
     options: DevOptions,
 
     // Signal used to shutdown the processes
-    shutdown_signal: Sender<()>,
+    interrupt_signal: Sender<()>,
 }
 
 impl DevTask {
     pub fn new(options: DevOptions) -> Self {
-        let (shutdown_signal, _) = channel(1);
+        let (interrupt_signal, _) = channel(1);
         DevTask {
             options,
-            shutdown_signal,
+            interrupt_signal,
         }
     }
 
     pub async fn run(&self) -> anyhow::Result<()> {
         let opts = &self.options;
-        let shutdown_signal = self.shutdown_signal.clone();
+        let interrupt_signal = self.interrupt_signal.clone();
         let (build_done_tx, mut build_done_rx) = channel::<()>(1);
         let (tx_notify, _rx_notify) = channel::<Notification>(16);
 
@@ -56,7 +56,7 @@ impl DevTask {
                 async move {
                     tokio::signal::ctrl_c().await.ok();
                     log::info!("Exiting...");
-                    let _ = shutdown_signal.send(());
+                    let _ = interrupt_signal.send(());
                     tx_notify
                         .send(Notification::Close)
                         .unwrap_or_else(|_| panic!("failed to send close event"));
@@ -99,7 +99,7 @@ impl DevTask {
         log::info!("Starting application watch mode");
 
         let opts = &self.options;
-        let shutdown_signal = self.shutdown_signal.clone();
+        let interrupt_signal = self.interrupt_signal.clone();
         let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(4);
 
         // Starts the file system watcher
@@ -109,7 +109,7 @@ impl DevTask {
         {
             let opts = opts.clone();
             let build_done_tx = build_done_tx.clone();
-            let shutdown_signal = shutdown_signal.clone();
+            let shutdown_signal = interrupt_signal.clone();
 
             tokio::spawn(async move {
                 log::debug!("Starting dev...");
@@ -122,7 +122,7 @@ impl DevTask {
 
         tokio::task::spawn(async move {
             loop {
-                let shutdown_signal = shutdown_signal.clone();
+                let shutdown_signal = interrupt_signal.clone();
 
                 // Wait for change event
                 let events = rx_watch

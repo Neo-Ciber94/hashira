@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use indexmap::IndexMap;
+use std::fmt::Display;
 
 /// Represents a `<link>` element.
 #[derive(Default, Debug, Clone)]
@@ -11,6 +11,14 @@ impl LinkTag {
     /// Constructs an empty `<link>` element.
     pub fn new() -> Self {
         Default::default()
+    }
+
+    /// Constructs a new `<link href='...' rel='stylesheet' type='text/css'>`.
+    pub fn stylesheet(href: impl Into<String>) -> Self {
+        Self::new()
+            .attr("href", href)
+            .attr("rel", "stylesheet")
+            .attr("type", "text/css")
     }
 
     /// Sets an attribute on the `<link>` element.

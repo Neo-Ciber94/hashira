@@ -2,6 +2,7 @@ use crate::cli::{BuildOptions, DEFAULT_INCLUDES};
 use crate::pipelines::css::CssPipeline;
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
+use crate::utils::wait_interruptible;
 use anyhow::Context;
 use std::path::{Path, PathBuf};
 use tokio::process::{Child, Command};
@@ -18,14 +19,14 @@ pub struct BuildTask {
     pub options: BuildOptions,
 
     // A receiver for shutdown the executing process
-    pub shutdown_signal: Option<Sender<()>>,
+    pub interrupt_signal: Option<Sender<()>>,
 }
 
 impl BuildTask {
     pub fn new(options: BuildOptions) -> Self {
         BuildTask {
             options,
-            shutdown_signal: None,
+            interrupt_signal: None,
         }
     }
 
@@ -35,6 +36,8 @@ impl BuildTask {
 
         self.build_server().await?;
         self.build_wasm().await?;
+
+        log::info!("✅ Build done");
         Ok(())
     }
 
@@ -87,82 +90,26 @@ impl BuildTask {
     }
 
     async fn cargo_build_wasm(&self) -> anyhow::Result<()> {
-        let mut spawn = self.spawn_cargo_build_wasm()?;
-
-        let Some(shutdown_signal) = &self.shutdown_signal else {
-            let status = spawn.wait().await?;
-            anyhow::ensure!(status.success(), "failed to build wasm crate");
-            return Ok(());
-        };
-
-        let mut int = shutdown_signal.subscribe();
-        tokio::select! {
-            status = spawn.wait() => {
-                log::debug!("Exited: {status:?}");
-            },
-            ret = int.recv() => {
-                spawn.kill().await?;
-
-                if let Err(err) = ret {
-                    log::error!("failed to kill build wasm task: {err}");
-                }
-            }
-        }
-
+        let spawn = self.spawn_cargo_build_wasm()?;
+        wait_interruptible(spawn, self.interrupt_signal.clone())
+            .await
+            .context("cargo build wasm failed")?;
         Ok(())
     }
 
     async fn wasm_bindgen(&self) -> anyhow::Result<()> {
-        let mut spawn = self.spawn_wasm_bindgen()?;
-
-        let Some(shutdown_signal) = &self.shutdown_signal else {
-            let status = spawn.wait().await?;
-            anyhow::ensure!(status.success(), "failed to build wasm crate");
-            return Ok(());
-        };
-
-        let mut int = shutdown_signal.subscribe();
-
-        tokio::select! {
-            status = spawn.wait() => {
-                log::debug!("Exited: {status:?}");
-            },
-            ret = int.recv() => {
-                spawn.kill().await?;
-
-                if let Err(err) = ret {
-                    log::error!("failed to kill build wasm-bingen task: {err}");
-                }
-            }
-        }
-
+        let spawn = self.spawn_wasm_bindgen()?;
+        wait_interruptible(spawn, self.interrupt_signal.clone())
+            .await
+            .context("failed to run wasm-bindgen")?;
         Ok(())
     }
 
     async fn cargo_build(&self) -> anyhow::Result<()> {
-        let mut spawn = self.spawn_cargo_build()?;
-
-        let Some(shutdown_signal) = &self.shutdown_signal else {
-            let status = spawn.wait().await?;
-            anyhow::ensure!(status.success(), "failed to build server");
-            return Ok(());
-        };
-
-        let mut int = shutdown_signal.subscribe();
-
-        tokio::select! {
-            status = spawn.wait() => {
-                log::debug!("Exited: {status:?}");
-            },
-            ret = int.recv() => {
-                spawn.kill().await?;
-
-                if let Err(err) = ret {
-                    log::error!("failed to kill cargo build task: {err}");
-                }
-            }
-        }
-
+        let spawn = self.spawn_cargo_build()?;
+        wait_interruptible(spawn, self.interrupt_signal.clone())
+            .await
+            .context("cargo build failed")?;
         Ok(())
     }
 
@@ -473,7 +420,6 @@ fn is_inside_src(base: &Path, path: &Path) -> anyhow::Result<bool> {
 fn get_pipelines() -> Vec<Box<dyn Pipeline + Send>> {
     vec![
         Box::new(CssPipeline),
-
         // The last pipeline should always be the copy files
         Box::new(CopyFilesPipeline),
     ]

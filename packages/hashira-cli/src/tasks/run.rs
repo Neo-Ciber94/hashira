@@ -1,5 +1,8 @@
 use super::build::BuildTask;
-use crate::cli::{BuildOptions, RunOptions};
+use crate::{
+    cli::{BuildOptions, RunOptions},
+    utils::wait_interruptible,
+};
 use anyhow::Context;
 use std::{collections::HashMap, path::PathBuf};
 use tokio::{
@@ -15,7 +18,7 @@ pub struct RunTask {
     pub envs: HashMap<&'static str, String>,
 
     // A receiver for shutdown the executing process
-    pub shutdown_signal: Option<Sender<()>>,
+    pub interrupt_signal: Option<Sender<()>>,
 
     // Notify when a build is done
     pub build_done_signal: Option<Sender<()>>,
@@ -26,7 +29,7 @@ impl RunTask {
         RunTask {
             options,
             envs: Default::default(),
-            shutdown_signal: None,
+            interrupt_signal: None,
             build_done_signal: None,
         }
     }
@@ -39,7 +42,7 @@ impl RunTask {
         RunTask {
             options,
             envs: Default::default(),
-            shutdown_signal: Some(shutdown_signal),
+            interrupt_signal: Some(shutdown_signal),
             build_done_signal: Some(build_done_signal),
         }
     }
@@ -71,47 +74,26 @@ impl RunTask {
                 allow_include_external: opts.allow_include_external,
                 allow_include_src: opts.allow_include_src,
             },
-            shutdown_signal: self.shutdown_signal.clone(),
+            interrupt_signal: self.interrupt_signal.clone(),
         };
 
         build_task.run().await?;
 
         if let Some(build_done_signal) = build_done_signal {
-            let _ = build_done_signal.send(());
+            //let _ = build_done_signal.send(());
+            if let Err(err) = build_done_signal.send(()) {
+                log::error!("Error sending build done signal: {err}");
+            }
         }
 
         Ok(())
     }
 
     async fn exec(&self) -> anyhow::Result<()> {
-        let mut spawn = self.spawn_server_exec()?;
-
-        // Run normally if not shutdown signal is send
-        let Some(shutdown_signal) = &self.shutdown_signal else {
-            let status = spawn.wait().await?;
-            anyhow::ensure!(status.success(), "failed to run server");
-            return Ok(());
-        };
-
-        // Run until a shutdown signal is received
-        let mut int = shutdown_signal.subscribe();
-
-        tokio::select! {
-            status = spawn.wait() => {
-                log::debug!("Exited");
-                anyhow::ensure!(status?.success(), "failed to run server");
-            },
-            ret = int.recv() => {
-                log::debug!("Interrupt signal received");
-                spawn.kill().await?;
-
-                if let Err(err) = ret {
-                    log::error!("failed to kill server: {err}");
-                }
-            }
-        }
-
-        log::debug!("Exit run");
+        let spawn = self.spawn_server_exec()?;
+        wait_interruptible(spawn, self.interrupt_signal.clone())
+            .await
+            .context("failed to run")?;
         Ok(())
     }
 

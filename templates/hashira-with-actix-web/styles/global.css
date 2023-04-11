@@ -1,0 +1,63 @@
+@import url("./animations.css");
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+header nav {
+  padding: 10px;
+  width: 100%;
+  box-shadow: 0px 4px 10px gray;
+}
+
+nav a {
+  font-family: monospace;
+  font-size: 16px;
+  text-decoration: none;
+  color: black;
+}
+
+nav a:hover {
+  color: rgb(91, 91, 91);
+}
+
+.counter {
+  margin: 20px;
+}
+
+.counter {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  font-family: monospace;
+}
+
+.counter button {
+  border-radius: 100%;
+  border: none;
+  background-color: lightblue;
+  color: black;
+  font-size: 25px;
+  min-width: 50px;
+  min-height: 50px;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.counter button:hover {
+  background-color: rgb(161, 162, 241);
+}
+
+.counter span {
+  font-size: 25px;
+  width: 150px;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}

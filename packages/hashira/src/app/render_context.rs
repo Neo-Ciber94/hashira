@@ -1,13 +1,14 @@
 use super::{layout_data::PageLayoutData, RequestContext};
-use crate::error::Error;
 pub use crate::error::ResponseError;
+use crate::{error::Error, web::Request};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
     web::Response,
 };
 use http::StatusCode;
+use route_recognizer::Params;
 use serde::Serialize;
-use std::{marker::PhantomData, ops::Deref};
+use std::marker::PhantomData;
 use yew::{html::ChildrenProps, BaseComponent};
 
 /// Contains information about the current request and allow the render the page to respond.
@@ -32,6 +33,21 @@ impl<COMP, C> RenderContext<COMP, C>
 where
     C: BaseComponent<Properties = ChildrenProps>,
 {
+    /// Returns the path of the current request.
+    pub fn path(&self) -> &str {
+        self.context.path()
+    }
+
+    /// Returns the current request.
+    pub fn request(&self) -> &Request {
+        self.context.request()
+    }
+
+    /// Returns the matching params of the route.
+    pub fn params(&self) -> &Params {
+        self.context.params()
+    }
+
     /// Adds a `<title>` element to the page head.
     pub fn add_title(&mut self, title: impl Into<String>) {
         self.layout_data.add_title(title);
@@ -50,14 +66,6 @@ where
     /// Adds a `<script>` element to the page body.
     pub fn add_scripts(&mut self, scripts: PageScripts) {
         self.layout_data.add_scripts(scripts);
-    }
-}
-
-impl<COMP, C> Deref for RenderContext<COMP, C> {
-    type Target = RequestContext;
-
-    fn deref(&self) -> &Self::Target {
-        &self.context
     }
 }
 
