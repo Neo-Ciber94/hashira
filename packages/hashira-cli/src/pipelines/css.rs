@@ -6,17 +6,18 @@ use tokio::{
     io::{BufReader, BufWriter},
 };
 
-/// A pipeline to copy files, this should be the last pipeline to run
-/// because it matches any file.
-pub struct CopyFilesPipeline;
-impl Pipeline for CopyFilesPipeline {
+pub struct CssPipeline;
+impl Pipeline for CssPipeline {
     fn name(&self) -> &'static str {
-        "copy files"
+        "css"
     }
 
-    fn can_process(&self, _: &PipelineFile, _: &std::path::Path) -> bool {
-        // We can copy any file
-        true
+    fn can_process(&self, src: &PipelineFile, _: &Path) -> bool {
+        if let Some(ext) = src.file.extension().and_then(|s| s.to_str()) {
+            ext == "css"
+        } else {
+            false
+        }
     }
 
     fn spawn(
@@ -24,12 +25,14 @@ impl Pipeline for CopyFilesPipeline {
         files: Vec<PipelineFile>,
         dest_dir: &Path,
     ) -> tokio::task::JoinHandle<anyhow::Result<()>> {
-        tokio::spawn(copy_files(files, dest_dir.to_path_buf()))
+        tokio::spawn(compile_css(files, dest_dir.to_path_buf()))
     }
 }
 
-async fn copy_files(files: Vec<PipelineFile>, dest_dir: PathBuf) -> anyhow::Result<()> {
-    for target in files {
+async fn compile_css(css_files: Vec<PipelineFile>, dest_dir: PathBuf) -> anyhow::Result<()> {
+    // TODO: We should minify the css files and handle @import, here we are just copying
+
+    for target in css_files {
         let PipelineFile { base_dir, file } = target;
         let file_name = file.file_name().unwrap();
 

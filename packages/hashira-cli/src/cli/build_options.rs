@@ -2,7 +2,7 @@ use clap::Args;
 use std::path::PathBuf;
 
 // directories and files included as default in the `public_dir` if not valid is specified.
-pub const DEFAULT_INCLUDES: &[&str] = &["public/*", "styles/*", "favicon.ico"];
+pub const DEFAULT_INCLUDES: &[&str] = &["public/", "styles/", "favicon.ico"];
 
 #[derive(Args, Debug, Clone)]
 pub struct BuildOptions {
@@ -26,9 +26,9 @@ pub struct BuildOptions {
 
     #[arg(
         long,
-        help = "A list of files to copy in the `public_dir`, by default include the `public/`, `styles/` and `favicon.ico` if found"
+        help = "A list of files and directories to copy in the `public_dir`, by default include the `public/`, `styles/` and `favicon.ico` if found"
     )]
-    pub include: Vec<String>,
+    pub include: Vec<PathBuf>,
 
     #[arg(
         long,

@@ -72,7 +72,9 @@ impl DevTask {
             let tx_notify = tx_notify.clone();
             tokio::spawn(async move {
                 loop {
-                    build_done_rx.recv().await.unwrap();
+                    if let Err(err) = build_done_rx.recv().await {
+                        log::error!("{err}");
+                    }
                     log::debug!("Received build done signal");
 
                     if let Err(err) = tx_notify.send(Notification::Reload) {

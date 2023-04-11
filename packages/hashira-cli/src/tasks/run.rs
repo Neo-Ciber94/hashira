@@ -77,10 +77,7 @@ impl RunTask {
         build_task.run().await?;
 
         if let Some(build_done_signal) = build_done_signal {
-            //let _ = build_done_signal.send(());
-            build_done_signal
-                .send(())
-                .expect("failed to send build done signal");
+            let _ = build_done_signal.send(());
         }
 
         Ok(())
