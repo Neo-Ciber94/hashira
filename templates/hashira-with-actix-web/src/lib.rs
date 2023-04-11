@@ -7,7 +7,6 @@ use hashira::{
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, BaseComponent, Properties};
-
 use crate::components::Counter;
 
 #[yew::function_component]

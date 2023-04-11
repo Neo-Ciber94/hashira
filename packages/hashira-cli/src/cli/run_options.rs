@@ -1,6 +1,5 @@
 use clap::Args;
 use std::path::PathBuf;
-
 use super::DevOptions;
 
 #[derive(Args, Debug, Clone)]
@@ -68,23 +67,6 @@ pub struct RunOptions {
 
     #[arg(long, help = "The port to run the application", default_value_t = 5000)]
     pub port: u16,
-}
-
-impl RunOptions {
-    pub fn profile_target_dir(&self) -> anyhow::Result<PathBuf> {
-        let mut dir = match &self.target_dir {
-            Some(path) => path.clone(),
-            None => crate::utils::get_target_dir()?,
-        };
-
-        if self.release {
-            dir.push("release");
-        } else {
-            dir.push("debug");
-        };
-
-        Ok(dir)
-    }
 }
 
 impl From<&DevOptions> for RunOptions {

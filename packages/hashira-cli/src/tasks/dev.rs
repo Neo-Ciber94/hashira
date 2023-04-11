@@ -1,5 +1,5 @@
 use crate::{
-    cli::{DevOptions, RunOptions},
+    cli::{BuildOptions, DevOptions},
     tasks::run::RunTask,
 };
 use anyhow::Context;
@@ -24,7 +24,19 @@ use tokio_stream::wrappers::BroadcastStream;
 
 pub struct DevTask {
     // Options for running the application in watch mode
-    options: DevOptions,
+    options: Arc<BuildOptions>,
+
+    pub static_dir: String,
+
+    pub host: String,
+
+    pub port: u16,
+
+    pub reload_host: String,
+
+    pub reload_port: u16,
+
+    pub ignore: Vec<PathBuf>,
 
     // Signal used to shutdown the processes
     interrupt_signal: Sender<()>,
@@ -34,13 +46,18 @@ impl DevTask {
     pub fn new(options: DevOptions) -> Self {
         let (interrupt_signal, _) = channel(8);
         DevTask {
-            options,
+            options: Arc::new(BuildOptions::from(&options)),
             interrupt_signal,
+            host: options.host,
+            port: options.port,
+            static_dir: options.static_dir,
+            reload_host: options.reload_host,
+            reload_port: options.reload_port,
+            ignore: options.ignore,
         }
     }
 
     pub async fn run(&self) -> anyhow::Result<()> {
-        let opts = &self.options;
         let (tx_shutdown, _) = channel::<()>(1);
         let (build_done_tx, mut build_done_rx) = channel::<()>(1);
         let (tx_notify, _rx_notify) = channel::<()>(16);
@@ -85,8 +102,8 @@ impl DevTask {
         self.start_watcher(build_done_tx)?;
 
         // Starts the server
-        let host = opts.reload_host.as_str();
-        let port = opts.reload_port;
+        let host = self.reload_host.as_str();
+        let port = self.reload_port;
 
         let state = State {
             tx_notify,
@@ -100,32 +117,30 @@ impl DevTask {
     fn start_watcher(&self, build_done_tx: Sender<()>) -> anyhow::Result<()> {
         log::info!("Starting application watch mode");
 
-        let opts = &self.options;
+        let build_options = &self.options;
         let interrupt_signal = self.interrupt_signal.clone();
         let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(8);
+
+        let opts = Arc::new(BuildAndRunOptions {
+            build_options: build_options.clone(),
+            ignore: self.ignore.clone(),
+            host: self.host.clone(),
+            port: self.port,
+            reload_host: self.reload_host.clone(),
+            reload_port: self.reload_port.clone(),
+            static_dir: self.static_dir.clone(),
+            build_done_signal: build_done_tx.clone(),
+            interrupt_signal: interrupt_signal.clone(),
+        });
 
         // Starts the file system watcher
         self.build_watcher(tx_watch)?;
 
         // Starts
-        {
-            let opts = opts.clone();
-            let build_done_tx = build_done_tx.clone();
-            let shutdown_signal = interrupt_signal.clone();
-
-            log::debug!("Starting dev...");
-            tokio::spawn(build_and_run(
-                opts,
-                shutdown_signal,
-                build_done_tx,
-                vec![],
-                true,
-            ));
-        }
+        log::debug!("Starting dev...");
+        tokio::spawn(build_and_run(opts.clone(), vec![], true));
 
         // Start notifier loop
-        let opts = opts.clone();
-
         tokio::task::spawn(async move {
             loop {
                 let interrupt_signal = interrupt_signal.clone();
@@ -140,14 +155,13 @@ impl DevTask {
                 let _ = interrupt_signal.send(());
 
                 // Rerun
-                let build_done_tx = build_done_tx.clone();
                 let opts = opts.clone();
 
                 log::info!("Restarting dev...");
                 tokio::spawn(async move {
                     let mut int = interrupt_signal.subscribe();
                     tokio::select! {
-                        _ = build_and_run(opts, interrupt_signal, build_done_tx, events, false) => {},
+                        _ = build_and_run(opts, events, false) => {},
                         _ = int.recv() => {
                             log::debug!("Received interrupt!");
                         }
@@ -197,16 +211,17 @@ impl DevTask {
     }
 }
 
-fn remove_ignored_paths(opts: &DevOptions, events: &mut Vec<DebouncedEvent>) {
+fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEvent>) {
     if events.is_empty() {
         return;
     }
 
+    let target_dir = opts.build_options.target_dir.clone();
     let mut ignore_paths = opts.ignore.clone();
     ignore_paths.push(PathBuf::from(".git"));
     ignore_paths.push(PathBuf::from(".gitignore"));
 
-    if let Some(target_dir) = opts.target_dir.clone() {
+    if let Some(target_dir) = target_dir.clone() {
         ignore_paths.push(target_dir);
     }
 
@@ -242,10 +257,20 @@ fn remove_ignored_paths(opts: &DevOptions, events: &mut Vec<DebouncedEvent>) {
     }
 }
 
+struct BuildAndRunOptions {
+    build_options: Arc<BuildOptions>,
+    ignore: Vec<PathBuf>,
+    host: String,
+    port: u16,
+    reload_host: String,
+    reload_port: u16,
+    static_dir: String,
+    build_done_signal: Sender<()>,
+    interrupt_signal: Sender<()>,
+}
+
 async fn build_and_run(
-    opts: DevOptions,
-    shutdown_signal: Sender<()>,
-    build_done_tx: Sender<()>,
+    opts: Arc<BuildAndRunOptions>,
     mut events: Vec<DebouncedEvent>,
     is_first_run: bool,
 ) {
@@ -259,11 +284,15 @@ async fn build_and_run(
     log::info!("change detected on paths: {:?}", paths);
 
     // Build task
-    let mut run_task = RunTask::with_signal(
-        RunOptions::from(&opts),
-        shutdown_signal.clone(),
-        build_done_tx.clone(),
-    );
+    let mut run_task = RunTask {
+        envs: Default::default(),
+        host: opts.host.clone(),
+        port: opts.port.clone(),
+        static_dir: opts.static_dir.clone(),
+        options: opts.build_options.clone(),
+        build_done_signal: Some(opts.build_done_signal.clone()),
+        interrupt_signal: Some(opts.interrupt_signal.clone()),
+    };
 
     // TODO: We should decide what operation to perform depending on the files affected,
     // if only a `public_dir` file changed, maybe we don't need to rebuild the entire app

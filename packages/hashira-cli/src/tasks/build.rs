@@ -5,6 +5,7 @@ use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use crate::utils::wait_interruptible;
 use anyhow::Context;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::process::{Child, Command};
 use tokio::sync::broadcast::Sender;
 
@@ -16,7 +17,7 @@ struct IncludeFiles {
 
 pub struct BuildTask {
     // Options used to build the project
-    pub options: BuildOptions,
+    pub options: Arc<BuildOptions>,
 
     // A receiver for shutdown the executing process
     pub interrupt_signal: Option<Sender<()>>,
@@ -25,7 +26,7 @@ pub struct BuildTask {
 impl BuildTask {
     pub fn new(options: BuildOptions) -> Self {
         BuildTask {
-            options,
+            options: Arc::new(options),
             interrupt_signal: None,
         }
     }
