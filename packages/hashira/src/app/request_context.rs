@@ -4,12 +4,7 @@ use crate::web::Request;
 use route_recognizer::Params;
 use std::sync::Arc;
 
-// FIXME: We could use Arc<T> or Rc<T> to wrap, this type is read-only,
-// except for the render methods
-
-/// Contains information about the current request.
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-pub struct RequestContext {
+struct RequestContextInner {
     path: String,
     params: Params,
     client_router: PageRouterWrapper,
@@ -28,6 +23,14 @@ pub struct RequestContext {
     render_layout: RenderLayout,
 }
 
+// FIXME: We could let this type to be cloneable after we move the `render_layout` from here
+
+/// Contains information about the current request.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub struct RequestContext {
+    inner: Arc<RequestContextInner>,
+}
+
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 impl RequestContext {
     pub fn new(
@@ -39,7 +42,7 @@ impl RequestContext {
         path: String,
         params: Params,
     ) -> Self {
-        RequestContext {
+        let inner = RequestContextInner {
             path,
             params,
             error,
@@ -47,6 +50,10 @@ impl RequestContext {
             client_router,
             error_router,
             render_layout,
+        };
+
+        RequestContext {
+            inner: Arc::new(inner),
         }
     }
 }
@@ -54,17 +61,17 @@ impl RequestContext {
 impl RequestContext {
     /// Returns the path of the current request.
     pub fn path(&self) -> &str {
-        self.path.as_str()
+        self.inner.path.as_str()
     }
 
     /// Returns the current request.
     pub fn request(&self) -> &Request {
-        self.request.as_ref()
+        self.inner.request.as_ref()
     }
 
     /// Returns the matching params of the route.
     pub fn params(&self) -> &Params {
-        &self.params
+        &self.inner.params
     }
 
     /// Renders the given component to html.
@@ -96,16 +103,12 @@ impl RequestContext {
             server::{render_page_to_html, render_to_static_html, RenderPageOptions},
         };
 
-        let Self {
-            client_router,
-            error_router,
-            error,
-            render_layout,
-            path: _,
-            request: _,
-            params: _,
-        } = clone_request_context(&self);
+        let client_router = self.inner.client_router.clone();
+        let error_router = self.inner.error_router.clone();
+        let error = self.inner.error.clone();
+        let render_layout = self.inner.render_layout.clone();
 
+        //
         let request_context = clone_request_context(&self);
         let layout_ctx = LayoutContext::new(self, head.clone());
         let layout_node = render_layout(layout_ctx).await;
@@ -127,14 +130,9 @@ impl RequestContext {
     }
 }
 
+// A helper method to prevent cloning the context directly
 pub(crate) fn clone_request_context(ctx: &RequestContext) -> RequestContext {
     RequestContext {
-        params: ctx.params.clone(),
-        request: ctx.request.clone(),
-        path: ctx.path.clone(),
-        render_layout: ctx.render_layout.clone(),
-        error: ctx.error.clone(),
-        client_router: ctx.client_router.clone(),
-        error_router: ctx.error_router.clone(),
+        inner: ctx.inner.clone(),
     }
 }
