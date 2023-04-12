@@ -1,11 +1,14 @@
 #[doc(hidden)]
 pub mod serde;
 
-mod response_ext;
+mod into_response;
 mod request_ext;
+mod response_ext;
 
-pub use response_ext::*;
+pub(crate) mod extensions;
+pub use into_response::*;
 pub use request_ext::*;
+pub use response_ext::*;
 
 /// The body of a request/response.
 pub type Body = bytes::Bytes;

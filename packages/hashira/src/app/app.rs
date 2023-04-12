@@ -11,7 +11,7 @@ use crate::{
         RootLayout,
     },
     error::Error,
-    web::Response,
+    web::{IntoResponse, Response},
 };
 use http::status::StatusCode;
 use route_recognizer::Router;
@@ -23,23 +23,26 @@ use yew::{html::ChildrenProps, BaseComponent, Html};
 pub type RenderLayout = Rc<dyn Fn(LayoutContext) -> BoxFuture<Html>>;
 
 /// A handler for a request.
-pub struct PageHandler(
-    pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Result<Response, Error>>>,
-);
+pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response>>);
 
 impl PageHandler {
-    pub fn new<H, Fut>(handler: H) -> Self
+    pub fn new<H, R, Fut>(handler: H) -> Self
     where
         H: Fn(RequestContext) -> Fut + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        R: IntoResponse,
+        Fut: Future<Output = R> + 'static,
     {
         PageHandler(Box::new(move |ctx| {
-            let fut = handler(ctx);
-            Box::pin(fut)
+            let ret = handler(ctx);
+            Box::pin(async move {
+                let ret = ret.await;
+                let res = ret.into_response();
+                res
+            })
         }))
     }
 
-    pub fn call(&self, ctx: RequestContext) -> BoxFuture<Result<Response, Error>> {
+    pub fn call(&self, ctx: RequestContext) -> BoxFuture<Response> {
         (self.0)(ctx)
     }
 }
@@ -184,15 +187,12 @@ where
         use super::layout_data::PageLayoutData;
 
         self.add_component::<COMP>(path);
-        self.route(Route::get(
-            path,
-            PageHandler::new(move |ctx| {
-                let layout_data = PageLayoutData::new();
-                let render_ctx = RenderContext::new(ctx, layout_data);
-                let fut = handler(render_ctx);
-                async { fut.await }
-            }),
-        ))
+        self.route(Route::get(path, move |ctx| {
+            let layout_data = PageLayoutData::new();
+            let render_ctx = RenderContext::new(ctx, layout_data);
+            let fut = handler(render_ctx);
+            async { fut.await }
+        }))
     }
 
     /// Adds a page for the given route.

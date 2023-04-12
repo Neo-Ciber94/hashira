@@ -49,23 +49,19 @@ impl<C> AppScope<C> {
     where
         COMP: BaseComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>) -> Fut + Clone + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         use super::layout_data::PageLayoutData;
-        use crate::app::PageHandler;
 
         self.add_component::<COMP>(path);
 
-        self.route(Route::get(
-            path,
-            PageHandler(Box::new(move |ctx| {
-                let layout_data = PageLayoutData::new();
-                let render_ctx = RenderContext::new(ctx, layout_data);
-                let res = handler(render_ctx);
-                Box::pin(res)
-            })),
-        ))
+        self.route(Route::get(path, move |ctx| {
+            let layout_data = PageLayoutData::new();
+            let render_ctx = RenderContext::new(ctx, layout_data);
+            let fut = handler(render_ctx);
+            async { fut.await }
+        }))
     }
 
     /// Adds a page for the given route.

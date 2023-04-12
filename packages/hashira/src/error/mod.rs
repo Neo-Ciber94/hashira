@@ -23,6 +23,10 @@ impl ResponseError {
     /// Constructs a new `ResponseError` from an error.
     pub fn from_error<E: Into<Error>>(error: E) -> Self {
         let err = error.into();
+
+        // TODO: Check for other error types like io::Error and serde::Error
+        // to return a correct status code
+
         match err.downcast::<ResponseError>() {
             Ok(err) => *err,
             Err(err) => ResponseError {
@@ -49,6 +53,11 @@ impl ResponseError {
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
     }
+
+    /// Returns the status code and error message of this error.
+    pub fn into_parts(self) -> (StatusCode, Option<String>) {
+        (self.status, self.message)
+    }
 }
 
 impl Display for ResponseError {
@@ -71,5 +80,29 @@ impl From<StatusCode> for ResponseError {
             status,
             message: None,
         }
+    }
+}
+
+impl From<(StatusCode, Option<String>)> for ResponseError {
+    fn from((status, message): (StatusCode, Option<String>)) -> Self {
+        ResponseError { status, message }
+    }
+}
+
+impl<'a> From<(StatusCode, Option<&'a str>)> for ResponseError {
+    fn from((status, message): (StatusCode, Option<&'a str>)) -> Self {
+        (status, message.to_owned()).into()
+    }
+}
+
+impl From<(StatusCode, String)> for ResponseError {
+    fn from((status, message): (StatusCode, String)) -> Self {
+        (status, Some(message)).into()
+    }
+}
+
+impl<'a> From<(StatusCode, &'a str)> for ResponseError {
+    fn from((status, message): (StatusCode, &'a str)) -> Self {
+        (status, Some(message)).into()
     }
 }

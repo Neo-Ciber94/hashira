@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     error::ResponseError,
-    web::{Request, Response, ResponseExt},
+    web::{extensions::ErrorMessage, IntoResponse, Request, Response, ResponseExt},
 };
 use http::{status, StatusCode};
 use route_recognizer::{Params, Router};
@@ -17,6 +17,11 @@ pub(crate) struct AppServiceInner {
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
+}
+
+enum ResponseErrorSource {
+    Response(Response),
+    Error(ResponseError),
 }
 
 /// The root service used for handling the `hashira` application.
@@ -95,24 +100,40 @@ impl AppService {
                 let params = mtch.params().clone();
                 let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
 
-                match route.handler().call(ctx).await {
-                    Ok(res) => res,
-                    Err(err) => {
-                        self.handle_error(ResponseError::from_error(err), path, req)
-                            .await
-                    }
+                let res = route.handler().call(ctx).await;
+                let status = res.status();
+                if status.is_client_error() || status.is_server_error() {
+                    return self
+                        .handle_error(path, req, ResponseErrorSource::Response(res))
+                        .await;
                 }
+
+                res
             }
             Err(_) => {
-                self.handle_error(ResponseError::from_status(StatusCode::NOT_FOUND), path, req)
-                    .await
+                let src =
+                    ResponseErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
+                self.handle_error(path, req, src).await
             }
         }
     }
 
-    async fn handle_error(&self, err: ResponseError, path: &str, req: Arc<Request>) -> Response {
-        let status = err.status();
+    async fn handle_error(
+        &self,
+        path: &str,
+        req: Arc<Request>,
+        src: ResponseErrorSource,
+    ) -> Response {
+        let err = match src {
+            ResponseErrorSource::Response(res) => {
+                let status = res.status();
+                let message = res.extensions().get::<ErrorMessage>().map(|e| e.0.clone());
+                ResponseError::from((status, message))
+            }
+            ResponseErrorSource::Error(res) => res,
+        };
 
+        let status = err.status();
         match self.0.server_error_router.recognize_error(&status) {
             Some(error_handler) => {
                 let params = Params::new();
@@ -134,7 +155,7 @@ impl AppService {
                     },
                 }
             }
-            None => Response::with_status(status),
+            None => err.into_response(),
         }
     }
 }
