@@ -1,7 +1,6 @@
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext, Route},
     server::Metadata,
-    web::{Response, ResponseExt},
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, use_state, BaseComponent, Properties};
@@ -75,8 +74,7 @@ where
                 let body = ctx.request().body().to_vec();
                 let str = String::from_utf8(body)?;
                 let rev = str.chars().rev().collect::<String>();
-                let res = Response::text(rev);
-                Ok::<_, hashira::error::Error>(res)
+                Ok::<_, hashira::error::Error>(rev)
             })),
         )
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {

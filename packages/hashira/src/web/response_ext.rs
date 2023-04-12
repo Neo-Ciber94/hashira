@@ -1,53 +1,14 @@
-use super::{Body, Response};
-use bytes::Bytes;
+use super::Response;
 use cookie::Cookie;
 use http::{
-    header::{InvalidHeaderValue, CONTENT_TYPE, COOKIE, LOCATION, SET_COOKIE},
+    header::{InvalidHeaderValue, COOKIE, SET_COOKIE},
     HeaderValue, StatusCode,
 };
-use serde::Serialize;
-use std::fmt::Display;
-
-impl std::error::Error for RedirectionError {}
-
-#[derive(Debug)]
-pub enum RedirectionError {
-    InvalidStatus(StatusCode),
-    InvalidHeader(InvalidHeaderValue),
-}
-
-impl Display for RedirectionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RedirectionError::InvalidStatus(status) => {
-                write!(f, "{} is not a valid redirection status code", status)
-            }
-            RedirectionError::InvalidHeader(err) => write!(f, "{err}"),
-        }
-    }
-}
 
 /// Extension methods for `Response`.
-pub trait ResponseExt {
-    /// Create a `text/plain` response.
-    fn text(text: impl Into<String>) -> Response;
-
-    /// Create a `text/html` response.
-    fn html(body: impl Into<Bytes>) -> Response;
-
-    /// Creates a `application/json` response.
-    fn json<T>(data: T) -> Result<Response, serde_json::Error>
-    where
-        T: Serialize;
-
-    /// Creates a redirection response to the given location.
-    fn redirect(
-        location: impl Into<String>,
-        status: StatusCode,
-    ) -> Result<Response, RedirectionError>;
-
-    /// Creates a response with the given status code.
-    fn with_status(status: StatusCode) -> Response;
+pub trait ResponseExt<B> {
+    /// Creates a response with the given status code and body.
+    fn with_status(status: StatusCode, body: B) -> Response<B>;
 
     // TODO: Return an iterator instead.
     /// Returns all the cookies in the request.
@@ -60,63 +21,15 @@ pub trait ResponseExt {
     fn del_cookie(&mut self, name: &str) -> usize;
 }
 
-impl ResponseExt for Response {
-    fn text(text: impl Into<String>) -> Response {
-        let body = Body::from(text.into());
+impl<B> ResponseExt<B> for Response<B> {
+    fn with_status(status: StatusCode, body: B) -> Response<B> {
         let mut res = Response::new(body);
-        res.headers_mut().append(
-            CONTENT_TYPE,
-            HeaderValue::from_static("text/plain; charset=utf-8"),
-        );
-        res
-    }
-
-    fn html(body: impl Into<Bytes>) -> Response {
-        let mut res = Response::new(body.into());
-        res.headers_mut().append(
-            CONTENT_TYPE,
-            HeaderValue::from_static("text/html; charset=utf-8"),
-        );
-        res
-    }
-
-    fn json<T>(data: T) -> Result<Response, serde_json::Error>
-    where
-        T: Serialize,
-    {
-        let json = serde_json::to_string(&data)?;
-        let body = Body::from(json);
-        let mut res = Response::new(body);
-        res.headers_mut().append(
-            CONTENT_TYPE,
-            HeaderValue::from_static("application/json; charset=utf-8"),
-        );
-        Ok(res)
-    }
-
-    fn redirect(
-        location: impl Into<String>,
-        status: StatusCode,
-    ) -> Result<Response, RedirectionError> {
-        if !status.is_redirection() {
-            return Err(RedirectionError::InvalidStatus(status));
-        }
-
-        let location =
-            HeaderValue::try_from(location.into()).map_err(RedirectionError::InvalidHeader)?;
-        let mut res = Response::new(Body::new());
-        res.headers_mut().append(LOCATION, location);
-        Ok(res)
-    }
-
-    fn with_status(status: StatusCode) -> Response {
-        let mut res = Response::new(Body::new());
         *res.status_mut() = status;
         res
     }
 
     fn cookies(&self) -> Result<Vec<Cookie>, cookie::ParseError> {
-        // Copied from: https://docs.rs/actix-web/latest/src/actix_web/request.rs.html#315-334
+        // Adapted from: https://docs.rs/actix-web/latest/src/actix_web/request.rs.html#315-334
 
         let mut cookies = Vec::new();
 

@@ -17,7 +17,7 @@ pub enum QueryParamsError {
 }
 
 /// Extension methods for `Request`.
-pub trait RequestExt {
+pub trait RequestExt<B> {
     // TODO: Return an iterator instead.
     /// Get all the request cookies.
     fn cookies(&self) -> Result<Vec<Cookie>, cookie::ParseError>;
@@ -29,7 +29,7 @@ pub trait RequestExt {
     fn query_params<Q: DeserializeOwned>(&self) -> Result<Q, QueryParamsError>;
 }
 
-impl RequestExt for Request {
+impl<B> RequestExt<B> for Request<B> {
     fn cookies(&self) -> Result<Vec<Cookie>, cookie::ParseError> {
         // Copied from: https://docs.rs/actix-web/latest/src/actix_web/request.rs.html#315-334
 

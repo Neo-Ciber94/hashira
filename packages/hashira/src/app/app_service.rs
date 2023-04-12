@@ -5,9 +5,9 @@ use super::{
 };
 use crate::{
     error::ResponseError,
-    web::{extensions::ErrorMessage, IntoResponse, Request, Response, ResponseExt},
+    web::{extensions::ErrorMessage, IntoResponse, Request, Response, ResponseExt, Body},
 };
-use http::{status, StatusCode};
+use http::StatusCode;
 use route_recognizer::{Params, Router};
 use std::{rc::Rc, sync::Arc};
 
@@ -19,7 +19,7 @@ pub(crate) struct AppServiceInner {
     pub(crate) client_error_router: Arc<ErrorRouter>,
 }
 
-enum ResponseErrorSource {
+enum ErrorSource {
     Response(Response),
     Error(ResponseError),
 }
@@ -94,7 +94,7 @@ impl AppService {
                 let method = req.method().into();
 
                 if !route.method().matches(&method) {
-                    return Response::with_status(StatusCode::METHOD_NOT_ALLOWED);
+                    return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
                 }
 
                 let params = mtch.params().clone();
@@ -104,33 +104,27 @@ impl AppService {
                 let status = res.status();
                 if status.is_client_error() || status.is_server_error() {
                     return self
-                        .handle_error(path, req, ResponseErrorSource::Response(res))
+                        .handle_error(path, req, ErrorSource::Response(res))
                         .await;
                 }
 
                 res
             }
             Err(_) => {
-                let src =
-                    ResponseErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
+                let src = ErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
                 self.handle_error(path, req, src).await
             }
         }
     }
 
-    async fn handle_error(
-        &self,
-        path: &str,
-        req: Arc<Request>,
-        src: ResponseErrorSource,
-    ) -> Response {
+    async fn handle_error(&self, path: &str, req: Arc<Request>, src: ErrorSource) -> Response {
         let err = match src {
-            ResponseErrorSource::Response(res) => {
+            ErrorSource::Response(res) => {
                 let status = res.status();
                 let message = res.extensions().get::<ErrorMessage>().map(|e| e.0.clone());
                 ResponseError::from((status, message))
             }
-            ResponseErrorSource::Error(res) => res,
+            ErrorSource::Error(res) => res,
         };
 
         let status = err.status();
@@ -142,15 +136,9 @@ impl AppService {
                 match error_handler.call(ctx, status).await {
                     Ok(res) => res,
                     Err(err) => match err.downcast::<ResponseError>() {
-                        Ok(err) => {
-                            let mut res = Response::text(err.to_string());
-                            *res.status_mut() = err.status();
-                            res
-                        }
+                        Ok(err) => (*err).into_response(),
                         Err(err) => {
-                            let mut res = Response::text(err.to_string());
-                            *res.status_mut() = status::StatusCode::INTERNAL_SERVER_ERROR;
-                            res
+                            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
                         }
                     },
                 }

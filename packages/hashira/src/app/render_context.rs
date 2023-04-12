@@ -81,26 +81,29 @@ where
     where
         COMP::Properties: Default,
     {
-        use crate::web::ResponseExt;
+        use crate::web::IntoResponse;
 
         let layout_data = self.layout_data;
-        let html = self.context.render::<COMP, C>(layout_data).await;
 
-        Response::html(html)
+        // Return a text/html response
+        self.context
+            .render::<COMP, C>(layout_data)
+            .await
+            .into_response()
     }
 
     /// Render the page with the given props and returns the `text/html` response.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
-        use crate::web::ResponseExt;
+        use crate::web::IntoResponse;
 
         let layout_data = self.layout_data;
-        let html = self
-            .context
-            .render_with_props::<COMP, C>(props, layout_data)
-            .await;
 
-        Response::html(html)
+        // Return a text/html response
+        self.context
+            .render_with_props::<COMP, C>(props, layout_data)
+            .await
+            .into_response()
     }
 
     /// Render the page and returns the `text/html` response.
