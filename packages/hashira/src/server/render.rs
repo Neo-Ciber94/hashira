@@ -20,6 +20,12 @@ use yew::{
 };
 
 pub struct RenderPageOptions {
+    // Represents the shell where the page will be rendered
+    pub(crate) index_html: String,
+
+    // Contains the the `<head>` elements
+    pub(crate) head: PageHead,
+
     // The context of the current request
     pub(crate) request_context: RequestContext,
 
@@ -31,12 +37,6 @@ pub struct RenderPageOptions {
 
     // The router used to render errors
     pub(crate) error_router: Arc<ErrorRouter>,
-
-    // Represents the shell where the page will be rendered
-    pub(crate) index_html: String,
-
-    // Contains the the `<head>` elements
-    pub(crate) head: PageHead,
 }
 
 pub async fn render_page_to_html<COMP, ROOT>(
@@ -74,6 +74,7 @@ where
         message: e.message().map(|s| s.to_owned()),
     });
 
+    // The data inserted in the html
     let page_data = PageData {
         id: component_id.clone(),
         props: props_json.clone(),
@@ -81,6 +82,7 @@ where
         error: page_error.clone(),
     };
 
+    // The props passed to the container page
     let page_props = PageProps {
         id: component_id,
         path: path.to_owned(),
