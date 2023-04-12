@@ -4,6 +4,9 @@ use crate::web::Request;
 use route_recognizer::Params;
 use std::sync::Arc;
 
+// FIXME: We could use Arc<T> or Rc<T> to wrap, this type is read-only,
+// except for the render methods
+
 /// Contains information about the current request.
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub struct RequestContext {
@@ -11,19 +14,24 @@ pub struct RequestContext {
     params: Params,
     client_router: PageRouterWrapper,
     error_router: Arc<ErrorRouter>,
-    request: Option<Arc<Request>>,
+    request: Arc<Request>,
     error: Option<ResponseError>,
 
     // TODO: The request context should no had access to the `RenderLayout`,
     // but currently this is the way we get the layout to the `RenderContext`,
-    // we should find other way around that
+    // we should find other way around that.
+    //
+    // What is preventing to move this from here is: App::page,
+    // in that method we should create a RenderContext which require the RequestContext,
+    // from that render context is where the actual component is being rendered,
+    // where the call ends here
     render_layout: RenderLayout,
 }
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 impl RequestContext {
     pub fn new(
-        request: Option<Arc<Request>>,
+        request: Arc<Request>,
         client_router: PageRouterWrapper,
         error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
@@ -51,9 +59,7 @@ impl RequestContext {
 
     /// Returns the current request.
     pub fn request(&self) -> &Request {
-        self.request
-            .as_ref()
-            .expect("no request is being processed")
+        self.request.as_ref()
     }
 
     /// Returns the matching params of the route.
@@ -63,14 +69,14 @@ impl RequestContext {
 
     /// Renders the given component to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP, C>(self, layout_data: super::layout_data::PageLayoutData) -> String
+    pub async fn render<COMP, C>(self, head: super::page_head::PageHead) -> String
     where
         COMP: yew::BaseComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         let props = COMP::Properties::default();
-        self.render_with_props::<COMP, C>(props, layout_data).await
+        self.render_with_props::<COMP, C>(props, head).await
     }
 
     /// Renders the given component with the specified props to html.
@@ -78,7 +84,7 @@ impl RequestContext {
     pub async fn render_with_props<COMP, C>(
         self,
         props: COMP::Properties,
-        layout_data: super::layout_data::PageLayoutData,
+        head: super::page_head::PageHead,
     ) -> String
     where
         COMP: yew::BaseComponent,
@@ -93,46 +99,42 @@ impl RequestContext {
         let Self {
             client_router,
             error_router,
-            path,
             error,
-            request,
-            params,
             render_layout,
-        } = self;
+            path: _,
+            request: _,
+            params: _,
+        } = clone_request_context(&self);
 
-        let layout_request_ctx = RequestContext {
-            params,
-            request,
-            path: path.clone(),
-            render_layout: render_layout.clone(),
-            error: None, // FIXME: Pass error to layout?
-            client_router: client_router.clone(),
-            error_router: error_router.clone(),
-        };
-
-        let layout_ctx = LayoutContext::new(layout_request_ctx, layout_data.clone());
-
+        let request_context = clone_request_context(&self);
+        let layout_ctx = LayoutContext::new(self, head.clone());
         let layout_node = render_layout(layout_ctx).await;
         let index_html = render_to_static_html(move || layout_node).await;
 
-        // Get page title, links, meta and scripts
-        let (title, metadata, links, scripts) = layout_data.into_parts();
-
         let options = RenderPageOptions {
-            title,
-            path,
+            head,
             error,
             index_html,
-            metadata,
-            links,
-            scripts,
             router: client_router,
             error_router,
+            request_context,
         };
 
         let result_html = render_page_to_html::<COMP, C>(props, options)
             .await
             .unwrap();
         result_html
+    }
+}
+
+pub(crate) fn clone_request_context(ctx: &RequestContext) -> RequestContext {
+    RequestContext {
+        params: ctx.params.clone(),
+        request: ctx.request.clone(),
+        path: ctx.path.clone(),
+        render_layout: ctx.render_layout.clone(),
+        error: ctx.error.clone(),
+        client_router: ctx.client_router.clone(),
+        error_router: ctx.error_router.clone(),
     }
 }

@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     error::ResponseError,
-    web::{extensions::ErrorMessage, IntoResponse, Request, Response, ResponseExt, Body},
+    web::{Body, IntoResponse, Request, Response, ResponseExt},
 };
 use http::StatusCode;
 use route_recognizer::{Params, Router};
@@ -45,7 +45,7 @@ impl AppService {
         let error_router = self.0.client_error_router.clone();
 
         RequestContext::new(
-            Some(request),
+            request,
             client_router,
             error_router,
             error,
@@ -121,7 +121,13 @@ impl AppService {
         let err = match src {
             ErrorSource::Response(res) => {
                 let status = res.status();
-                let message = res.extensions().get::<ErrorMessage>().map(|e| e.0.clone());
+
+                // We get the message from the error which may be attached to the response
+                let message = res
+                    .extensions()
+                    .get::<ResponseError>()
+                    .and_then(|e| e.message())
+                    .map(|s| s.to_owned());
                 ResponseError::from((status, message))
             }
             ErrorSource::Error(res) => res,

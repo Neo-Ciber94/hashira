@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::error_router::ErrorRouter;
+use crate::app::page_head::PageHead;
 use crate::app::router::PageRouterWrapper;
+use crate::app::RequestContext;
 use crate::components::id::ComponentId;
 use crate::components::{
     Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
@@ -18,11 +20,8 @@ use yew::{
 };
 
 pub struct RenderPageOptions {
-    // The title of the page
-    pub(crate) title: Option<String>,
-
-    // The current route path of the component to render
-    pub(crate) path: String,
+    // The context of the current request
+    pub(crate) request_context: RequestContext,
 
     // An error that occurred in the route
     pub(crate) error: Option<ResponseError>,
@@ -36,14 +35,8 @@ pub struct RenderPageOptions {
     // Represents the shell where the page will be rendered
     pub(crate) index_html: String,
 
-    // The `<meta>` tags of the page to render
-    pub(crate) metadata: Metadata,
-
-    // the <link> tags of the page to render
-    pub(crate) links: PageLinks,
-
-    // the <script> tags of the page to render
-    pub(crate) scripts: PageScripts,
+    // Contains the the `<head>` elements
+    pub(crate) head: PageHead,
 }
 
 pub async fn render_page_to_html<COMP, ROOT>(
@@ -56,16 +49,16 @@ where
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let RenderPageOptions {
-        title,
-        path,
+        head,
         error,
         index_html,
-        metadata,
-        links,
-        scripts,
         router,
         error_router,
+        request_context,
     } = options;
+
+    let path = request_context.path();
+    let (title, metadata, links, scripts) = head.into_parts();
 
     // The base layout
     let mut result_html = index_html;
@@ -84,13 +77,13 @@ where
     let page_data = PageData {
         id: component_id.clone(),
         props: props_json.clone(),
-        path: path.clone(),
+        path: path.to_owned(),
         error: page_error.clone(),
     };
 
     let page_props = PageProps {
         id: component_id,
-        path: path.clone(),
+        path: path.to_owned(),
         error: page_error,
         props_json: props_json.clone(),
         router,

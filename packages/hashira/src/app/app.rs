@@ -184,12 +184,12 @@ where
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
-        use super::layout_data::PageLayoutData;
+        use super::page_head::PageHead;
 
         self.add_component::<COMP>(path);
         self.route(Route::get(path, move |ctx| {
-            let layout_data = PageLayoutData::new();
-            let render_ctx = RenderContext::new(ctx, layout_data);
+            let head = PageHead::new();
+            let render_ctx = RenderContext::new(ctx, head);
             let fut = handler(render_ctx);
             async { fut.await }
         }))
@@ -217,12 +217,12 @@ where
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
-        use super::layout_data::PageLayoutData;
+        use super::page_head::PageHead;
 
         self.server_error_router.add(
             status,
             ErrorPageHandler::new(move |ctx, status| {
-                let layout_data = PageLayoutData::new();
+                let layout_data = PageHead::new();
                 let render_ctx = RenderContext::new(ctx, layout_data);
                 let fut = handler(render_ctx, status);
                 async { fut.await }
@@ -254,11 +254,11 @@ where
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
-        use super::layout_data::PageLayoutData;
+        use super::page_head::PageHead;
 
         self.server_error_router
             .add_fallback(ErrorPageHandler(Box::new(move |ctx, status| {
-                let layout_data = PageLayoutData::new();
+                let layout_data = PageHead::new();
                 let render_ctx = RenderContext::new(ctx, layout_data);
                 let res = handler(render_ctx, status);
                 Box::pin(res)

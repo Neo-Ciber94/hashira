@@ -52,12 +52,12 @@ impl<C> AppScope<C> {
         H: Fn(RenderContext<COMP, C>) -> Fut + Clone + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
-        use super::layout_data::PageLayoutData;
+        use super::page_head::PageHead;
 
         self.add_component::<COMP>(path);
 
         self.route(Route::get(path, move |ctx| {
-            let layout_data = PageLayoutData::new();
+            let layout_data = PageHead::new();
             let render_ctx = RenderContext::new(ctx, layout_data);
             let fut = handler(render_ctx);
             async { fut.await }

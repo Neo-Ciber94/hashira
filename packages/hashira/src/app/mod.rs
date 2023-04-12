@@ -2,7 +2,6 @@ mod app;
 mod app_scope;
 mod app_service;
 mod layout_context;
-mod layout_data;
 mod render_context;
 mod request_context;
 mod route;
@@ -18,6 +17,9 @@ pub use route::*;
 //
 pub mod error_router;
 pub mod router;
+
+//
+pub(crate) mod page_head;
 
 // A convenient boxed future.
 pub(crate) type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output = T>>>;

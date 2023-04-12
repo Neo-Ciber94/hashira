@@ -5,7 +5,6 @@ mod into_response;
 mod request_ext;
 mod response_ext;
 
-pub(crate) mod extensions;
 pub use into_response::*;
 pub use request_ext::*;
 pub use response_ext::*;

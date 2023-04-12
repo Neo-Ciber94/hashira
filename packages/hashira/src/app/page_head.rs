@@ -15,9 +15,9 @@ pub(crate) struct Inner {
     pub(crate) scripts: PageScripts,
 }
 
-pub struct PageLayoutData(Arc<Mutex<Inner>>); // 
+pub struct PageHead(Arc<Mutex<Inner>>); // 
 
-impl PageLayoutData {
+impl PageHead {
     pub(crate) fn new() -> Self {
         let inner = Arc::new(Mutex::new(Inner {
             title: None,
@@ -26,7 +26,7 @@ impl PageLayoutData {
             scripts: Default::default(),
         }));
 
-        PageLayoutData(inner)
+        PageHead(inner)
     }
 
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
@@ -60,14 +60,14 @@ impl PageLayoutData {
     }
 }
 
-impl Clone for PageLayoutData {
+impl Clone for PageHead {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl Default for PageLayoutData {
+impl Default for PageHead {
     fn default() -> Self {
-        PageLayoutData::new()
+        PageHead::new()
     }
 }

@@ -1,16 +1,16 @@
-use super::{layout_data::PageLayoutData, RequestContext};
+use super::{page_head::PageHead, RequestContext};
 use crate::server::{Metadata, PageLinks, PageScripts};
 use std::ops::Deref;
 
 /// The context used to render the layout.
 pub struct LayoutContext {
     context: RequestContext,
-    layout_data: PageLayoutData,
+    layout_data: PageHead,
 }
 
 impl LayoutContext {
     /// Constructs a new `LayoutContext`.
-    pub fn new(context: RequestContext, layout_data: PageLayoutData) -> Self {
+    pub fn new(context: RequestContext, layout_data: PageHead) -> Self {
         LayoutContext {
             context,
             layout_data,

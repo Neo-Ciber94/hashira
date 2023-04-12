@@ -1,4 +1,4 @@
-use super::{layout_data::PageLayoutData, RequestContext};
+use super::{page_head::PageHead, RequestContext};
 pub use crate::error::ResponseError;
 use crate::{error::Error, web::Request};
 use crate::{
@@ -14,17 +14,17 @@ use yew::{html::ChildrenProps, BaseComponent};
 /// Contains information about the current request and allow the render the page to respond.
 pub struct RenderContext<COMP, C> {
     context: RequestContext,
-    layout_data: PageLayoutData,
+    head: PageHead,
     _marker: PhantomData<(COMP, C)>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl<COMP, C> RenderContext<COMP, C> {
     /// Constructs a new render context from the given request context.
-    pub(crate) fn new(context: RequestContext, layout_data: PageLayoutData) -> Self {
+    pub(crate) fn new(context: RequestContext, head: PageHead) -> Self {
         RenderContext {
             context,
-            layout_data,
+            head,
             _marker: PhantomData,
         }
     }
@@ -50,22 +50,22 @@ where
 
     /// Adds a `<title>` element to the page head.
     pub fn add_title(&mut self, title: impl Into<String>) {
-        self.layout_data.add_title(title);
+        self.head.add_title(title);
     }
 
     /// Adds a `<meta>` element to the page head.
     pub fn add_metadata(&mut self, metadata: Metadata) {
-        self.layout_data.add_metadata(metadata);
+        self.head.add_metadata(metadata);
     }
 
     /// Adds a `<link>` element to the page head.
     pub fn add_links(&mut self, links: PageLinks) {
-        self.layout_data.add_links(links);
+        self.head.add_links(links);
     }
 
     /// Adds a `<script>` element to the page body.
     pub fn add_scripts(&mut self, scripts: PageScripts) {
-        self.layout_data.add_scripts(scripts);
+        self.head.add_scripts(scripts);
     }
 }
 
@@ -83,7 +83,7 @@ where
     {
         use crate::web::IntoResponse;
 
-        let layout_data = self.layout_data;
+        let layout_data = self.head;
 
         // Return a text/html response
         self.context
@@ -97,7 +97,7 @@ where
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
         use crate::web::IntoResponse;
 
-        let layout_data = self.layout_data;
+        let layout_data = self.head;
 
         // Return a text/html response
         self.context

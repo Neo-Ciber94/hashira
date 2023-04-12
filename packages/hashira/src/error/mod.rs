@@ -1,7 +1,6 @@
 use http::StatusCode;
 use std::fmt::Display;
-
-use crate::web::{IntoResponse, Response, extensions::ErrorMessage};
+use crate::web::{IntoResponse, Response};
 
 /// A convenient error type.
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -78,16 +77,16 @@ impl std::error::Error for ResponseError {}
 
 impl IntoResponse for ResponseError {
     fn into_response(self) -> Response {
+        let this = self.clone();
         let (status, message) = self.into_parts();
-        match message {
-            Some(msg) => {
-                let error_message = ErrorMessage(msg.clone());
-                let mut res = (status, msg).into_response();
-                res.extensions_mut().insert(error_message);
-                res
-            }
+        let mut res = match message {
+            Some(msg) => (status, msg).into_response(),
             None => status.into_response(),
-        }
+        };
+
+        // We also insert the error as an extension in the response
+        res.extensions_mut().insert(this);
+        res
     }
 }
 
