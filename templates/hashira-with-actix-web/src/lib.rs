@@ -1,12 +1,12 @@
 mod components;
 
-use crate::components::Counter;
+use crate::components::{root_layout, Counter, HashiraActixWeb};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
     server::{LinkTag, Metadata, PageLinks},
 };
 use serde::{Deserialize, Serialize};
-use yew::{html::ChildrenProps, BaseComponent, Properties};
+use yew::{function_component, html::ChildrenProps, BaseComponent, Properties};
 
 #[yew::function_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
@@ -14,6 +14,7 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
        <>
         <header>
             <nav>
+                <a href="/">{"Home"}</a>
                 <a href="/counter">{"Counter"}</a>
             </nav>
         </header>
@@ -22,16 +23,27 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
     }
 }
 
+#[function_component]
+pub fn HomePage() -> yew::Html {
+    yew::html! {
+        <div class="container">
+            <HashiraActixWeb/>
+        </div>
+    }
+}
+
 #[derive(PartialEq, Clone, Properties, Serialize, Deserialize)]
-pub struct HomePageProps {
+pub struct CounterPageProps {
     #[prop_or_default]
     counter_start: i32,
 }
 
 #[yew::function_component]
-pub fn HomePage(props: &HomePageProps) -> yew::Html {
+pub fn CounterPage(props: &CounterPageProps) -> yew::Html {
     yew::html! {
-        <Counter value={props.counter_start}/>
+        <div class="container">
+            <Counter value={props.counter_start}/>
+        </div>
     }
 }
 
@@ -42,12 +54,21 @@ where
 {
     HashiraApp::<C>::new()
         .use_default_error_pages()
+        .layout(root_layout)
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
+            ctx.add_title("Hashira");
+            ctx.add_links(PageLinks::new().add(LinkTag::stylesheet("/static/global.css")));
+            ctx.add_metadata(Metadata::new().description("An Hashira x Actix Web example"));
+
+            let res = ctx.render().await;
+            Ok(res)
+        })
+        .page("/counter", |mut ctx: RenderContext<CounterPage, C>| async {
             ctx.add_title("Hashira | Counter");
             ctx.add_links(PageLinks::new().add(LinkTag::stylesheet("/static/global.css")));
             ctx.add_metadata(Metadata::new().description("A counter made with hashira actix-web"));
 
-            let props = yew::props! { HomePageProps {} };
+            let props = yew::props! { CounterPageProps {} };
             let res = ctx.render_with_props(props).await;
             Ok(res)
         })

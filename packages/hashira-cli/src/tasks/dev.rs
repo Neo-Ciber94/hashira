@@ -21,7 +21,7 @@ use std::{
 };
 use tokio::sync::{
     broadcast::{channel, Sender},
-    Mutex, Semaphore,
+    Mutex,
 };
 use tokio_stream::wrappers::BroadcastStream;
 
