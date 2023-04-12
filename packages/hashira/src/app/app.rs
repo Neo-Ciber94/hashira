@@ -20,7 +20,7 @@ use std::{future::Future, marker::PhantomData, rc::Rc, sync::Arc};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
 /// A function that renders the base `index.html`.
-pub type RenderLayout = Rc<dyn Fn(LayoutContext) -> BoxFuture<Html>>;
+pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxFuture<Html> + Send + Sync>;
 
 /// A handler for a request.
 pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response>>);
@@ -124,10 +124,10 @@ where
     /// ```
     pub fn layout<F, Fut>(mut self, layout: F) -> Self
     where
-        F: Fn(LayoutContext) -> Fut + 'static,
+        F: Fn(LayoutContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Html> + 'static,
     {
-        self.layout = Some(Rc::new(move |ctx| {
+        self.layout = Some(Arc::new(move |ctx| {
             let fut = layout(ctx);
             Box::pin(fut)
         }));
@@ -331,7 +331,7 @@ where
             _marker: _,
         } = self;
 
-        let layout = layout.unwrap_or_else(|| Rc::new(render_default_layout));
+        let layout = layout.unwrap_or_else(|| Arc::new(render_default_layout));
         let client_router = PageRouterWrapper::from(client_router);
         let client_error_router = Arc::from(client_error_router);
         let inner = AppServiceInner {

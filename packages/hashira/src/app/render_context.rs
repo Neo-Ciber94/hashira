@@ -86,10 +86,8 @@ where
         let layout_data = self.head;
 
         // Return a text/html response
-        self.context
-            .render::<COMP, C>(layout_data)
-            .await
-            .into_response()
+        let html = self.context.render::<COMP, C>(layout_data).await;
+        crate::web::Html(html).into_response()
     }
 
     /// Render the page with the given props and returns the `text/html` response.
@@ -100,10 +98,12 @@ where
         let layout_data = self.head;
 
         // Return a text/html response
-        self.context
+        let html = self
+            .context
             .render_with_props::<COMP, C>(props, layout_data)
-            .await
-            .into_response()
+            .await;
+
+        crate::web::Html(html).into_response()
     }
 
     /// Render the page and returns the `text/html` response.

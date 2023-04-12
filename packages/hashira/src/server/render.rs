@@ -11,6 +11,7 @@ use crate::components::{
     HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
     HASHIRA_TITLE_MARKER,
 };
+use crate::context::ServerContext;
 use crate::error::ResponseError;
 use serde::Serialize;
 use yew::{
@@ -90,6 +91,7 @@ where
         props_json: props_json.clone(),
         router,
         error_router,
+        server_context: ServerContext::new(request_context),
     };
 
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);

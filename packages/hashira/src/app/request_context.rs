@@ -130,6 +130,13 @@ impl RequestContext {
     }
 }
 
+// Required to use the `RequestContext` in a context
+impl PartialEq for RequestContext {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
 // A helper method to prevent cloning the context directly
 pub(crate) fn clone_request_context(ctx: &RequestContext) -> RequestContext {
     RequestContext {

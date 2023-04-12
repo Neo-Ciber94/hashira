@@ -1,5 +1,6 @@
 use crate::app::AppService;
 use crate::components::{PageData, PageProps};
+use crate::context::ServerContext;
 use yew::html::ChildrenProps;
 use yew::BaseComponent;
 use yew::Renderer;
@@ -26,6 +27,7 @@ where
         error: page_data.error,
         error_router,
         router,
+        server_context: ServerContext::default(),
     };
 
     let root = find_element_by_id(HASHIRA_ROOT);

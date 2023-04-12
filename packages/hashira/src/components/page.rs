@@ -1,3 +1,4 @@
+use crate::context::{ServerContext, ServerContextProvider};
 use crate::{
     app::{error_router::ErrorRouter, router::PageRouterWrapper},
     components::error::{ErrorPage, NotFoundPage},
@@ -10,7 +11,7 @@ use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properti
 use super::id::ComponentId;
 
 /// The props for the current page.
-#[derive(PartialEq, Properties)]
+#[derive(Clone, PartialEq, Properties)]
 pub struct PageProps {
     /// The id of the current page component.
     pub id: ComponentId,
@@ -29,10 +30,27 @@ pub struct PageProps {
 
     /// The router to render the error pages
     pub error_router: Arc<ErrorRouter>,
+
+    /// Provides info about the current request
+    pub server_context: ServerContext,
 }
 
 #[function_component]
 pub fn Page<ROOT>(props: &PageProps) -> Html
+where
+    ROOT: BaseComponent<Properties = ChildrenProps>,
+{
+    let props = props.clone();
+
+    yew::html! {
+        <ServerContextProvider server_context={props.server_context.clone()}>
+            <PageRouter<ROOT> ..props/>
+        </ServerContextProvider>
+    }
+}
+
+#[function_component]
+pub fn PageRouter<ROOT>(props: &PageProps) -> Html
 where
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
