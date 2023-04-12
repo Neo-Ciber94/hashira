@@ -29,7 +29,7 @@ impl LinkTag {
             .attr("type", "text/css")
     }
 
-    /// Create a <script> tag to insert on the `<head>`.
+    /// Create a empty `<script>` tag to insert on the `<head>`.
     pub fn script() -> Self {
         LinkTag {
             attrs: Default::default(),
