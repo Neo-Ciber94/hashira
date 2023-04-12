@@ -15,7 +15,7 @@ pub(crate) struct Inner {
     pub(crate) scripts: PageScripts,
 }
 
-pub struct PageLayoutData(Arc<Mutex<Inner>>);
+pub struct PageLayoutData(Arc<Mutex<Inner>>); // 
 
 impl PageLayoutData {
     pub(crate) fn new() -> Self {
