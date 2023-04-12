@@ -131,6 +131,18 @@ impl Metadata {
     }
 }
 
+impl Display for Metadata {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tags_html = self
+            .meta_tags()
+            .map(|meta| meta.to_string())
+            .collect::<Vec<_>>();
+
+        let meta = tags_html.join("\n");
+        write!(f, "{meta}")
+    }
+}
+
 /// Converts an element to a `MetaTag`.
 pub trait IntoMetaTag {
     /// Returns a `MetaTag` from this element.

@@ -128,18 +128,12 @@ fn insert_title(html: &mut String, title: Option<String>) {
 }
 
 fn insert_metadata(html: &mut String, metadata: Metadata) {
-    let tags_html = metadata
-        .meta_tags()
-        .map(|meta| meta.to_string())
-        .collect::<Vec<_>>();
-
-    let tags = tags_html.join("\n");
+    let tags = metadata.to_string();
     *html = html.replace(HASHIRA_META_MARKER, &tags);
 }
 
 fn insert_links(html: &mut String, links: PageLinks) {
-    let tags_html = links.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-    let links = tags_html.join("\n");
+    let links = links.to_string();
     *html = html.replace(HASHIRA_LINKS_MARKER, &links);
 }
 
@@ -152,7 +146,7 @@ where
     COMP: BaseComponent,
     COMP::Properties: Serialize,
 {
-    let mut tags_html = scripts.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+    let mut tags_html = vec![scripts.to_string()];
 
     // Adds the page data
     let json_data = serde_json::to_string(&page_data).map_err(RenderError::InvalidProps)?;
@@ -174,8 +168,8 @@ where
         ));
     }
 
-    let links = tags_html.join("\n");
-    *html = html.replace(HASHIRA_SCRIPTS_MARKER, &links);
+    let scripts = tags_html.join("\n");
+    *html = html.replace(HASHIRA_SCRIPTS_MARKER, &scripts);
     Ok(())
 }
 

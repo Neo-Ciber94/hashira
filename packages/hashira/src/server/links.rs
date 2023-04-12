@@ -1,10 +1,18 @@
 use indexmap::IndexMap;
 use std::fmt::Display;
 
+#[derive(Default, Debug, Clone)]
+enum LinkTagKind {
+    #[default]
+    Link,
+    Script,
+}
+
 /// Represents a `<link>` element.
 #[derive(Default, Debug, Clone)]
 pub struct LinkTag {
     attrs: IndexMap<String, String>,
+    kind: LinkTagKind,
 }
 
 impl LinkTag {
@@ -19,6 +27,14 @@ impl LinkTag {
             .attr("href", href)
             .attr("rel", "stylesheet")
             .attr("type", "text/css")
+    }
+
+    /// Create a <script> tag to insert on the `<head>`.
+    pub fn script() -> Self {
+        LinkTag {
+            attrs: Default::default(),
+            kind: LinkTagKind::Script,
+        }
     }
 
     /// Sets an attribute on the `<link>` element.
@@ -36,7 +52,10 @@ impl Display for LinkTag {
             .map(|(key, value)| format!("{}=\"{}\"", key, value))
             .collect::<String>();
 
-        write!(f, "<link {attrs}/>")
+        match self.kind {
+            LinkTagKind::Link => write!(f, "<link {attrs}/>"),
+            LinkTagKind::Script => write!(f, "<script {attrs}/>"),
+        }
     }
 }
 
@@ -66,5 +85,13 @@ impl PageLinks {
     /// Adds other page links.
     pub fn extend(&mut self, other: PageLinks) {
         self.tags.extend(other.tags);
+    }
+}
+
+impl Display for PageLinks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tags_html = self.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        let links = tags_html.join("\n");
+        write!(f, "{links}")
     }
 }

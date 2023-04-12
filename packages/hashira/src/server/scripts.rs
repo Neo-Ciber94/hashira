@@ -1,12 +1,12 @@
 use indexmap::IndexMap;
 use std::fmt::Display;
 
-/// Represents a `<script>` element.
+/// Represents a `<script>` element to insert on the `<body>`.
+/// If you want to insert a script on the head, use [`LinkTag#script`]
 #[derive(Default, Debug, Clone)]
 pub struct ScriptTag {
     attrs: IndexMap<String, String>,
     content: Option<String>,
-    // TODO: priority: Option<ScriptPriority>, BeforeInteractive, AfterInteractive?
 }
 
 impl ScriptTag {
@@ -66,5 +66,13 @@ impl PageScripts {
 
     pub fn extend(&mut self, other: PageScripts) {
         self.tags.extend(other.tags);
+    }
+}
+
+impl Display for PageScripts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tags_html = self.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        let scripts = tags_html.join("\n");
+        write!(f, "{scripts}")
     }
 }
