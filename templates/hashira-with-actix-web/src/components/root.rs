@@ -1,6 +1,6 @@
 use hashira::{
     app::LayoutContext,
-    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title},
+    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title}, web::RequestExt,
 };
 use serde::Deserialize;
 use yew::Html;
@@ -12,12 +12,7 @@ struct Theme {
 
 pub async fn root_layout(ctx: LayoutContext) -> Html {
     let mut dark_class = None;
-    if let Some(theme) = ctx
-        .request()
-        .uri()
-        .query()
-        .and_then(|q| serde_qs::from_str::<Theme>(q).ok())
-    {
+    if let Some(theme) = ctx.request().query_params::<Theme>().ok() {
         if theme.dark {
             dark_class = Some("dark");
         }

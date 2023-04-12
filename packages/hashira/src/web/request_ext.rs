@@ -1,6 +1,20 @@
 use super::Request;
 use cookie::Cookie;
 use http::header::COOKIE;
+use serde::de::DeserializeOwned;
+use thiserror::Error;
+
+/// Error that occurred while trying to retrieve the query params.
+#[derive(Error, Debug)]
+pub enum QueryParamsError {
+    /// No query params present in the url.
+    #[error("not query string present in url")]
+    NotFound,
+
+    /// Failed to parse the query params.
+    #[error(transparent)]
+    Parse(serde_qs::Error),
+}
 
 /// Extension methods for `Request`.
 pub trait RequestExt {
@@ -10,6 +24,9 @@ pub trait RequestExt {
 
     /// Get the cookie with the given name.
     fn cookie(&self, name: &str) -> Option<Cookie>;
+
+    /// Parses the query params of the url.
+    fn query_params<Q: DeserializeOwned>(&self) -> Result<Q, QueryParamsError>;
 }
 
 impl RequestExt for Request {
@@ -48,5 +65,14 @@ impl RequestExt for Request {
         }
 
         None
+    }
+
+    fn query_params<Q: DeserializeOwned>(&self) -> Result<Q, QueryParamsError> {
+        let query_str = self
+            .uri()
+            .query()
+            .ok_or_else(|| QueryParamsError::NotFound)?;
+
+        serde_qs::from_str(query_str).map_err(QueryParamsError::Parse)
     }
 }
