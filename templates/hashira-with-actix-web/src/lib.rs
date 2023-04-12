@@ -1,6 +1,6 @@
 mod components;
 
-use crate::components::{root_layout, Counter, HashiraActixWeb};
+use crate::components::{root_layout, Counter, HashiraActixWeb, ThemeToggle};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
     server::{LinkTag, Metadata, PageLinks},
@@ -16,6 +16,9 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
             <nav>
                 <a href="/">{"Home"}</a>
                 <a href="/counter">{"Counter"}</a>
+                <div class="theme-toggle">
+                    <ThemeToggle/>
+                </div>
             </nav>
         </header>
         <>{for props.children.iter()}</>

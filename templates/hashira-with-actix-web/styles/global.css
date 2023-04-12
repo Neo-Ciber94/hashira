@@ -4,7 +4,15 @@
   padding: 0;
 }
 
+header {
+  display: flex;
+  flex-direction: row;
+}
+
 header nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   padding: 20px 15px;
   width: 100%;
   border-bottom: 1px solid #8686867b;
@@ -103,6 +111,10 @@ nav a:hover {
 .logo-container .divider {
   font-size: 40px;
   font-weight: bold;
+}
+
+.theme-toggle {
+  margin-left: auto;
 }
 
 body.dark {
