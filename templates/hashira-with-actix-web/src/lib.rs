@@ -1,13 +1,12 @@
 mod components;
 
+use crate::components::Counter;
 use hashira::{
-    app::{App as HashiraApp, AppService, PageHandler, RenderContext, Route},
+    app::{App as HashiraApp, AppService, RenderContext},
     server::{LinkTag, Metadata, PageLinks},
-    web::{Response, ResponseExt},
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, BaseComponent, Properties};
-use crate::components::Counter;
 
 #[yew::function_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
@@ -23,7 +22,6 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
     }
 }
 
-
 #[derive(PartialEq, Clone, Properties, Serialize, Deserialize)]
 pub struct HomePageProps {
     #[prop_or_default]
@@ -36,7 +34,6 @@ pub fn HomePage(props: &HomePageProps) -> yew::Html {
         <Counter value={props.counter_start}/>
     }
 }
-
 
 // Setup all the components
 pub fn hashira<C>() -> AppService

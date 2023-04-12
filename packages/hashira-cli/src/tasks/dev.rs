@@ -19,7 +19,10 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use tokio::sync::broadcast::{channel, Sender};
+use tokio::sync::{
+    broadcast::{channel, Sender},
+    Mutex, Semaphore,
+};
 use tokio_stream::wrappers::BroadcastStream;
 
 pub struct DevTask {
@@ -122,6 +125,7 @@ impl DevTask {
         let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(8);
 
         let opts = Arc::new(BuildAndRunOptions {
+            can_run: Arc::new(Mutex::new(true)),
             build_options: build_options.clone(),
             ignore: self.ignore.clone(),
             host: self.host.clone(),
@@ -158,16 +162,7 @@ impl DevTask {
                 let opts = opts.clone();
 
                 log::info!("Restarting dev...");
-                tokio::spawn(async move {
-                    let mut int = interrupt_signal.subscribe();
-                    tokio::select! {
-                        _ = build_and_run(opts, events, false) => {},
-                        _ = int.recv() => {
-                            log::debug!("Received interrupt!");
-                        }
-
-                    }
-                });
+                tokio::spawn(build_and_run(opts, events, false));
             }
         });
 
@@ -259,6 +254,7 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
 
 struct BuildAndRunOptions {
     build_options: Arc<BuildOptions>,
+    can_run: Arc<Mutex<bool>>,
     ignore: Vec<PathBuf>,
     host: String,
     port: u16,
@@ -274,6 +270,12 @@ async fn build_and_run(
     mut events: Vec<DebouncedEvent>,
     is_first_run: bool,
 ) {
+    let mut lock = opts.can_run.lock().await;
+    if *lock == false {
+        return;
+    }
+
+    *lock = false;
     remove_ignored_paths(&opts, &mut events);
 
     if events.is_empty() && !is_first_run {
@@ -281,7 +283,9 @@ async fn build_and_run(
     }
 
     let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
-    log::info!("change detected on paths: {:?}", paths);
+    if paths.len() > 0 {
+        log::info!("change detected on paths: {:?}", paths);
+    }
 
     // Build task
     let mut run_task = RunTask {
@@ -307,6 +311,8 @@ async fn build_and_run(
     if let Err(err) = run_task.run().await {
         log::error!("Watch run failed: {err}");
     }
+
+    *lock = true;
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -7,20 +7,21 @@
 }
 
 header nav {
-  padding: 10px;
+  padding: 20px 10px;
   width: 100%;
-  box-shadow: 0px 4px 10px gray;
+  box-shadow: 0px 2px 10px rgba(100, 100, 100, 0.4);
+  border-bottom: 1px solid rgb(195, 195, 195);
 }
 
 nav a {
   font-family: monospace;
-  font-size: 16px;
+  font-size: 20px;
   text-decoration: none;
   color: black;
 }
 
 nav a:hover {
-  color: rgb(91, 91, 91);
+  color: rgb(128, 12, 12);
 }
 
 .counter {
