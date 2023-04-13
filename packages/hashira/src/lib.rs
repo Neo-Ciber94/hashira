@@ -6,9 +6,7 @@ pub mod error;
 pub mod hooks;
 pub mod server;
 pub mod web;
-
-//
-pub(crate) mod context;
+pub mod context;
 
 /// Constants.
 pub mod consts {

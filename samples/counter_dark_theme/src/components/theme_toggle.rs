@@ -1,29 +1,33 @@
-use hashira::hooks::use_query_params;
-use serde::{Deserialize, Serialize};
+use hashira::{context::use_server_context, web::RequestExt};
 use yew::function_component;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Theme {
-    dark: bool,
-}
-
 #[function_component]
-pub fn ThemeToggle() -> yew::Html {
-    let is_dark = use_query_params::<Theme>()
-        .map(|q| q.dark)
-        .unwrap_or(false);
+pub fn ThemeToggle() -> yew::HtmlResult {
+    let ctx = use_server_context();
+    let is_dark = yew::use_prepared_state!(
+        |_| -> bool {
+            // SAFETY: Is safe to unwrap here because this is only ran on the server
+            let ctx = ctx.unwrap();
+            ctx.request()
+                .cookie("dark")
+                .map(|c| c.value() == "true")
+                .unwrap_or_default()
+        },
+        ()
+    )?
+    .expect("failed to get dark mode state");
 
-    yew::html! {
+    Ok(yew::html! {
         <form class="theme-toggle">
-            if is_dark {
-                <button name="dark" value="false">
+            if *is_dark {
+                <button formaction="/api/change_theme">
                     {"☀️"}
                 </button>
             } else {
-                <button name="dark" value="true">
+                <button formaction="/api/change_theme">
                     {"🌙"}
                 </button>
             }
         </form>
-    }
+    })
 }

@@ -6,7 +6,7 @@ use hashira::{
     server::Metadata,
 };
 use serde::{Deserialize, Serialize};
-use yew::{function_component, html::ChildrenProps, BaseComponent, Properties};
+use yew::{function_component, html::ChildrenProps, BaseComponent, Properties, Suspense};
 
 #[yew::function_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
@@ -17,7 +17,9 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
                 <a href="/">{"Home"}</a>
                 <a href="/counter">{"Counter"}</a>
                 <div class="theme-toggle">
-                    <ThemeToggle/>
+                    <Suspense>
+                        <ThemeToggle/>
+                    </Suspense>
                 </div>
             </nav>
         </header>

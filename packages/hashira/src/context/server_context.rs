@@ -54,6 +54,7 @@ impl Deref for ServerContext {
     }
 }
 
+#[doc(hidden)]
 #[derive(PartialEq, Properties)]
 pub struct ServerContextProps {
     pub server_context: ServerContext,
@@ -61,6 +62,7 @@ pub struct ServerContextProps {
 }
 
 /// Provides the `ServerContext` to the children components.
+#[doc(hidden)]
 #[function_component]
 pub fn ServerContextProvider(props: &ServerContextProps) -> yew::Html {
     yew::html! {

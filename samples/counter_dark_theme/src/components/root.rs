@@ -1,24 +1,23 @@
 use hashira::{
     app::LayoutContext,
-    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title}, web::RequestExt, server::{PageLinks, LinkTag},
+    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title},
+    server::{LinkTag, PageLinks},
+    web::RequestExt,
 };
-use serde::Deserialize;
 use yew::Html;
-
-#[derive(Debug, Deserialize)]
-struct Theme {
-    dark: bool,
-}
 
 pub async fn root_layout(mut ctx: LayoutContext) -> Html {
     ctx.add_title("Hashira");
     ctx.add_links(PageLinks::new().add(LinkTag::stylesheet("/static/global.css")));
 
     let mut dark_class = None;
-    if let Some(theme) = ctx.request().query_params::<Theme>().ok() {
-        if theme.dark {
-            dark_class = Some("dark");
-        }
+    if ctx
+        .request()
+        .cookie("dark")
+        .map(|c| c.value() == "true")
+        .unwrap_or_default()
+    {
+        dark_class = Some("dark");
     }
 
     yew::html! {
