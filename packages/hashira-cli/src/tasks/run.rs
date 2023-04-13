@@ -12,22 +12,25 @@ use tokio::{
 
 pub struct RunTask {
     // Options for running the application
-    pub options: Arc<BuildOptions>,
+    pub(crate) options: Arc<BuildOptions>,
 
-    pub static_dir: String,
+    // Path in the server to serve the static files
+    pub(crate) static_dir: String,
 
-    pub host: String,
+    // Host to run the server
+    pub(crate) host: String,
 
-    pub port: u16,
+    // Port to run the server
+    pub(crate) port: u16,
 
     // Additional environment variables
-    pub envs: HashMap<&'static str, String>,
+    pub(crate) envs: HashMap<&'static str, String>,
 
     // A receiver for shutdown the executing process
-    pub interrupt_signal: Option<Sender<()>>,
+    pub(crate) interrupt_signal: Option<Sender<()>>,
 
     // Notify when a build is done
-    pub build_done_signal: Option<Sender<()>>,
+    pub(crate) build_done_signal: Option<Sender<()>>,
 }
 
 impl RunTask {

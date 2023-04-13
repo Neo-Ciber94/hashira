@@ -29,17 +29,23 @@ pub struct DevTask {
     // Options for running the application in watch mode
     options: Arc<BuildOptions>,
 
-    pub static_dir: String,
+    // Path in the server to serve the static files
+    static_dir: String,
 
-    pub host: String,
+    // Host to run the server
+    host: String,
 
-    pub port: u16,
+    // Port to run the server
+    port: u16,
 
-    pub reload_host: String,
+    // Host of the reload server
+    reload_host: String,
 
-    pub reload_port: u16,
+    // Port of the reload server
+    reload_port: u16,
 
-    pub ignore: Vec<PathBuf>,
+    // Files to ignore while waiting for changes
+    ignore: Vec<PathBuf>,
 
     // Signal used to shutdown the processes
     interrupt_signal: Sender<()>,
