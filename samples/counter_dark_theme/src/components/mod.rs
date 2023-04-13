@@ -1,5 +1,5 @@
 mod counter;
-mod hashira_logo;
 mod root;
+mod theme_toggle;
 
-pub use {counter::*, hashira_logo::*, root::*};
+pub use {counter::*, root::*, theme_toggle::*};

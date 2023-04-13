@@ -1,9 +1,9 @@
 mod components;
 
-use crate::components::{root_layout, Counter, HashiraLogo};
+use crate::components::{root_layout, Counter, ThemeToggle};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    server::{LinkTag, Metadata, PageLinks},
+    server::Metadata,
 };
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Properties};
@@ -16,6 +16,9 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
             <nav>
                 <a href="/">{"Home"}</a>
                 <a href="/counter">{"Counter"}</a>
+                <div class="theme-toggle">
+                    <ThemeToggle/>
+                </div>
             </nav>
         </header>
         <>{for props.children.iter()}</>
@@ -27,7 +30,9 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
 pub fn HomePage() -> yew::Html {
     yew::html! {
         <div class="container">
-            <HashiraLogo/>
+            <div class="logo-container">
+            <span class="hashira" title="Hashira">{"Hashira"}</span>
+        </div>
         </div>
     }
 }
@@ -56,18 +61,13 @@ where
         .use_default_error_pages()
         .layout(root_layout)
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
-            ctx.add_title("Hashira");
-            ctx.add_links(PageLinks::new().add(LinkTag::stylesheet("/static/global.css")));
-            ctx.add_metadata(Metadata::new().description("Hashira example"));
-
+            ctx.add_metadata(Metadata::new().description("A Hashira sample app"));
             let res = ctx.render().await;
             Ok(res)
         })
         .page("/counter", |mut ctx: RenderContext<CounterPage, C>| async {
             ctx.add_title("Hashira | Counter");
-            ctx.add_links(PageLinks::new().add(LinkTag::stylesheet("/static/global.css")));
-            ctx.add_metadata(Metadata::new().description("Hashira counter example"));
-
+            ctx.add_metadata(Metadata::new().description("A Hashira sample counter"));
             let props = yew::props! { CounterPageProps {} };
             let res = ctx.render_with_props(props).await;
             Ok(res)

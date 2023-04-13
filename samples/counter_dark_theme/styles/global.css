@@ -105,26 +105,52 @@ nav a:hover {
   cursor: pointer;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: rgb(15, 15, 15);
-  }
+.logo-container img {
+  height: 80px;
+  width: auto;
+}
 
-  .logo-container {
-    filter: invert(1);
-  }
+.logo-container .divider {
+  font-size: 40px;
+  font-weight: bold;
+}
 
-  .counter span,
-  nav a {
-    color: white;
-  }
+.theme-toggle {
+  margin-left: auto;
+  overflow: hidden;
+}
 
-  header nav {
-    border-bottom: 1px solid #ffffff16;
-  }
+.theme-toggle button {
+  border: none;
+  outline: none;
+  font-size: 30px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 500ms;
+}
 
-  nav a:hover {
-    border-color: var(--main-color);
-    color: white;
-  }
+.theme-toggle button:hover {
+  transform: scale(0.9) rotate(180deg);
+  transform-origin: center center;
+}
+
+body.dark {
+  background-color: rgb(15, 15, 15);
+}
+
+body.dark .logo-container {
+  filter: invert(1);
+}
+
+body.dark .counter span,
+body.dark a {
+  color: white;
+}
+
+body.dark header nav {
+  border-bottom: 1px solid #ffffff16;
+}
+
+body.dark nav a:hover {
+  border-color: var(--main-color);
 }
