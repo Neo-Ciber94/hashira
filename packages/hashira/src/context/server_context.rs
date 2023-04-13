@@ -29,15 +29,15 @@ impl PartialEq for ServerContextInner {
 }
 
 /// Contains data about the server, this data is only available on the server.
-#[derive(Default, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct ServerContext {
     inner: Option<ServerContextInner>,
 }
 
 impl ServerContext {
-    pub(crate) fn new(ctx: RequestContext) -> Self {
+    pub(crate) fn new(ctx: Option<RequestContext>) -> Self {
         ServerContext {
-            inner: Some(ServerContextInner { ctx }),
+            inner: ctx.map(|ctx| ServerContextInner { ctx }),
         }
     }
 }

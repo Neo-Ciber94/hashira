@@ -27,7 +27,7 @@ where
         error: page_data.error,
         error_router,
         router,
-        server_context: ServerContext::default(),
+        server_context: ServerContext::new(None),
     };
 
     let root = find_element_by_id(HASHIRA_ROOT);

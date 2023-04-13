@@ -91,7 +91,7 @@ where
         props_json: props_json.clone(),
         router,
         error_router,
-        server_context: ServerContext::new(request_context),
+        server_context: ServerContext::new(Some(request_context)),
     };
 
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);
