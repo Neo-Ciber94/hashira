@@ -70,8 +70,15 @@ impl AppService {
         &self.0.client_error_router
     }
 
+    // TODO: Remove the path, we could take that value from the request
     /// Process the incoming request and return the response.
-    pub async fn handle(&self, req: Request, mut path: &str) -> Response {
+    pub async fn handle(&self, req: Request, path: &str) -> Response {
+        let req = Arc::new(req);
+        let res = self.handle_request(req, path).await;
+        res
+    }
+
+    async fn handle_request(&self, req: Arc<Request>, mut path: &str) -> Response {
         // We remove the trailing slash from the path,
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
@@ -84,9 +91,6 @@ impl AppService {
         if path.len() > 1 && path.ends_with("/") {
             path = path.trim_end_matches("/");
         }
-
-        // Request now is read-only
-        let req = Arc::new(req);
 
         match self.0.server_router.recognize(&path) {
             Ok(mtch) => {
