@@ -71,9 +71,11 @@ impl DevTask {
         let (build_done_tx, mut build_done_rx) = channel::<()>(1);
         let (tx_notify, _rx_notify) = channel::<()>(16);
 
+        // Wait until shutdown signal is received
         {
             let tx_notify = tx_notify.clone();
             let tx_shutdown = tx_shutdown.clone();
+
             tokio::spawn({
                 async move {
                     tokio::signal::ctrl_c().await.ok();
@@ -89,8 +91,7 @@ impl DevTask {
             });
         }
 
-        // When the system is rebuilding after a file change notification is sent,
-        // we wait for the build done signal to notify the client
+        // We wait until the build is done, we sent a notification to the client
         {
             let tx_notify = tx_notify.clone();
             tokio::spawn(async move {
@@ -117,6 +118,7 @@ impl DevTask {
         let state = State {
             tx_notify,
             tx_shutdown,
+            tx_watch: self.interrupt_signal.clone(),
         };
 
         start_server(state, host, port).await?;
@@ -322,13 +324,16 @@ async fn build_and_run(
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ReloadMessage {
-    reload: bool,
+#[serde(untagged)]
+enum LiveReloadMessage {
+    Loading { loading: bool },
+    Reload { reload: bool },
 }
 
 struct State {
     tx_notify: Sender<()>,
     tx_shutdown: Sender<()>,
+    tx_watch: Sender<()>,
 }
 
 async fn start_server(state: State, host: &str, port: u16) -> anyhow::Result<()> {
@@ -359,34 +364,46 @@ async fn websocket_handler(
     state: Extension<Arc<State>>,
 ) -> impl IntoResponse {
     upgrade.on_upgrade(|ws| async move {
-        log::debug!("Web socket upgrade");
+        log::debug!("Livereload web socket opened");
 
         let tx_notify = state.tx_notify.clone();
         let tx_shutdown = state.tx_shutdown.clone();
+        let mut watch = state.tx_watch.subscribe();
 
         // split the websocket into a sender and a receiver
-        let (mut sender, _receiver) = ws.split();
-        let receiver = tx_notify.subscribe();
+        let (mut sender, _) = ws.split();
+        let notify = tx_notify.subscribe();
         let mut shutdown = tx_shutdown.subscribe();
-        let mut stream = BroadcastStream::new(receiver);
+        let mut notify_stream = BroadcastStream::new(notify);
 
         loop {
             tokio::select! {
-                _ = stream.next() => {
+                _ = notify_stream.next() => {
                     log::debug!("Sending reload message...");
 
-                    let json = serde_json::to_string(&ReloadMessage { reload: true })
+                    let json = serde_json::to_string(&LiveReloadMessage::Reload{ reload: true })
                         .expect("Failed to serialize message");
-                    let msg = Message::Text(json);
-                    if let Err(err) = sender.send(msg).await {
-                        log::error!("Failed to send web socket message: {err}");
+
+                    if let Err(_) = sender.send( Message::Text(json)).await {
+                        break;
                     }
-                }
+                },
+                _ = watch.recv() => {
+                    log::debug!("Sending loading message...");
+                    let json = serde_json::to_string(&LiveReloadMessage::Loading { loading: true })
+                        .expect("Failed to serialize message");
+
+                    if let Err(_) = sender.send( Message::Text(json)).await {
+                        break;
+                    }
+                },
                 _ = shutdown.recv() => {
-                    log::debug!("Closing web socket");
+                    log::debug!("Shuting down livereload web socket");
                     return;
                 }
             }
         }
+
+        log::debug!("Livereload web socket closed");
     })
 }
