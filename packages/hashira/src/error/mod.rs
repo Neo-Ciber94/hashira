@@ -1,13 +1,15 @@
+use crate::web::{IntoResponse, Json, Response};
 use http::StatusCode;
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use crate::web::{IntoResponse, Response};
 
 /// A convenient error type.
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// A error that occurred while processing a request.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseError {
+    #[serde(with = "crate::web::serde::status_code")]
     status: StatusCode,
     message: Option<String>,
 }
@@ -77,10 +79,16 @@ impl std::error::Error for ResponseError {}
 
 impl IntoResponse for ResponseError {
     fn into_response(self) -> Response {
+        #[derive(Serialize, Deserialize)]
+        struct ErrorMessage {
+            message: String,
+        }
+
         let this = self.clone();
         let (status, message) = self.into_parts();
+        
         let mut res = match message {
-            Some(msg) => (status, msg).into_response(),
+            Some(message) => (status, Json(ErrorMessage { message })).into_response(),
             None => status.into_response(),
         };
 
