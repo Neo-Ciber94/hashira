@@ -1,10 +1,10 @@
 [package]
-name = "hashira-with-actix-web"
+name = "with-actix-web"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "hashira_with_actix_web_client"
+name = "with_actix_web_client"
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

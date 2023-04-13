@@ -1,6 +1,6 @@
 use actix_files::{Files, NamedFile};
 use actix_web::{App, HttpServer, Responder};
-use hashira_with_actix_web_client::hashira;
+use with_actix_web_client::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>

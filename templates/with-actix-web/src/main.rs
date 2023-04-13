@@ -1,4 +1,4 @@
-pub use hashira_with_actix_web_client::App;
+pub use with_actix_web_client::App;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod server;
