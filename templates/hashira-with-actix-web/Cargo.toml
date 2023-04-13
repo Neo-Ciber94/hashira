@@ -7,9 +7,6 @@ edition = "2021"
 name = "hashira_with_actix_web_client"
 crate-type = ["cdylib", "rlib"]
 
-[profile.dev]
-opt-level = 1 # FIXME: speed up debug build
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-logger = "0.2.0"
 

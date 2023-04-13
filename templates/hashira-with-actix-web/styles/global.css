@@ -13,16 +13,16 @@ header nav {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 20px 15px;
+  padding: 10px 5px;
   width: 100%;
   border-bottom: 1px solid #8686867b;
 }
 
 nav a {
-  display: inline-block;
   min-width: 100px;
+  font-size: calc(1rem + 0.5vw);
+  display: inline-block;
   font-family: monospace;
-  font-size: 20px;
   text-decoration: none;
   color: rgb(77, 77, 77);
   padding: 5px 4px;
@@ -81,11 +81,8 @@ nav a:hover {
 
 .counter span {
   font-size: 40px;
-  min-width: 150px;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
+  text-align: center;
+  width: 150px;
 }
 
 .logo-container {
@@ -115,6 +112,20 @@ nav a:hover {
 
 .theme-toggle {
   margin-left: auto;
+  overflow: hidden;
+}
+
+.theme-toggle button {
+  border: none;
+  outline: none;
+  font-size: 30px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 500ms;
+}
+
+.theme-toggle button:hover {
+  transform: scale(0.9) rotate(180deg);
 }
 
 body.dark {
