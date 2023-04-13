@@ -86,9 +86,12 @@ impl IntoResponse for ResponseError {
 
         let this = self.clone();
         let (status, message) = self.into_parts();
-        
+
         let mut res = match message {
-            Some(message) => (status, Json(ErrorMessage { message })).into_response(),
+            Some(message) => {
+                let json = Json(ErrorMessage { message });
+                (status, json).into_response()
+            }
             None => status.into_response(),
         };
 
