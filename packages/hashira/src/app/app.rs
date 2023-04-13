@@ -8,7 +8,6 @@ use crate::{
     components::{
         error::{ErrorPage, ErrorPageProps, NotFoundPage},
         id::ComponentId,
-        RootLayout,
     },
     error::Error,
     web::{IntoResponse, Response},
@@ -331,7 +330,14 @@ where
             _marker: _,
         } = self;
 
-        let layout = layout.unwrap_or_else(|| Arc::new(render_default_layout));
+        let layout = layout.unwrap_or_else(|| {
+            // Pass the default layout
+            let render_layout =
+                |ctx| Box::pin(crate::components::root_layout(ctx)) as BoxFuture<yew::Html>;
+
+            Arc::new(render_layout)
+        });
+
         let client_router = PageRouterWrapper::from(client_router);
         let client_error_router = Arc::from(client_error_router);
         let inner = AppServiceInner {
@@ -438,12 +444,4 @@ where
 /// Creates a new app scope.
 pub fn scope<C>() -> AppScope<C> {
     AppScope::new()
-}
-
-fn render_default_layout(_: LayoutContext) -> BoxFuture<yew::Html> {
-    Box::pin(async {
-        yew::html! {
-            <RootLayout/>
-        }
-    })
 }

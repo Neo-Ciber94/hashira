@@ -1,12 +1,10 @@
-use crate::components::{Content, Links, Main, Meta, Scripts, Title, LiveReload};
-use yew::{function_component, Html};
+use crate::{
+    app::LayoutContext,
+    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title},
+};
 
-/// Default root component.
-///
-/// This element only is rendered on the server side and defines the overall
-/// structure of the html where the page will be rendered.
-#[function_component]
-pub fn RootLayout() -> Html {
+/// Renders the default root component.
+pub async fn root_layout(_ctx: LayoutContext) -> yew::Html {
     yew::html! {
         // Base <html>
         <html lang="en">
