@@ -70,7 +70,6 @@ impl RunTask {
         build_task.run().await?;
 
         if let Some(build_done_signal) = build_done_signal {
-            //let _ = build_done_signal.send(());
             if let Err(err) = build_done_signal.send(()) {
                 log::error!("Error sending build done signal: {err}");
             }

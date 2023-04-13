@@ -9,8 +9,6 @@ struct Theme {
 
 #[function_component]
 pub fn ThemeToggle() -> yew::Html {
-    let theme = use_query_params::<Theme>();
-
     let is_dark = use_query_params::<Theme>()
         .map(|q| q.dark)
         .unwrap_or(false);

@@ -66,20 +66,20 @@ pub async fn wait_interruptible(
     interrupt_signal: Option<Sender<()>>,
 ) -> anyhow::Result<()> {
     let Some(interrupt_signal) = interrupt_signal else {
-        if let Err(err) = spawn.wait().await {
-            log::error!("Process failed: {err}");
-            return Err(err.into());
-        }
-
+        let status = spawn.wait().await?;
+        anyhow::ensure!(status.success(), "Process failed");
         return Ok(());
     };
 
     let mut int = interrupt_signal.subscribe();
 
     tokio::select! {
-        status = spawn.wait() => {
-            match status {
-                Ok(_) => return Ok(()),
+        ret = spawn.wait() => {
+            match ret {
+                Ok(status) => {
+                    anyhow::ensure!(status.success(), "Process failed");
+                    return Ok(())
+                },
                 Err(err) => {
                     log::error!("Process failed: {err}");
                     return Err(err.into());

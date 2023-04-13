@@ -4,6 +4,7 @@ use crate::web::Request;
 use route_recognizer::Params;
 use std::sync::Arc;
 
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 struct RequestContextInner {
     path: String,
     params: Params,
