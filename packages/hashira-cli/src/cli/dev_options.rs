@@ -1,6 +1,8 @@
 use clap::Args;
 use std::path::PathBuf;
 
+use super::wasm_opt_level::WasmOptimizationLevel;
+
 #[derive(Args, Debug, Clone)]
 pub struct DevOptions {
     #[arg(short, long, help = "Base directory for the artifacts")]
@@ -83,4 +85,10 @@ pub struct DevOptions {
 
     #[arg(long, help = "Path to ignore when looking for changes")]
     pub ignore: Vec<PathBuf>,
+
+    #[arg(
+        long,
+        help = "Optimization level for the wasm, possible values: s, z, 0, 1, 2, 3, 4"
+    )]
+    pub optimize: Option<WasmOptimizationLevel>,
 }

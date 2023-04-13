@@ -1,10 +1,12 @@
 mod build_options;
 mod dev_options;
 mod run_options;
+mod wasm_opt_level;
 
 pub use build_options::*;
 pub use dev_options::*;
 pub use run_options::*;
+pub use wasm_opt_level::*;
 
 //
 use clap::{Parser, Subcommand};

@@ -1,4 +1,4 @@
-use crate::cli::{BuildOptions, DEFAULT_INCLUDES};
+use crate::cli::{BuildOptions, WasmOptimizationLevel, DEFAULT_INCLUDES};
 use crate::pipelines::css::CssPipeline;
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::process::{Child, Command};
 use tokio::sync::broadcast::Sender;
+use wasm_opt::OptimizationOptions;
 
 #[derive(Debug)]
 struct IncludeFiles {
@@ -61,6 +62,9 @@ impl BuildTask {
 
         log::info!("Generating wasm bindings...");
         self.wasm_bindgen().await?;
+
+        // If the optimization flag is set or is release mode
+        self.optimize_wasm()?;
 
         log::info!("Copying files to public directory...");
         self.include_files().await?;
@@ -216,7 +220,6 @@ impl BuildTask {
 
         // out dir
         let mut out_dir = opts.profile_target_dir()?;
-
         out_dir.push(&opts.public_dir);
         log::debug!("wasm-bindgen out-dir: {}", out_dir.display());
 
@@ -242,6 +245,63 @@ impl BuildTask {
         // Run
         let child = cmd.spawn()?;
         Ok(child)
+    }
+
+    fn optimize_wasm(&self) -> anyhow::Result<()> {
+        let opts = &self.options;
+        let mut optimize = opts.optimize;
+
+        if opts.release && optimize.is_none() {
+            optimize = Some(WasmOptimizationLevel::Level4);
+        }
+
+        let Some(opt_level) = optimize else {
+            return Ok(());
+        };
+
+        log::info!("Optimizing wasm... {opt_level}");
+        let lib_name = crate::utils::get_cargo_lib_name().context("Failed to get lib name")?;
+        let mut wasm_dir = opts.profile_target_dir()?;
+        wasm_dir.push(&opts.public_dir);
+
+        let wasm_input = wasm_dir.join(format!("{lib_name}_bg.wasm"));
+
+        anyhow::ensure!(
+            wasm_input.exists(),
+            "wasm file not found at: {}",
+            wasm_input.display()
+        );
+
+        // We output to itself
+        let wasm_out = wasm_input.clone();
+
+        match opt_level {
+            WasmOptimizationLevel::Size => {
+                OptimizationOptions::new_optimize_for_size().run(wasm_input, wasm_out)?;
+            }
+            WasmOptimizationLevel::SizeAggressive => {
+                OptimizationOptions::new_optimize_for_size_aggressively()
+                    .run(wasm_input, wasm_out)?;
+            }
+            WasmOptimizationLevel::Level0 => {
+                OptimizationOptions::new_opt_level_0().run(wasm_input, wasm_out)?;
+            }
+            WasmOptimizationLevel::Level1 => {
+                OptimizationOptions::new_opt_level_1().run(wasm_input, wasm_out)?;
+            }
+            WasmOptimizationLevel::Level2 => {
+                OptimizationOptions::new_opt_level_2().run(wasm_input, wasm_out)?;
+            }
+            WasmOptimizationLevel::Level3 => {
+                OptimizationOptions::new_opt_level_3().run(wasm_input, wasm_out)?;
+            }
+            WasmOptimizationLevel::Level4 => {
+                OptimizationOptions::new_opt_level_4().run(wasm_input, wasm_out)?;
+            }
+        }
+
+        log::info!("✅ Wasm optimization done");
+        Ok(())
     }
 }
 

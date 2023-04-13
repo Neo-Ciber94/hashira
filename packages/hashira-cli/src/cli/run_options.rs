@@ -1,6 +1,6 @@
+use super::{wasm_opt_level::WasmOptimizationLevel, DevOptions};
 use clap::Args;
 use std::path::PathBuf;
-use super::DevOptions;
 
 #[derive(Args, Debug, Clone)]
 pub struct RunOptions {
@@ -67,6 +67,12 @@ pub struct RunOptions {
 
     #[arg(long, help = "The port to run the application", default_value_t = 5000)]
     pub port: u16,
+
+    #[arg(
+        long,
+        help = "Optimization level for the wasm, possible values: s, z, 0, 1, 2, 3, 4"
+    )]
+    pub optimize: Option<WasmOptimizationLevel>,
 }
 
 impl From<&DevOptions> for RunOptions {
@@ -82,6 +88,7 @@ impl From<&DevOptions> for RunOptions {
             static_dir: dev_opts.static_dir.clone(),
             host: dev_opts.host.clone(),
             port: dev_opts.port,
+            optimize: dev_opts.optimize,
         }
     }
 }

@@ -1,7 +1,7 @@
 use clap::Args;
 use std::path::PathBuf;
 
-use super::{DevOptions, RunOptions};
+use super::{wasm_opt_level::WasmOptimizationLevel, DevOptions, RunOptions};
 
 // directories and files included as default in the `public_dir` if not valid is specified.
 pub const DEFAULT_INCLUDES: &[&str] = &["public/", "styles/", "favicon.ico"];
@@ -52,6 +52,13 @@ pub struct BuildOptions {
         help = "Whether if output the commands output"
     )]
     pub quiet: bool,
+
+    // TODO: Allow not value and default tto `s`
+    #[arg(
+        long,
+        help = "Optimization level for the wasm, possible values: s, z, 0, 1, 2, 3, 4",
+    )]
+    pub optimize: Option<WasmOptimizationLevel>,
 }
 
 impl BuildOptions {
@@ -85,6 +92,7 @@ impl From<&DevOptions> for BuildOptions {
             allow_include_external: dev_opts.allow_include_external,
             allow_include_src: dev_opts.allow_include_src,
             quiet: dev_opts.quiet,
+            optimize: dev_opts.optimize,
         }
     }
 }
@@ -99,6 +107,7 @@ impl From<&RunOptions> for BuildOptions {
             allow_include_external: dev_opts.allow_include_external,
             allow_include_src: dev_opts.allow_include_src,
             quiet: dev_opts.quiet,
+            optimize: dev_opts.optimize,
         }
     }
 }
