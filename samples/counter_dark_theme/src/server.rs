@@ -1,6 +1,6 @@
 use actix_files::{Files, NamedFile};
 use actix_web::{App, HttpServer, Responder};
-use actix_web_sample_web::hashira;
+use counter_dark_theme_web::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -14,7 +14,7 @@ where
     let port = hashira::env::get_port().unwrap_or(5000);
     let static_dir = hashira::env::get_static_dir();
 
-    println!("⚡ Server started at: http://{host}:{port}");
+    println!("⚡ Server started at: `http://{host}:{port}`");
     println!(
         "⚡ Serving static files from: `{}` to `{static_dir}`",
         current_dir.display()
