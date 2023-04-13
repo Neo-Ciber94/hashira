@@ -6,6 +6,7 @@ use crate::{
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use yew::Suspense;
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
 use super::id::ComponentId;
@@ -62,7 +63,9 @@ where
             Some(comp) => {
                 let props = props.props_json.clone();
                 yew::html! {
-                    {comp.render_with_props(props)}
+                    <Suspense>
+                        {comp.render_with_props(props)}
+                    </Suspense>
                 }
             }
             None => {
@@ -80,7 +83,9 @@ where
 
             yew::html! {
                 <ROOT>
-                    {route.render(props)}
+                    <Suspense>
+                        {route.render(props)}
+                    </Suspense>
                 </ROOT>
             }
         }
@@ -88,7 +93,9 @@ where
             Some(comp) => {
                 let props = props.props_json.clone();
                 yew::html! {
-                    {comp.render_with_props(props)}
+                    <Suspense>
+                        {comp.render_with_props(props)}
+                    </Suspense>
                 }
             }
             None => {
