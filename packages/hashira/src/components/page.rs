@@ -9,13 +9,13 @@ use std::sync::Arc;
 use yew::Suspense;
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
 
-use super::id::ComponentId;
+use super::id::PageId;
 
 /// The props for the current page.
 #[derive(Clone, PartialEq, Properties)]
 pub struct PageProps {
     /// The id of the current page component.
-    pub id: ComponentId,
+    pub id: PageId,
 
     /// The path of the request
     pub path: String,
@@ -123,7 +123,7 @@ pub struct PageError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageData {
     /// The id of the component of this page.
-    pub id: ComponentId,
+    pub id: PageId,
 
     /// The path of the component.
     pub path: String,

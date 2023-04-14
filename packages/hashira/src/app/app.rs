@@ -7,7 +7,8 @@ use super::{
 use crate::{
     components::{
         error::{ErrorPage, ErrorPageProps, NotFoundPage},
-        id::ComponentId,
+        id::PageId,
+        PageComponent,
     },
     error::Error,
     web::{IntoResponse, Response},
@@ -180,7 +181,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -200,7 +201,7 @@ where
     #[cfg(target_arch = "wasm32")]
     pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -213,7 +214,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -238,7 +239,7 @@ where
     #[cfg(target_arch = "wasm32")]
     pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, _: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -250,7 +251,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -273,7 +274,7 @@ where
     #[cfg(target_arch = "wasm32")]
     pub fn error_page_fallback<COMP, H, Fut>(mut self, _: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -355,7 +356,7 @@ where
 
     fn add_component<COMP>(&mut self, path: &str)
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
     {
         use crate::components::AnyComponent;
@@ -369,7 +370,7 @@ where
             path,
             ClientPageRoute {
                 path: path.to_string(),
-                component_id: ComponentId::of::<COMP>(),
+                page_id: PageId::of::<COMP>(),
                 component: AnyComponent::<serde_json::Value>::new(|props_json| {
                     let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
                         panic!(
@@ -388,7 +389,7 @@ where
 
     fn add_error_component<COMP>(&mut self, status: StatusCode)
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
     {
         use crate::components::AnyComponent;

@@ -4,22 +4,22 @@ use http::Method;
 
 use super::{PageHandler, RequestContext};
 use crate::{
-    components::{id::ComponentId, AnyComponent},
+    components::{id::PageId, AnyComponent},
     web::IntoResponse,
 };
 
 // Represents a client-side page route, containing a component and a path pattern.
 #[derive(Clone)]
 pub struct ClientPageRoute {
-    pub(crate) component_id: ComponentId,
+    pub(crate) page_id: PageId,
     pub(crate) component: AnyComponent<serde_json::Value>, // The component for this page route.
     pub(crate) path: String,                               // The path pattern for this page route.
 }
 
 impl ClientPageRoute {
-    /// Returns the id of the component of this route.
-    pub fn id(&self) -> &ComponentId {
-        &self.component_id
+    /// Returns the id of the page of this route.
+    pub fn id(&self) -> &PageId {
+        &self.page_id
     }
 
     // Renders the component for this page route with the given props.

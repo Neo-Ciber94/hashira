@@ -1,20 +1,21 @@
 use serde::{Deserialize, Serialize};
-use yew::BaseComponent;
+use super::PageComponent;
 
+/// Represents the id of a page component.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ComponentId(String);
+pub struct PageId(pub String);
 
-impl ComponentId {
+impl PageId {
+    /// Returns the id for the given page.
     pub fn of<COMP>() -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
     {
-        let id = std::any::type_name::<COMP>().to_owned();
-        ComponentId(id)
+        PageId(COMP::id().to_owned())
     }
 }
 
-impl Serialize for ComponentId {
+impl Serialize for PageId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -23,12 +24,12 @@ impl Serialize for ComponentId {
     }
 }
 
-impl<'de> Deserialize<'de> for ComponentId {
+impl<'de> Deserialize<'de> for PageId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(ComponentId(s))
+        Ok(PageId(s))
     }
 }

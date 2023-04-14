@@ -1,12 +1,15 @@
 pub mod app;
 pub mod client;
 pub mod components;
+pub mod context;
 pub mod env;
 pub mod error;
 pub mod hooks;
 pub mod server;
 pub mod web;
-pub mod context;
+
+// Macros
+pub use hashira_macros::*;
 
 /// Constants.
 pub mod consts {

@@ -79,7 +79,7 @@ impl RequestContext {
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render<COMP, C>(self, head: super::page_head::PageHead) -> String
     where
-        COMP: yew::BaseComponent,
+        COMP: crate::components::PageComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
@@ -95,7 +95,7 @@ impl RequestContext {
         head: super::page_head::PageHead,
     ) -> String
     where
-        COMP: yew::BaseComponent,
+        COMP: crate::components::PageComponent,
         COMP::Properties: serde::Serialize + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {

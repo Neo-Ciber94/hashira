@@ -2,6 +2,8 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, Properties};
 
+use super::PageComponent;
+
 /// Properties for an error page.
 #[derive(Clone, Properties, PartialEq, Serialize, Deserialize)]
 pub struct ErrorPageProps {
@@ -44,6 +46,8 @@ pub fn ErrorPage(props: &ErrorPageProps) -> yew::Html {
     }
 }
 
+impl PageComponent for ErrorPage {}
+
 /// Props for the `NotFoundPage`
 #[derive(Clone, Default, Properties, PartialEq, Serialize, Deserialize)]
 pub struct NotFoundPageProps {
@@ -59,6 +63,8 @@ pub fn NotFoundPage(props: &NotFoundPageProps) -> yew::Html {
         <ErrorPage status={StatusCode::NOT_FOUND} message={props.message.clone()}/>
     }
 }
+
+impl PageComponent for NotFoundPage {}
 
 // FIXME: minify styles
 // This styles may collide with the page styles,

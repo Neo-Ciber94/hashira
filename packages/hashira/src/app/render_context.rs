@@ -1,4 +1,5 @@
 use super::{page_head::PageHead, RequestContext};
+use crate::components::PageComponent;
 pub use crate::error::ResponseError;
 use crate::{error::Error, web::Request};
 use crate::{
@@ -72,7 +73,7 @@ where
 impl<COMP, C> RenderContext<COMP, C>
 where
     C: BaseComponent<Properties = ChildrenProps>,
-    COMP: BaseComponent,
+    COMP: PageComponent,
     COMP::Properties: Serialize + Send + Clone,
 {
     /// Render the page and returns the `text/html` response.

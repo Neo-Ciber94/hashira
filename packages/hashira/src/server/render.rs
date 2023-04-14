@@ -5,11 +5,11 @@ use crate::app::error_router::ErrorRouter;
 use crate::app::page_head::PageHead;
 use crate::app::router::PageRouterWrapper;
 use crate::app::RequestContext;
-use crate::components::id::ComponentId;
+use crate::components::id::PageId;
 use crate::components::{
-    Page, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER, HASHIRA_LINKS_MARKER,
-    HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT, HASHIRA_SCRIPTS_MARKER,
-    HASHIRA_TITLE_MARKER,
+    Page, PageComponent, PageData, PageError, PageProps, HASHIRA_CONTENT_MARKER,
+    HASHIRA_LINKS_MARKER, HASHIRA_META_MARKER, HASHIRA_PAGE_DATA, HASHIRA_ROOT,
+    HASHIRA_SCRIPTS_MARKER, HASHIRA_TITLE_MARKER,
 };
 use crate::context::ServerContext;
 use crate::error::ResponseError;
@@ -45,7 +45,7 @@ pub async fn render_page_to_html<COMP, ROOT>(
     options: RenderPageOptions,
 ) -> Result<String, RenderError>
 where
-    COMP: BaseComponent,
+    COMP: PageComponent,
     COMP::Properties: Serialize + Send + Clone,
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
@@ -69,7 +69,7 @@ where
     }
 
     let props_json = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
-    let component_id = ComponentId::of::<COMP>();
+    let component_id = PageId::of::<COMP>();
     let page_error = error.map(|e| PageError {
         status: e.status(),
         message: e.message().map(|s| s.to_owned()),

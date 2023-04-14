@@ -3,12 +3,12 @@ mod components;
 use crate::components::{root_layout, Counter};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    server::Metadata,
+    server::Metadata, page_component,
 };
 use serde::{Deserialize, Serialize};
-use yew::{function_component, html::ChildrenProps, BaseComponent, Properties};
+use yew::{html::ChildrenProps, BaseComponent, Properties};
 
-#[yew::function_component]
+#[page_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
     yew::html! {
        <>
@@ -23,7 +23,7 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
     }
 }
 
-#[function_component]
+#[page_component]
 pub fn HomePage() -> yew::Html {
     yew::html! {
         <div class="container">
@@ -44,7 +44,7 @@ pub struct CounterPageProps {
     counter_start: i32,
 }
 
-#[yew::function_component]
+#[page_component]
 pub fn CounterPage(props: &CounterPageProps) -> yew::Html {
     yew::html! {
         <div class="container">

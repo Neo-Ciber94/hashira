@@ -1,5 +1,4 @@
-use crate::components::id::ComponentId;
-
+use crate::components::id::PageId;
 use super::ClientPageRoute;
 use route_recognizer::{Match, Router};
 use std::collections::HashMap;
@@ -45,8 +44,8 @@ impl Clone for PageRouterWrapper {
 /// Represents a router for the client.
 #[derive(Default)]
 pub struct PageRouter {
-    path_to_id: Router<ComponentId>,
-    id_to_page: HashMap<ComponentId, ClientPageRoute>,
+    path_to_id: Router<PageId>,
+    id_to_page: HashMap<PageId, ClientPageRoute>,
 }
 
 impl PageRouter {
@@ -77,7 +76,7 @@ impl PageRouter {
     }
 
     /// Returns the component with the given id.
-    pub fn recognize_by_id(&self, id: &ComponentId) -> Option<&ClientPageRoute> {
+    pub fn recognize_by_id(&self, id: &PageId) -> Option<&ClientPageRoute> {
         self.id_to_page.get(id)
     }
 }

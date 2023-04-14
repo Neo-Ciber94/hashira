@@ -1,9 +1,10 @@
 use super::{ClientPageRoute, RenderContext, Route};
-use crate::{components::id::ComponentId, error::Error, web::Response};
+use crate::components::id::PageId;
+use crate::components::PageComponent;
+use crate::{error::Error, web::Response};
 use serde::de::DeserializeOwned;
 use std::future::Future;
 use std::{collections::HashMap, marker::PhantomData};
-use yew::BaseComponent;
 
 /// Represents a nested route in a `App`.
 #[derive(Default)]
@@ -48,7 +49,7 @@ impl<C> AppScope<C> {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + Clone + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -69,7 +70,7 @@ impl<C> AppScope<C> {
     #[cfg(target_arch = "wasm32")]
     pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
@@ -80,7 +81,7 @@ impl<C> AppScope<C> {
 
     fn add_component<COMP>(&mut self, path: &str)
     where
-        COMP: BaseComponent,
+        COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
     {
         use crate::components::AnyComponent;
@@ -89,7 +90,7 @@ impl<C> AppScope<C> {
             path.to_owned(),
             ClientPageRoute {
                 path: path.to_owned(),
-                component_id: ComponentId::of::<COMP>(),
+                page_id: PageId::of::<COMP>(),
                 component: AnyComponent::<serde_json::Value>::new(|props_json| {
                     let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
                         panic!(

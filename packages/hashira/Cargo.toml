@@ -11,6 +11,7 @@ lol_html = "0.3.3"
 
 [dependencies]
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }
+hashira-macros = { path = "../hashira-macros" }
 cookie = { version = "0.17.0", features = ["percent-encode"] }
 web-sys = "0.3.61"
 route-recognizer = "0.3.1"
