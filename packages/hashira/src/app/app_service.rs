@@ -9,7 +9,7 @@ use crate::{
 };
 use http::StatusCode;
 use route_recognizer::{Params, Router};
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 pub(crate) struct AppServiceInner {
     pub(crate) layout: RenderLayout,
@@ -17,6 +17,9 @@ pub(crate) struct AppServiceInner {
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
+
+    #[cfg(feature = "hooks")]
+    pub(crate) hooks: Arc<crate::events::Hooks>,
 }
 
 enum ErrorSource {
@@ -25,10 +28,13 @@ enum ErrorSource {
 }
 
 /// The root service used for handling the `hashira` application.
-pub struct AppService(Rc<AppServiceInner>);
+pub struct AppService(Arc<AppServiceInner>);
+
+unsafe impl Send for AppService {}
+unsafe impl Sync for AppService {}
 
 impl AppService {
-    pub(crate) fn new(inner: Rc<AppServiceInner>) -> Self {
+    pub(crate) fn new(inner: Arc<AppServiceInner>) -> Self {
         Self(inner)
     }
 
@@ -74,14 +80,44 @@ impl AppService {
     /// Process the incoming request and return the response.
     pub async fn handle(&self, req: Request, path: &str) -> Response {
         let req = Arc::new(req);
-        let res = self.handle_request(req, path).await;
-        res
+        let path = path.to_owned();
+
+        // #[cfg(feature = "hooks")]
+        // {
+        //     let next = Box::new(move |req| {
+        //         let fut = self.handle_request(req, path);
+        //         Box::pin(fut) as BoxFuture<Response>
+        //     }) as crate::events::Next;
+
+        //     let hooks = &self.0.hooks.on_handle_hooks;
+
+        //     let handler = hooks.iter().fold(next, move |cur, next_handler| {
+        //         Box::new(move |req| {
+        //             let fut = next_handler.on_handle(req, cur);
+        //             Box::pin(fut)
+        //         })
+        //     }) as crate::events::Next;
+
+        //     let res = handler(req).await;
+        //     return res;
+        // }
+
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "hooks")] {
+                todo!()
+            } else {
+                let res = self.handle_request(req, path).await;
+                res
+            }
+        }
     }
 
-    async fn handle_request(&self, req: Arc<Request>, mut path: &str) -> Response {
+    async fn handle_request(&self, req: Arc<Request>, path: String) -> Response {
         // We remove the trailing slash from the path,
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
+
+        let mut path = path.as_str();
 
         path = path.trim();
 

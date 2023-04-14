@@ -8,7 +8,7 @@ use std::{collections::HashMap, marker::PhantomData};
 
 /// Represents a nested route in a `App`.
 #[derive(Default)]
-pub struct AppScope<C> {
+pub struct AppNested<C> {
     // Inner server routes
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) server_router: HashMap<String, Route>,
@@ -20,10 +20,10 @@ pub struct AppScope<C> {
     _marker: PhantomData<C>,
 }
 
-impl<C> AppScope<C> {
+impl<C> AppNested<C> {
     /// Creates a new nested route.
     pub fn new() -> Self {
-        AppScope {
+        AppNested {
             #[cfg(not(target_arch = "wasm32"))]
             server_router: HashMap::new(),
             page_router: HashMap::new(),
@@ -106,4 +106,9 @@ impl<C> AppScope<C> {
             },
         );
     }
+}
+
+/// Creates a new nested app.
+pub fn nested<C>() -> AppNested<C> {
+    AppNested::new()
 }

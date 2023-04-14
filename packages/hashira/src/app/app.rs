@@ -1,7 +1,7 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
-    AppScope, AppService, AppServiceInner, BoxFuture, ClientPageRoute, LayoutContext,
+    AppNested, AppService, AppServiceInner, BoxFuture, ClientPageRoute, LayoutContext,
     RenderContext, RequestContext, Route,
 };
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 use http::status::StatusCode;
 use route_recognizer::Router;
 use serde::de::DeserializeOwned;
-use std::{future::Future, marker::PhantomData, rc::Rc, sync::Arc};
+use std::{future::Future, marker::PhantomData, sync::Arc};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
 /// A function that renders the base `index.html`.
@@ -81,6 +81,9 @@ pub struct App<C> {
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
     _marker: PhantomData<C>,
+
+    #[cfg(feature = "hooks")]
+    hooks: crate::events::Hooks,
 }
 
 impl<C> App<C> {
@@ -93,6 +96,9 @@ impl<C> App<C> {
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
             _marker: PhantomData,
+
+            #[cfg(feature = "hooks")]
+            hooks: Default::default(),
         }
     }
 }
@@ -152,7 +158,7 @@ where
 
     /// Adds nested routes for the given path.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn scope(mut self, base_path: &str, scope: AppScope<C>) -> Self {
+    pub fn scope(mut self, base_path: &str, scope: AppNested<C>) -> Self {
         for (child_path, route) in scope.server_router {
             let path = format!("{base_path}{child_path}");
             self.server_router.add(&path, route);
@@ -168,8 +174,8 @@ where
 
     /// Adds nested routes for the given path.
     #[cfg(target_arch = "wasm32")]
-    pub fn scope(mut self, base_path: &str, scope: AppScope<C>) -> Self {
-        for (child_path, route) in scope.page_router {
+    pub fn scope(mut self, base_path: &str, scope: AppNested<C>) -> Self {
+        for (child_path, route) in nested.page_router {
             let path = format!("{base_path}{child_path}");
             self.page_router.add(&path, route);
         }
@@ -322,6 +328,13 @@ where
         )
     }
 
+    /// Adds the given `Hooks`.
+    #[cfg(feature = "hooks")]
+    pub fn hooks(mut self, hooks: crate::events::Hooks) -> Self {
+        self.hooks.extend(hooks);
+        self
+    }
+
     /// Constructs an `AppService` using this instance.
     pub fn build(self) -> AppService {
         let App {
@@ -331,6 +344,9 @@ where
             client_error_router,
             server_error_router,
             _marker: _,
+
+            #[cfg(feature = "hooks")]
+            hooks,
         } = self;
 
         let layout = layout.unwrap_or_else(|| {
@@ -349,9 +365,12 @@ where
             client_router,
             client_error_router,
             server_error_router,
+
+            #[cfg(feature = "hooks")]
+            hooks: Arc::new(hooks),
         };
 
-        AppService::new(Rc::new(inner))
+        AppService::new(Arc::new(inner))
     }
 
     fn add_component<COMP>(&mut self, path: &str)
@@ -448,9 +467,4 @@ impl<C> Default for App<C> {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Creates a new app scope.
-pub fn scope<C>() -> AppScope<C> {
-    AppScope::new()
 }

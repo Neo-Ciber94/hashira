@@ -7,6 +7,8 @@ use yew::Renderer;
 
 use crate::components::{Page, HASHIRA_PAGE_DATA, HASHIRA_ROOT};
 
+// TODO: Add custom panic hook
+
 pub fn mount<C>(service: AppService)
 where
     C: BaseComponent<Properties = ChildrenProps>,

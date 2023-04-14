@@ -8,6 +8,9 @@ pub mod hooks;
 pub mod server;
 pub mod web;
 
+#[cfg(feature = "hooks")]
+pub mod events;
+
 // Macros
 pub use hashira_macros::*;
 

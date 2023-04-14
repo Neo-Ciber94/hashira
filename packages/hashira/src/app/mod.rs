@@ -1,6 +1,6 @@
 #[allow(clippy::module_inception)]
 mod app;
-mod app_scope;
+mod app_nested;
 mod app_service;
 mod layout_context;
 mod render_context;
@@ -8,7 +8,7 @@ mod request_context;
 mod route;
 
 pub use app::*;
-pub use app_scope::*;
+pub use app_nested::*;
 pub use app_service::*;
 pub use layout_context::*;
 pub use render_context::*;

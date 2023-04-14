@@ -1,0 +1,8 @@
+{
+    "rust-analyzer.cargo.features": [
+        "hooks"
+    ],
+    "rust-analyzer.runnables.extraArgs": [
+        "--all-features"
+    ]
+}
