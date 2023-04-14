@@ -46,7 +46,7 @@ fn map_response(res: Response) -> HttpResponse {
     let mut builder = HttpResponseBuilder::new(res.status());
 
     for (name, value) in res.headers() {
-        builder.insert_header((name, value));
+        builder.append_header((name, value));
     }
 
     let body = res.into_body();
