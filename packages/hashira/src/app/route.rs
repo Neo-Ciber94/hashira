@@ -221,18 +221,18 @@ fn assert_valid_path(path: &str) {
     assert!(!path.is_empty(), "route path cannot be empty");
 
     assert!(
-        !path.starts_with(" ") || !path.ends_with(" "),
+        !path.starts_with(' ') || !path.ends_with(' '),
         "route path cannot starts or end with a whitespace but was: {path}"
     );
 
     assert!(
-        path.starts_with("/"),
+        path.starts_with('/'),
         "route path must start with `/`, but was: {path}"
     );
 
     if path.len() > 1 {
         assert!(
-            !path.ends_with("/"),
+            !path.ends_with('/'),
             "route path cannot end with `/` but was: {path}"
         );
     }

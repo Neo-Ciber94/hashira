@@ -64,11 +64,9 @@ pub fn LiveReload() -> yew::Html {
 
     let host = std::env::var(HASHIRA_LIVE_RELOAD_HOST)
         .map(|env| format!("'{}'", env))
-        .unwrap_or_else(|_| format!("undefined"));
+        .unwrap_or_else(|_| String::from("undefined"));
 
-    let port = std::env::var(HASHIRA_LIVE_RELOAD_PORT)
-        .map(|env| format!("{}", env))
-        .unwrap_or_else(|_| format!("0"));
+    let port = std::env::var(HASHIRA_LIVE_RELOAD_PORT).unwrap_or_else(|_| String::from("0"));
 
     yew::Html::from_html_unchecked(AttrValue::from(format!(
         r#"

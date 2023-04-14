@@ -43,6 +43,7 @@ impl Clone for PageRouterWrapper {
 }
 
 /// Represents a router for the client.
+#[derive(Default)]
 pub struct PageRouter {
     path_to_id: Router<ComponentId>,
     id_to_page: HashMap<ComponentId, ClientPageRoute>,
@@ -72,7 +73,7 @@ impl PageRouter {
         let id = mtch.handler();
         let page = self.id_to_page.get(*id)?;
         let params = mtch.params().clone();
-        Some(Match::new(&page, params))
+        Some(Match::new(page, params))
     }
 
     /// Returns the component with the given id.

@@ -86,13 +86,13 @@ impl AppService {
         path = path.trim();
 
         // FIXME: Ensure the path always starts with `/`
-        debug_assert!(path.starts_with("/"));
+        debug_assert!(path.starts_with('/'));
 
-        if path.len() > 1 && path.ends_with("/") {
-            path = path.trim_end_matches("/");
+        if path.len() > 1 && path.ends_with('/') {
+            path = path.trim_end_matches('/');
         }
 
-        match self.0.server_router.recognize(&path) {
+        match self.0.server_router.recognize(path) {
             Ok(mtch) => {
                 let route = mtch.handler();
                 let method = req.method().into();

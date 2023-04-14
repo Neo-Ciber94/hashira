@@ -41,7 +41,7 @@ impl IntoResponse for Vec<u8> {
     }
 }
 
-impl<'a> IntoResponse for &'static [u8] {
+impl IntoResponse for &'static [u8] {
     fn into_response(self) -> Response {
         let body = Body::from_static(self);
         let mut res = Response::new(body);

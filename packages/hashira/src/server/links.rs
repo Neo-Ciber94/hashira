@@ -77,7 +77,7 @@ impl PageLinks {
     }
 
     /// Adds a link element.
-    pub fn add(mut self, link: LinkTag) -> Self {
+    pub fn insert(mut self, link: LinkTag) -> Self {
         self.tags.push(link);
         self
     }

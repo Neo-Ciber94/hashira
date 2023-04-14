@@ -120,28 +120,26 @@ impl BuildTask {
 
     async fn include_files(&self) -> anyhow::Result<()> {
         let opts = &self.options;
-        let include_files: Vec<IncludeFiles>;
 
-        if opts.include.is_empty() {
-            include_files = DEFAULT_INCLUDES
-                .into_iter()
-                .map(|s| PathBuf::from(s))
+        let include_files = if opts.include.is_empty() {
+            DEFAULT_INCLUDES
+                .iter()
+                .map(PathBuf::from)
                 .map(|path| IncludeFiles {
                     path,
                     is_default: true,
                 })
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>()
         } else {
-            include_files = opts
-                .include
+            opts.include
                 .clone()
                 .into_iter()
                 .map(|path| IncludeFiles {
                     path,
                     is_default: false,
                 })
-                .collect::<Vec<_>>();
-        }
+                .collect::<Vec<_>>()
+        };
 
         let dest_dir = opts.profile_target_dir()?.join(&opts.public_dir);
 
@@ -235,7 +233,7 @@ impl BuildTask {
             }
         });
 
-        let mut wasm_dir = wasm_target_dir.clone();
+        let mut wasm_dir = wasm_target_dir;
         let lib_name = crate::utils::get_cargo_lib_name().context("Failed to get lib name")?;
         wasm_dir.push(format!("{lib_name}.wasm"));
         log::debug!("wasm file dir: {}", wasm_dir.display());

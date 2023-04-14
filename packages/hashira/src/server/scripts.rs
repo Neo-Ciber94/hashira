@@ -59,7 +59,7 @@ impl PageScripts {
         self.tags.iter()
     }
 
-    pub fn add(mut self, script: ScriptTag) -> Self {
+    pub fn insert(mut self, script: ScriptTag) -> Self {
         self.tags.push(script);
         self
     }

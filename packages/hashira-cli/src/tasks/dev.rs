@@ -139,9 +139,9 @@ impl DevTask {
             host: self.host.clone(),
             port: self.port,
             reload_host: self.reload_host.clone(),
-            reload_port: self.reload_port.clone(),
+            reload_port: self.reload_port,
             static_dir: self.static_dir.clone(),
-            build_done_signal: build_done_tx.clone(),
+            build_done_signal: build_done_tx,
             interrupt_signal: interrupt_signal.clone(),
         });
 
@@ -224,7 +224,7 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
     ignore_paths.push(PathBuf::from(".git"));
     ignore_paths.push(PathBuf::from(".gitignore"));
 
-    if let Some(target_dir) = target_dir.clone() {
+    if let Some(target_dir) = target_dir {
         ignore_paths.push(target_dir);
     }
 
@@ -243,16 +243,15 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
                 continue;
             }
 
-            match (ignore_path.canonicalize(), event.path.canonicalize()) {
-                (Ok(ignore_path), Ok(event_path)) => {
-                    // If the ignore path contains the affected path, we remove the path from the event list
-                    if let Ok(_) = event_path.strip_prefix(ignore_path) {
-                        log::debug!("Ignoring path: {}", event.path.display());
-                        events.remove(idx);
-                        break 'outer;
-                    }
+            if let (Ok(ignore_path), Ok(event_path)) =
+                (ignore_path.canonicalize(), event.path.canonicalize())
+            {
+                // If the ignore path contains the affected path, we remove the path from the event list
+                if event_path.strip_prefix(ignore_path).is_ok() {
+                    log::debug!("Ignoring path: {}", event.path.display());
+                    events.remove(idx);
+                    break 'outer;
                 }
-                _ => {}
             }
         }
 
@@ -273,6 +272,7 @@ struct BuildAndRunOptions {
     interrupt_signal: Sender<()>,
 }
 
+#[allow(clippy::bool_comparison)]
 async fn build_and_run(
     opts: Arc<BuildAndRunOptions>,
     mut events: Vec<DebouncedEvent>,
@@ -291,7 +291,7 @@ async fn build_and_run(
     }
 
     let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
-    if paths.len() > 0 {
+    if !paths.is_empty() {
         log::info!("change detected on paths: {:?}", paths);
     }
 
@@ -299,7 +299,7 @@ async fn build_and_run(
     let mut run_task = RunTask {
         envs: Default::default(),
         host: opts.host.clone(),
-        port: opts.port.clone(),
+        port: opts.port,
         static_dir: opts.static_dir.clone(),
         options: opts.build_options.clone(),
         build_done_signal: Some(opts.build_done_signal.clone()),
@@ -384,7 +384,7 @@ async fn websocket_handler(
                     let json = serde_json::to_string(&LiveReloadMessage::Reload{ reload: true })
                         .expect("Failed to serialize message");
 
-                    if let Err(_) = sender.send( Message::Text(json)).await {
+                    if sender.send( Message::Text(json)).await.is_err() {
                         break;
                     }
                 },
@@ -393,7 +393,7 @@ async fn websocket_handler(
                     let json = serde_json::to_string(&LiveReloadMessage::Loading { loading: true })
                         .expect("Failed to serialize message");
 
-                    if let Err(_) = sender.send( Message::Text(json)).await {
+                    if sender.send( Message::Text(json)).await.is_err() {
                         break;
                     }
                 },

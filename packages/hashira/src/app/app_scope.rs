@@ -6,6 +6,7 @@ use std::{collections::HashMap, marker::PhantomData};
 use yew::BaseComponent;
 
 /// Represents a nested route in a `App`.
+#[derive(Default)]
 pub struct AppScope<C> {
     // Inner server routes
     #[cfg(not(target_arch = "wasm32"))]

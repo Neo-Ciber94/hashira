@@ -71,7 +71,7 @@ impl<B> RequestExt<B> for Request<B> {
         let query_str = self
             .uri()
             .query()
-            .ok_or_else(|| QueryParamsError::NotFound)?;
+            .ok_or(QueryParamsError::NotFound)?;
 
         serde_qs::from_str(query_str).map_err(QueryParamsError::Parse)
     }

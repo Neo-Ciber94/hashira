@@ -35,8 +35,7 @@ impl PageHandler {
             let ret = handler(ctx);
             Box::pin(async move {
                 let ret = ret.await;
-                let res = ret.into_response();
-                res
+                ret.into_response()
             })
         }))
     }
@@ -47,6 +46,7 @@ impl PageHandler {
 }
 
 /// A handler for errors.
+#[allow(clippy::type_complexity)]
 pub struct ErrorPageHandler(
     pub(crate) Box<dyn Fn(RequestContext, StatusCode) -> BoxFuture<Result<Response, Error>>>,
 );
@@ -82,10 +82,7 @@ pub struct App<C> {
     _marker: PhantomData<C>,
 }
 
-impl<C> App<C>
-where
-    C: 'static,
-{
+impl<C> App<C> {
     /// Constructs a new empty builder.
     pub fn new() -> Self {
         App {
@@ -97,7 +94,12 @@ where
             _marker: PhantomData,
         }
     }
+}
 
+impl<C> App<C>
+where
+    C: 'static,
+{
     /// Adds a handler that renders the base `index.html` for the requests.
     ///
     /// By default we use this template:
@@ -438,6 +440,12 @@ where
                     <COMP ..props/>
                 }
             }));
+    }
+}
+
+impl<C> Default for App<C> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

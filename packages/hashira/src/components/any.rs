@@ -33,6 +33,7 @@ impl<Props> AnyComponent<Props> {
 }
 
 impl<Props> PartialEq for AnyComponent<Props> {
+    #[allow(clippy::vtable_address_comparisons)]
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }

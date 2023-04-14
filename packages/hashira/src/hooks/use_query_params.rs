@@ -100,7 +100,7 @@ where
     let search = location
         .search()
         .expect("failed to get location.search")
-        .trim_start_matches("?")
+        .trim_start_matches('?')
         .to_owned();
 
     // Return an error if the search string is empty
@@ -120,7 +120,7 @@ where
         .request()
         .uri()
         .query()
-        .ok_or_else(|| QueryParamsError::NotFound)?;
+        .ok_or(QueryParamsError::NotFound)?;
 
     serde_qs::from_str(search).map_err(QueryParamsError::Parse)
 }

@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod app;
 mod app_scope;
 mod app_service;

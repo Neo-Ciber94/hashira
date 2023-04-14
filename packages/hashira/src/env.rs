@@ -39,7 +39,7 @@ pub fn get_host() -> Option<String> {
 /// Returns the application port.
 pub fn get_port() -> Option<u16> {
     let port_str = std::env::var(HASHIRA_PORT).ok()?;
-    match u16::from_str_radix(&port_str, 10) {
+    match port_str.parse::<u16>() {
         Ok(port) => Some(port),
         Err(err) => {
             log::warn!("Failed to parse port number: {err}");

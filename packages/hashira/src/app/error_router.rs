@@ -4,7 +4,7 @@ use http::StatusCode;
 use std::collections::HashMap;
 
 /// Contains the error routes for the client.
-#[derive(Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct ErrorRouter {
     routes: HashMap<StatusCode, AnyComponent<serde_json::Value>>,
     fallback: Option<AnyComponent<serde_json::Value>>,
@@ -36,6 +36,7 @@ impl ErrorRouter {
 }
 
 /// Contains the error routes for the client.
+#[derive(Default)]
 pub struct ServerErrorRouter {
     routes: HashMap<StatusCode, ErrorPageHandler>,
     fallback: Option<ErrorPageHandler>,

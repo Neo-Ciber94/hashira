@@ -78,11 +78,11 @@ pub async fn wait_interruptible(
             match ret {
                 Ok(status) => {
                     anyhow::ensure!(status.success(), "Process failed");
-                    return Ok(())
+                    Ok(())
                 },
                 Err(err) => {
                     log::error!("Process failed: {err}");
-                    return Err(err.into());
+                    Err(err.into())
                 }
             }
         },
@@ -95,7 +95,7 @@ pub async fn wait_interruptible(
             }
 
             // Interrupted
-            return Ok(());
+            Ok(())
         }
     }
 }

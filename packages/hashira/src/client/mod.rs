@@ -40,10 +40,8 @@ fn find_element_by_id(id: &str) -> web_sys::Element {
     let document = window.document().expect("unable to get `document`");
 
     let selector = format!("#{}", id);
-    let element = document
+    document
         .query_selector(&selector)
         .expect("failed to select element")
-        .unwrap_or_else(|| panic!("unable to find '{id}'"));
-
-    element
+        .unwrap_or_else(|| panic!("unable to find '{id}'"))
 }

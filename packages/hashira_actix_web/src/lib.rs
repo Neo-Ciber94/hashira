@@ -1,7 +1,7 @@
 use actix_web::{web::Bytes, HttpRequest, HttpResponse, Resource};
 use hashira::{
     app::AppService,
-    web::{Body, Request, Response},
+    web::{Request, Response},
 };
 
 /// Returns a handler that matches all the requests.
@@ -25,8 +25,6 @@ pub async fn handle_request(req: HttpRequest, bytes: Bytes) -> actix_web::Result
 }
 
 async fn map_request(src: HttpRequest, bytes: Bytes) -> actix_web::Result<Request> {
-    let body = Body::from(bytes);
-
     let mut request = Request::builder()
         .uri(src.uri())
         .method(src.method())
@@ -37,7 +35,7 @@ async fn map_request(src: HttpRequest, bytes: Bytes) -> actix_web::Result<Reques
         headers.append(name, value.into());
     }
 
-    request.body(body).map_err(|e| actix_web::Error::from(e))
+    request.body(bytes).map_err(actix_web::Error::from)
 }
 
 fn map_response(res: Response) -> HttpResponse {
@@ -50,6 +48,5 @@ fn map_response(res: Response) -> HttpResponse {
     }
 
     let body = res.into_body();
-    let bytes = Bytes::from(body);
-    builder.body(bytes)
+    builder.body(body)
 }
