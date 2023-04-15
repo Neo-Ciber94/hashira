@@ -6,6 +6,7 @@ mod layout_context;
 mod render_context;
 mod request_context;
 mod route;
+mod params;
 
 pub use app::*;
 pub use app_nested::*;
@@ -14,6 +15,7 @@ pub use layout_context::*;
 pub use render_context::*;
 pub use request_context::*;
 pub use route::*;
+pub use params::*;
 
 //
 pub mod error_router;

@@ -1,3 +1,4 @@
+use super::Params;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
 pub use crate::error::ResponseError;
@@ -7,7 +8,6 @@ use crate::{
     web::Response,
 };
 use http::StatusCode;
-use route_recognizer::Params;
 use serde::Serialize;
 use std::marker::PhantomData;
 use yew::{html::ChildrenProps, BaseComponent};

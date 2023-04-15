@@ -1,14 +1,14 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::PageRouterWrapper,
-    RenderLayout, RequestContext, Route,
+    Params, RenderLayout, RequestContext, Route,
 };
 use crate::{
     error::ResponseError,
     web::{Body, IntoResponse, Request, Response, ResponseExt},
 };
 use http::StatusCode;
-use route_recognizer::{Params, Router};
+use matchit::Router;
 use std::sync::Arc;
 
 pub(crate) struct AppServiceInner {
@@ -97,7 +97,7 @@ impl AppService {
             let this = self.clone();
             let path = path.to_owned();
             let next = Box::new(move |req| {
-                Box::pin(async move {                  
+                Box::pin(async move {
                     let fut = this.handle_request(req, &path);
                     let res = fut.await;
                     res
@@ -136,16 +136,16 @@ impl AppService {
             path = path.trim_end_matches('/');
         }
 
-        match self.0.server_router.recognize(path) {
+        match self.0.server_router.at(path) {
             Ok(mtch) => {
-                let route = mtch.handler();
+                let route = mtch.value;
                 let method = req.method().into();
 
                 if !route.method().matches(&method) {
                     return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
                 }
 
-                let params = mtch.params().clone();
+                let params = Params::from(mtch.params);
                 let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
 
                 let res = route.handler().call(ctx).await;

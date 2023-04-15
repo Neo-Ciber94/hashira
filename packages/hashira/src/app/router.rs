@@ -1,6 +1,6 @@
-use crate::components::id::PageId;
 use super::ClientPageRoute;
-use route_recognizer::{Match, Router};
+use crate::components::id::PageId;
+use matchit::{Match, Router};
 use std::collections::HashMap;
 use std::{ops::Deref, sync::Arc};
 use yew::Properties;
@@ -58,21 +58,26 @@ impl PageRouter {
     }
 
     /// Adds a route for the given path.
-    pub fn add(&mut self, path: &str, dest: ClientPageRoute) {
+    pub fn insert(&mut self, path: &str, dest: ClientPageRoute) {
         let id = dest.id().clone();
         self.id_to_page.insert(id.clone(), dest);
-        self.path_to_id.add(path, id);
+        self.path_to_id
+            .insert(path, id)
+            .expect("failed to add route");
     }
 
     /// Returns the page that matches the given path.
-    pub fn recognize(&self, path: &str) -> Option<Match<&ClientPageRoute>> {
-        // FIXME: If we can prevent to make a clone for the params, will be better
-
-        let mtch = self.path_to_id.recognize(path).ok()?;
-        let id = mtch.handler();
-        let page = self.id_to_page.get(*id)?;
-        let params = mtch.params().clone();
-        Some(Match::new(page, params))
+    pub fn recognize<'a>(&'a self, path: &'a str) -> Option<Match<&ClientPageRoute>> {
+        match self.path_to_id.at(path) {
+            Ok(Match { value: id, params }) => {
+                if let Some(value) = self.id_to_page.get(id) {
+                    Some(Match { value, params })
+                } else {
+                    None
+                }
+            }
+            Err(_) => None,
+        }
     }
 
     /// Returns the component with the given id.

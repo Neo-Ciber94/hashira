@@ -14,7 +14,7 @@ use crate::{
     web::{IntoResponse, Response},
 };
 use http::status::StatusCode;
-use route_recognizer::Router;
+use matchit::Router;
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc};
 use yew::{html::ChildrenProps, BaseComponent, Html};
@@ -146,7 +146,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     pub fn route(mut self, route: Route) -> Self {
         let path = route.path().to_owned(); // To please the borrow checker
-        self.server_router.add(&path, route);
+        self.server_router.insert(&path, route).expect("failed to add route");
         self
     }
 
@@ -169,7 +169,7 @@ where
                         format!("{base_path}{sub}")
                     };
 
-                self.server_router.add(&path, route);
+                self.server_router.insert(&path, route).expect("failed to add route");
             }
         }
 
@@ -180,7 +180,7 @@ where
                     format!("{base_path}{sub}")
                 };
         
-            self.page_router.add(&path, route);
+            self.page_router.insert(&path, route);
         }
 
         self
@@ -230,7 +230,7 @@ where
     {
         use super::page_head::PageHead;
 
-        self.server_error_router.add(
+        self.server_error_router.insert(
             status,
             ErrorPageHandler::new(move |ctx, status| {
                 let layout_data = PageHead::new();
@@ -268,7 +268,7 @@ where
         use super::page_head::PageHead;
 
         self.server_error_router
-            .add_fallback(ErrorPageHandler(Box::new(move |ctx, status| {
+            .fallback(ErrorPageHandler(Box::new(move |ctx, status| {
                 let layout_data = PageHead::new();
                 let render_ctx = RenderContext::new(ctx, layout_data);
                 let res = handler(render_ctx, status);
@@ -388,7 +388,7 @@ where
             std::any::type_name::<COMP>()
         );
 
-        self.page_router.add(
+        self.page_router.insert(
             path,
             ClientPageRoute {
                 path: path.to_string(),
@@ -421,7 +421,7 @@ where
             std::any::type_name::<COMP>()
         );
 
-        self.client_error_router.add(
+        self.client_error_router.insert(
             status,
             AnyComponent::<serde_json::Value>::new(|props_json| {
                 let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
@@ -451,7 +451,7 @@ where
         );
 
         self.client_error_router
-            .add_fallback(AnyComponent::<serde_json::Value>::new(|props_json| {
+            .fallback(AnyComponent::<serde_json::Value>::new(|props_json| {
                 let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
                     panic!(
                         "Failed to deserialize `{}` component props. {err}",

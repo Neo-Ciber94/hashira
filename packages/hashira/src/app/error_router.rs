@@ -20,12 +20,12 @@ impl ErrorRouter {
     }
 
     /// Adds a component for the given `StatusCode`.
-    pub fn add(&mut self, status: StatusCode, component: AnyComponent<serde_json::Value>) {
+    pub fn insert(&mut self, status: StatusCode, component: AnyComponent<serde_json::Value>) {
         self.routes.insert(status, component);
     }
 
     /// Adds a handler for any status code.
-    pub fn add_fallback(&mut self, component: AnyComponent<serde_json::Value>) {
+    pub fn fallback(&mut self, component: AnyComponent<serde_json::Value>) {
         self.fallback = Some(component);
     }
 
@@ -52,12 +52,12 @@ impl ServerErrorRouter {
     }
 
     /// Adds a handler for the given `StatusCode`.
-    pub fn add(&mut self, status: StatusCode, handler: ErrorPageHandler) {
+    pub fn insert(&mut self, status: StatusCode, handler: ErrorPageHandler) {
         self.routes.insert(status, handler);
     }
 
     /// Adds a component to handle for error status code.
-    pub fn add_fallback(&mut self, handler: ErrorPageHandler) {
+    pub fn fallback(&mut self, handler: ErrorPageHandler) {
         self.fallback = Some(handler);
     }
 
