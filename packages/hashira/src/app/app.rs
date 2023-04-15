@@ -11,10 +11,9 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response},
+    web::{IntoResponse, Response}, routing::PathRouter,
 };
 use http::status::StatusCode;
-use matchit::Router;
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc};
 use yew::{html::ChildrenProps, BaseComponent, Html};
@@ -76,7 +75,7 @@ impl ErrorPageHandler {
 /// A builder for a `hashira` application.
 pub struct App<C> {
     layout: Option<RenderLayout>,
-    server_router: Router<Route>,
+    server_router: PathRouter<Route>,
     page_router: PageRouter,
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
@@ -91,7 +90,7 @@ impl<C> App<C> {
     pub fn new() -> Self {
         App {
             layout: None,
-            server_router: Router::new(),
+            server_router: PathRouter::new(),
             page_router: PageRouter::new(),
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),

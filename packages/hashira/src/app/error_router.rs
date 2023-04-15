@@ -30,7 +30,7 @@ impl ErrorRouter {
     }
 
     /// Returns the component to render for the given `StatusCode`.
-    pub fn recognize_error(&self, status: &StatusCode) -> Option<&AnyComponent<serde_json::Value>> {
+    pub fn find_match(&self, status: &StatusCode) -> Option<&AnyComponent<serde_json::Value>> {
         self.routes.get(status).or(self.fallback.as_ref())
     }
 }
@@ -62,7 +62,7 @@ impl ServerErrorRouter {
     }
 
     /// Returns the handler for the given `StatusCode`.
-    pub fn recognize_error(&self, status: &StatusCode) -> Option<&ErrorPageHandler> {
+    pub fn find_match(&self, status: &StatusCode) -> Option<&ErrorPageHandler> {
         self.routes.get(status)
     }
 }

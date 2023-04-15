@@ -59,7 +59,7 @@ where
     let error_router = &props.error_router;
 
     if let Some(error) = &props.error {
-        return match error_router.recognize_error(&error.status) {
+        return match error_router.find_match(&error.status) {
             Some(comp) => {
                 let props = props.props_json.clone();
                 yew::html! {
@@ -77,7 +77,7 @@ where
         };
     }
 
-    match router.recognize_by_id(&props.id) {
+    match router.find_by_id(&props.id) {
         Some(route) => {
             let props = props.props_json.clone();
 
@@ -89,7 +89,7 @@ where
                 </ROOT>
             }
         }
-        None => match error_router.recognize_error(&StatusCode::NOT_FOUND) {
+        None => match error_router.find_match(&StatusCode::NOT_FOUND) {
             Some(comp) => {
                 let props = props.props_json.clone();
                 yew::html! {

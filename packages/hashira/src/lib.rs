@@ -7,6 +7,8 @@ pub mod error;
 pub mod hooks;
 pub mod server;
 pub mod web;
+pub mod routing;
+
 
 #[cfg(feature = "hooks")]
 pub mod events;

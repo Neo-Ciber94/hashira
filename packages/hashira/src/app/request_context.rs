@@ -1,6 +1,6 @@
-use super::{error_router::ErrorRouter, router::PageRouterWrapper, RenderLayout, Params};
+use super::{error_router::ErrorRouter, router::PageRouterWrapper, RenderLayout};
 pub use crate::error::ResponseError;
-use crate::web::Request;
+use crate::{web::Request, routing::Params};
 use std::sync::Arc;
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]

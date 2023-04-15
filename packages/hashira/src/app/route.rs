@@ -13,7 +13,7 @@ use crate::{
 pub struct ClientPageRoute {
     pub(crate) page_id: PageId,
     pub(crate) component: AnyComponent<serde_json::Value>, // The component for this page route.
-    pub(crate) path: String,                               // The path pattern for this page route.
+    pub(crate) path: String,                               // The route of this component
 }
 
 impl ClientPageRoute {

@@ -1,19 +1,19 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::PageRouterWrapper,
-    Params, RenderLayout, RequestContext, Route,
+    RenderLayout, RequestContext, Route,
 };
 use crate::{
     error::ResponseError,
+    routing::{Params, PathRouter},
     web::{Body, IntoResponse, Request, Response, ResponseExt},
 };
 use http::StatusCode;
-use matchit::Router;
 use std::sync::Arc;
 
 pub(crate) struct AppServiceInner {
     pub(crate) layout: RenderLayout,
-    pub(crate) server_router: Router<Route>,
+    pub(crate) server_router: PathRouter<Route>,
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
@@ -59,7 +59,7 @@ impl AppService {
     }
 
     /// Returns the server router.
-    pub fn server_router(&self) -> &Router<Route> {
+    pub fn server_router(&self) -> &PathRouter<Route> {
         &self.0.server_router
     }
 
@@ -125,8 +125,6 @@ impl AppService {
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
 
-        //let mut path = path.as_str();
-
         path = path.trim();
 
         // FIXME: Ensure the path always starts with `/`
@@ -136,7 +134,7 @@ impl AppService {
             path = path.trim_end_matches('/');
         }
 
-        match self.0.server_router.at(path) {
+        match self.0.server_router.find_match(path) {
             Ok(mtch) => {
                 let route = mtch.value;
                 let method = req.method().into();
@@ -145,7 +143,7 @@ impl AppService {
                     return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
                 }
 
-                let params = Params::from_iter(mtch.params.iter());
+                let params = mtch.params;
                 let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
 
                 let res = route.handler().call(ctx).await;
@@ -182,7 +180,7 @@ impl AppService {
         };
 
         let status = err.status();
-        match self.0.server_error_router.recognize_error(&status) {
+        match self.0.server_error_router.find_match(&status) {
             Some(error_handler) => {
                 let params = Params::default();
                 let ctx = self.create_context(path.to_owned(), req, params, Some(err));

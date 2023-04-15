@@ -1,7 +1,7 @@
-use super::Params;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
 pub use crate::error::ResponseError;
+use crate::routing::Params;
 use crate::{error::Error, web::Request};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
