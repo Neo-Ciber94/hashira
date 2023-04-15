@@ -1,10 +1,18 @@
-use crate::{
-    app::{AppService, BoxFuture, RequestContext, ResponseError},
-    web::{Request, Response},
-};
-pub use async_trait::*;
-use std::{fmt::Display, panic::PanicInfo, sync::Arc};
+mod on_after_render;
+mod on_before_render;
+mod on_chunk_render;
+mod on_client_error;
+mod on_client_init;
+mod on_handle;
+mod on_server_error;
+mod on_server_init;
 
+pub use {
+    on_after_render::*, on_before_render::*, on_chunk_render::*, on_client_error::*,
+    on_client_init::*, on_handle::*, on_server_error::*, on_server_init::*,
+};
+
+use std::{fmt::Display, sync::Arc};
 /// Represents a collection of event hooks.
 #[derive(Default)]
 pub struct Hooks {
@@ -125,133 +133,5 @@ impl Hooks {
 impl Display for Hooks {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Hooks")
-    }
-}
-
-/// Resolves the next request and return the response.
-pub type Next = Box<dyn FnOnce(Arc<Request>) -> BoxFuture<Response> + Send + Sync>;
-
-/// A hook to the application request handler.
-#[async_trait]
-pub trait OnHandle {
-    /// Called on the next request.
-    async fn on_handle(&self, req: Arc<Request>, next: Next) -> Response;
-}
-
-/// A hook to the application before render event.
-#[async_trait]
-pub trait OnBeforeRender {
-    /// Called before render.
-    async fn on_before_render(&self, html: &mut String, ctx: &RequestContext);
-}
-
-/// A hook to the application after render event.
-#[async_trait]
-pub trait OnAfterRender {
-    /// Called after render.
-    async fn on_after_render(&self, html: &mut String, ctx: &RequestContext);
-}
-
-/// A hook to the application rendering when streaming the html.
-pub trait OnChunkRender {
-    /// Called while streaming a html chunk.
-    fn on_chunk_render(&self, html: &mut String);
-}
-
-/// A hook called when the server is initialized.
-pub trait OnServerInitialize {
-    /// Called on server initialization.
-    fn on_initialize(&self, service: &AppService);
-}
-
-/// A hook called on client initialization.
-pub trait OnClientInitialize {
-    /// Called on client initialization.
-    fn on_initialize(&self, service: &AppService);
-}
-
-/// A hook called when an response error will be returned.
-pub trait OnServerError {
-    fn on_error(&self, err: &ResponseError);
-}
-
-/// A hook called when the wasm client panics.
-pub trait OnClientError {
-    /// Called on panics.
-    fn on_error(&self, err: &PanicInfo);
-}
-
-#[async_trait]
-impl<F> OnHandle for F
-where
-    F: Fn(Arc<Request>, Next) -> Response + Send + Sync + 'static,
-{
-    async fn on_handle(&self, req: Arc<Request>, next: Next) -> Response {
-        (self)(req, next)
-    }
-}
-
-#[async_trait]
-impl<F> OnBeforeRender for F
-where
-    F: Fn(&mut String, &RequestContext) + Send + Sync + 'static,
-{
-    async fn on_before_render(&self, html: &mut String, ctx: &RequestContext) {
-        (self)(html, ctx);
-    }
-}
-
-#[async_trait]
-impl<F> OnAfterRender for F
-where
-    F: Fn(&mut String, &RequestContext) + Send + Sync + 'static,
-{
-    async fn on_after_render(&self, html: &mut String, ctx: &RequestContext) {
-        (self)(html, ctx);
-    }
-}
-
-impl<F> OnChunkRender for F
-where
-    F: Fn(&mut String) + Send + Sync + 'static,
-{
-    fn on_chunk_render(&self, html: &mut String) {
-        (self)(html);
-    }
-}
-
-impl<F> OnServerInitialize for F
-where
-    F: Fn(&AppService) + Send + Sync + 'static,
-{
-    fn on_initialize(&self, service: &AppService) {
-        (self)(service);
-    }
-}
-
-impl<F> OnClientInitialize for F
-where
-    F: Fn(&AppService) + Send + Sync + 'static,
-{
-    fn on_initialize(&self, service: &AppService) {
-        (self)(service);
-    }
-}
-
-impl<F> OnServerError for F
-where
-    F: Fn(&ResponseError) + Send + Sync + 'static,
-{
-    fn on_error(&self, err: &ResponseError) {
-        (self)(err)
-    }
-}
-
-impl<F> OnClientError for F
-where
-    F: Fn(&PanicInfo) + Send + Sync + 'static,
-{
-    fn on_error(&self, err: &PanicInfo) {
-        (self)(err)
     }
 }
