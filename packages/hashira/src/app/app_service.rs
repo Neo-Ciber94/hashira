@@ -30,9 +30,6 @@ enum ErrorSource {
 /// The root service used for handling the `hashira` application.
 pub struct AppService(Arc<AppServiceInner>);
 
-unsafe impl Send for AppService {}
-unsafe impl Sync for AppService {}
-
 impl AppService {
     pub(crate) fn new(inner: Arc<AppServiceInner>) -> Self {
         Self(inner)
@@ -80,44 +77,55 @@ impl AppService {
     /// Process the incoming request and return the response.
     pub async fn handle(&self, req: Request, path: &str) -> Response {
         let req = Arc::new(req);
-        let path = path.to_owned();
 
-        // #[cfg(feature = "hooks")]
-        // {
-        //     let next = Box::new(move |req| {
-        //         let fut = self.handle_request(req, path);
-        //         Box::pin(fut) as BoxFuture<Response>
-        //     }) as crate::events::Next;
+        // Handle the request normally
+        #[cfg(not(feature = "hooks"))]
+        {
+            self.handle_request(req, &path).await
+        }
 
-        //     let hooks = &self.0.hooks.on_handle_hooks;
+        #[cfg(feature = "hooks")]
+        {
+            use crate::{app::BoxFuture, events::Next};
 
-        //     let handler = hooks.iter().fold(next, move |cur, next_handler| {
-        //         Box::new(move |req| {
-        //             let fut = next_handler.on_handle(req, cur);
-        //             Box::pin(fut)
-        //         })
-        //     }) as crate::events::Next;
+            let hooks = &self.0.hooks.on_handle_hooks;
 
-        //     let res = handler(req).await;
-        //     return res;
-        // }
-
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "hooks")] {
-                todo!()
-            } else {
-                let res = self.handle_request(req, path).await;
-                res
+            if !hooks.is_empty() {
+                return self.handle_request(req, &path).await;
             }
+
+            let this = self.clone();
+            let path = path.to_owned();
+            let next = Box::new(move |req| {
+                Box::pin(async move {                  
+                    let fut = this.handle_request(req, &path);
+                    let res = fut.await;
+                    res
+                }) as BoxFuture<Response>
+            }) as Next;
+
+            let handler = hooks.iter().fold(next, move |cur, next_handler| {
+                let next_handler = next_handler.clone();
+                Box::new(move |req| {
+                    Box::pin(async move {
+                        let fut = next_handler.on_handle(req, cur);
+                        let res = fut.await;
+                        res
+                    })
+                })
+            }) as Next;
+
+            // Handle the request
+            handler(req).await
         }
     }
 
-    async fn handle_request(&self, req: Arc<Request>, path: String) -> Response {
+    async fn handle_request(&self, req: Arc<Request>, mut path: &str) -> Response {
         // We remove the trailing slash from the path,
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
 
-        let mut path = path.as_str();
+        //let mut path = path.as_str();
 
         path = path.trim();
 

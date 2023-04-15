@@ -51,7 +51,7 @@ impl<C> AppNested<C> {
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + Clone + 'static,
+        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         use super::page_head::PageHead;
@@ -59,8 +59,8 @@ impl<C> AppNested<C> {
         self.add_component::<COMP>(path);
 
         self.route(Route::get(path, move |ctx| {
-            let layout_data = PageHead::new();
-            let render_ctx = RenderContext::new(ctx, layout_data);
+            let head = PageHead::new();
+            let render_ctx = RenderContext::new(ctx, head);
             let fut = handler(render_ctx);
             async { fut.await }
         }))
@@ -72,7 +72,7 @@ impl<C> AppNested<C> {
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_component::<COMP>(path);

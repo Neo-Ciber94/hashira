@@ -118,7 +118,7 @@ impl Route {
     /// Creates a new `ServerPageRoute` with the given path, HTTP method, and handler function.
     pub fn new<H, R, Fut>(path: &str, method: HttpMethod, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -134,7 +134,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to POST.
     pub fn post<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -144,7 +144,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to GET.
     pub fn get<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -154,7 +154,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to HEAD.
     pub fn head<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -164,7 +164,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to PUT.
     pub fn put<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -174,7 +174,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to DELETE.
     pub fn delete<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -184,7 +184,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to OPTIONS.
     pub fn options<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -194,7 +194,7 @@ impl Route {
     /// Creates a new `Route` with the HTTP method set to PATCH.
     pub fn patch<H, R, Fut>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -217,7 +217,7 @@ impl Route {
     }
 }
 
-fn assert_valid_path(path: &str) {
+pub(crate) fn assert_valid_path(path: &str) {
     assert!(!path.is_empty(), "route path cannot be empty");
 
     assert!(

@@ -23,12 +23,12 @@ use yew::{html::ChildrenProps, BaseComponent, Html};
 pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxFuture<Html> + Send + Sync>;
 
 /// A handler for a request.
-pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response>>);
+pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response> + Send + Sync>);
 
 impl PageHandler {
     pub fn new<H, R, Fut>(handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + 'static,
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
@@ -49,13 +49,13 @@ impl PageHandler {
 /// A handler for errors.
 #[allow(clippy::type_complexity)]
 pub struct ErrorPageHandler(
-    pub(crate) Box<dyn Fn(RequestContext, StatusCode) -> BoxFuture<Result<Response, Error>>>,
+    pub(crate) Box<dyn Fn(RequestContext, StatusCode) -> BoxFuture<Result<Response, Error>> + Send + Sync>,
 );
 
 impl ErrorPageHandler {
     pub fn new<H, Fut>(handler: H) -> Self
     where
-        H: Fn(RequestContext, StatusCode) -> Fut + 'static,
+        H: Fn(RequestContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         ErrorPageHandler(Box::new(move |ctx, status| {
@@ -157,26 +157,29 @@ where
     }
 
     /// Adds nested routes for the given path.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn scope(mut self, base_path: &str, scope: AppNested<C>) -> Self {
-        for (child_path, route) in scope.server_router {
-            let path = format!("{base_path}{child_path}");
-            self.server_router.add(&path, route);
+    pub fn nest(mut self, base_path: &str, scope: AppNested<C>) -> Self {
+        super::assert_valid_path(base_path);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            for (sub, route) in scope.server_router {
+                let path = if sub == "/" {
+                        base_path.to_owned()
+                    } else {
+                        format!("{base_path}{sub}")
+                    };
+
+                self.server_router.add(&path, route);
+            }
         }
 
-        for (child_path, route) in scope.page_router {
-            let path = format!("{base_path}{child_path}");
-            self.page_router.add(&path, route);
-        }
-
-        self
-    }
-
-    /// Adds nested routes for the given path.
-    #[cfg(target_arch = "wasm32")]
-    pub fn scope(mut self, base_path: &str, scope: AppNested<C>) -> Self {
-        for (child_path, route) in nested.page_router {
-            let path = format!("{base_path}{child_path}");
+        for (sub, route) in scope.page_router {
+            let path = if sub == "/" {
+                    base_path.to_owned()
+                } else {
+                    format!("{base_path}{sub}")
+                };
+        
             self.page_router.add(&path, route);
         }
 
@@ -189,7 +192,7 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         use super::page_head::PageHead;
@@ -209,7 +212,7 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_component::<COMP>(path);
@@ -222,7 +225,7 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         use super::page_head::PageHead;
@@ -247,7 +250,7 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_error_component::<COMP>(status);
@@ -259,7 +262,7 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         use super::page_head::PageHead;
@@ -282,7 +285,7 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + 'static,
+        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
         self.add_error_fallback_component::<COMP>();

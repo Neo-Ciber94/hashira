@@ -1,5 +1,5 @@
 use crate::{
-    app::{AppService, RequestContext, ResponseError, BoxFuture},
+    app::{AppService, BoxFuture, RequestContext, ResponseError},
     web::{Request, Response},
 };
 pub use async_trait::*;
@@ -8,7 +8,7 @@ use std::{fmt::Display, panic::PanicInfo, sync::Arc};
 /// Represents a collection of event hooks.
 #[derive(Default)]
 pub struct Hooks {
-    pub(crate) on_handle_hooks: Vec<Box<dyn OnHandle + Send + Sync>>,
+    pub(crate) on_handle_hooks: Vec<Arc<dyn OnHandle + Send + Sync>>,
     pub(crate) on_before_render_hooks: Vec<Box<dyn OnBeforeRender + Send + Sync>>,
     pub(crate) on_after_render_hooks: Vec<Box<dyn OnAfterRender + Send + Sync>>,
     pub(crate) on_chunk_render_hooks: Vec<Box<dyn OnChunkRender + Send + Sync>>,
@@ -29,7 +29,7 @@ impl Hooks {
     where
         F: OnHandle + Send + Sync + 'static,
     {
-        self.on_handle_hooks.push(Box::new(f));
+        self.on_handle_hooks.push(Arc::new(f));
         self
     }
 
