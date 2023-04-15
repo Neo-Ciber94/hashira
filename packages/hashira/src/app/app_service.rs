@@ -145,7 +145,7 @@ impl AppService {
                     return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
                 }
 
-                let params = Params::from(mtch.params);
+                let params = Params::from_iter(mtch.params.iter());
                 let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
 
                 let res = route.handler().call(ctx).await;
@@ -184,7 +184,7 @@ impl AppService {
         let status = err.status();
         match self.0.server_error_router.recognize_error(&status) {
             Some(error_handler) => {
-                let params = Params::new();
+                let params = Params::default();
                 let ctx = self.create_context(path.to_owned(), req, params, Some(err));
 
                 match error_handler.call(ctx, status).await {
