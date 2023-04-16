@@ -43,7 +43,7 @@ impl IntoResponse for Vec<u8> {
 
 impl IntoResponse for &'static [u8] {
     fn into_response(self) -> Response {
-        let body = Body::from_static(self);
+        let body = Body::from(self);
         let mut res = Response::new(body);
         res.headers_mut().append(
             header::CONTENT_TYPE,
@@ -107,7 +107,7 @@ where
 
 impl IntoResponse for serde_json::Value {
     fn into_response(self) -> Response {
-        let body = Body::from(serde_json::to_string(&self).unwrap());
+        let body = Body::from(self.to_string());
         let mut res = Response::new(body);
         res.headers_mut().append(
             header::CONTENT_TYPE,

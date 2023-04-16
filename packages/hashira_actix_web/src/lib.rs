@@ -1,24 +1,28 @@
 use actix_web::{web::Bytes, HttpRequest, HttpResponse, Resource};
+use futures::TryStreamExt;
 use hashira::{
     app::AppService,
-    web::{Request, Response},
+    web::{Body, BodyInner, Request, Response},
 };
+use std::io::{Error, ErrorKind};
 
 /// Returns a handler that matches all the requests.
 pub fn router() -> Resource {
-    actix_web::web::resource("/{params:.*}")
-        .to(|req: HttpRequest, bytes: Bytes| async { handle_request(req, bytes).await })
+    actix_web::web::resource("/{params:.*}").to(|req: HttpRequest, body: Bytes| async {
+        // We just forward the request and body to the handler
+        handle_request(req, body).await
+    })
 }
 
 /// Handle a request.
-pub async fn handle_request(req: HttpRequest, bytes: Bytes) -> actix_web::Result<HttpResponse> {
+pub async fn handle_request(req: HttpRequest, body: Bytes) -> actix_web::Result<HttpResponse> {
     let path = req.path().to_string();
     let service = req
         .app_data::<AppService>()
         .cloned()
         .expect("Unable to find hashira `AppService`");
 
-    let req = map_request(req, bytes).await?;
+    let req = map_request(req, body).await?;
     let res = service.handle(req, &path).await;
     let actix_web_response = map_response(res);
     Ok(actix_web_response)
@@ -35,7 +39,8 @@ async fn map_request(src: HttpRequest, bytes: Bytes) -> actix_web::Result<Reques
         headers.append(name, value.into());
     }
 
-    request.body(bytes).map_err(actix_web::Error::from)
+    let body = Body::from(bytes);
+    request.body(body).map_err(actix_web::Error::from)
 }
 
 fn map_response(res: Response) -> HttpResponse {
@@ -47,6 +52,11 @@ fn map_response(res: Response) -> HttpResponse {
         builder.append_header((name, value));
     }
 
-    let body = res.into_body();
-    builder.body(body)
+    match res.into_body().into_inner() {
+        BodyInner::Bytes(bytes) => builder.body(bytes),
+        BodyInner::Stream(stream) => {
+            // We need to wrap the error on a sized type to be passed to `streaming`
+            builder.streaming(stream.map_err(|err| Error::new(ErrorKind::Other, err)))
+        }
+    }
 }

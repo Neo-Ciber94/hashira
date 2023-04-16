@@ -1,9 +1,10 @@
 [package]
 name = "hashira_actix_web"
+description = "Actix-web adapter for hashira"
 version = "0.1.0"
 edition = "2021"
 
-
 [dependencies]
-actix-web = "4.3.1"
 hashira = { path = "../hashira" }
+actix-web = "4.3.1"
+futures = "0.3.28"

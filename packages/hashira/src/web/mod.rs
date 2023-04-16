@@ -4,13 +4,11 @@ pub mod serde;
 mod into_response;
 mod request_ext;
 mod response_ext;
+mod body;
 
 pub use into_response::*;
 pub use request_ext::*;
 pub use response_ext::*;
-
-/// The body of a request/response.
-pub type Body = bytes::Bytes;
 
 /// Represents a `http` request.
 pub type Request<T = Body> = http::request::Request<T>;
@@ -25,3 +23,4 @@ pub use http::uri;
 pub use http::version;
 pub use http::Error;
 pub use http::Extensions;
+pub use body::*;
