@@ -13,12 +13,21 @@ use serde::Serialize;
 use std::marker::PhantomData;
 use yew::{html::ChildrenProps, BaseComponent};
 
+#[allow(unused_macros)]
+macro_rules! server_only {
+    () => {
+        panic!("this is server only code");
+    };
+}
+
 /// Contains information about the current request and allow the render the page to respond.
 pub struct RenderContext<COMP, C> {
     context: RequestContext,
-    render_layout: RenderLayout,
     head: PageHead,
     _marker: PhantomData<(COMP, C)>,
+
+    #[allow(dead_code)]
+    render_layout: RenderLayout,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -94,7 +103,7 @@ where
         COMP::Properties: Default,
     {
         #[cfg(target_arch = "wasm32")]
-        unreachable!("this is a server-only function");
+        server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -112,7 +121,7 @@ where
     #[allow(unused_variables)]
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
         #[cfg(target_arch = "wasm32")]
-        unreachable!("this is a server-only function");
+        server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -133,7 +142,7 @@ where
         COMP::Properties: Default,
     {
         #[cfg(target_arch = "wasm32")]
-        unreachable!("this is a server-only function");
+        server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -151,7 +160,7 @@ where
     #[allow(unused_variables)]
     pub async fn render_stream_with_props(self, props: COMP::Properties) -> Response {
         #[cfg(target_arch = "wasm32")]
-        unreachable!("this is a server-only function");
+        server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -173,7 +182,7 @@ where
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         #[cfg(target_arch = "wasm32")]
-        unreachable!("this is a server-only function");
+        server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
         self.render_html_with_props(COMP::Properties::default())
@@ -227,7 +236,7 @@ where
         COMP::Properties: serde::Serialize + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
-        unreachable!("this is a server-only function");
+        server_only!();
     }
 
     /// Renders the given component to html.
@@ -238,7 +247,7 @@ where
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         #[cfg(target_arch = "wasm32")]
-        unreachable!("this is a server-only function");
+        server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
         self.render_html_stream_with_props(COMP::Properties::default())
@@ -297,6 +306,6 @@ where
         COMP::Properties: serde::Serialize + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
-        unreachable!("this is a server-only function");
+        server_only!();
     }
 }

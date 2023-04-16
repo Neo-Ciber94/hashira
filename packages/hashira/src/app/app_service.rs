@@ -1,7 +1,7 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::PageRouterWrapper,
-    AppData, RenderLayout, RequestContext, Route,
+    AppData, RequestContext, Route,
 };
 use crate::{
     error::ResponseError,
@@ -12,7 +12,6 @@ use http::StatusCode;
 use std::sync::Arc;
 
 pub(crate) struct AppServiceInner {
-    pub(crate) layout: RenderLayout,
     pub(crate) server_router: PathRouter<Route>,
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
@@ -44,7 +43,6 @@ impl AppService {
         params: Params,
         error: Option<ResponseError>,
     ) -> RequestContext {
-        let render_layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let error_router = self.0.client_error_router.clone();
         let app_data = self.0.app_data.clone();
@@ -55,7 +53,6 @@ impl AppService {
             client_router,
             error_router,
             error,
-            render_layout,
             path,
             params,
         )

@@ -396,14 +396,13 @@ where
         });
 
         // Add startup app data
-        app_data.insert::<RenderLayout>(layout.clone());
+        app_data.insert::<RenderLayout>(layout); // The RenderContext require the RenderLayout
 
         // Construct app service
         let client_router = PageRouterWrapper::from(client_router);
         let client_error_router = Arc::from(client_error_router);
         let app_data = Arc::new(app_data);
         let inner = AppServiceInner {
-            layout,
             app_data,
             server_router,
             client_router,
