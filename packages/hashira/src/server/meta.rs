@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 /// Represents a `<meta>` element.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MetaTag {
     name: String,
     attrs: BTreeMap<String, String>,
@@ -162,5 +162,101 @@ impl IntoMetaTag for (&'_ str, &'_ str) {
 impl IntoMetaTag for (String, String) {
     fn into_meta_tag(self) -> MetaTag {
         MetaTag::with_content(self.0, self.1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_meta_tag() {
+        let meta_tag = MetaTag::new("test", vec![("key".to_owned(), "value".to_owned())]);
+        assert_eq!(meta_tag.name(), "test");
+        assert_eq!(
+            meta_tag.attrs().next().unwrap(),
+            (&"key".to_owned(), &"value".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_with_content_meta_tag() {
+        let meta_tag = MetaTag::with_content("test", "content");
+        assert_eq!(meta_tag.name(), "test");
+        assert_eq!(
+            meta_tag.attrs().next().unwrap(),
+            (&"content".to_owned(), &"content".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_display_meta_tag() {
+        let meta_tag = MetaTag::with_content("test", "content");
+        let display = format!("{}", meta_tag);
+        assert_eq!(display, "<meta name=\"test\" content=\"content\"/>");
+    }
+
+    #[test]
+    fn test_metadata() {
+        let metadata = Metadata::new()
+            .viewport("width=device-width, initial-scale=1")
+            .title("Example")
+            .og_type("website")
+            .og_url("https://example.com")
+            .og_title("Example Title")
+            .og_description("Example Description")
+            .og_image("https://example.com/image.png");
+
+        let mut expected_tags = BTreeMap::new();
+        expected_tags.insert(
+            "viewport".to_owned(),
+            MetaTag::with_content("viewport", "width=device-width, initial-scale=1"),
+        );
+        expected_tags.insert(
+            "title".to_owned(),
+            MetaTag::with_content("title", "Example"),
+        );
+        expected_tags.insert(
+            "og:type".to_owned(),
+            MetaTag::with_content("og:type", "website"),
+        );
+        expected_tags.insert(
+            "og:url".to_owned(),
+            MetaTag::with_content("og:url", "https://example.com"),
+        );
+        expected_tags.insert(
+            "og:title".to_owned(),
+            MetaTag::with_content("og:title", "Example Title"),
+        );
+        expected_tags.insert(
+            "og:description".to_owned(),
+            MetaTag::with_content("og:description", "Example Description"),
+        );
+        expected_tags.insert(
+            "og:image".to_owned(),
+            MetaTag::with_content("og:image", "https://example.com/image.png"),
+        );
+
+        assert_eq!(
+            metadata.meta_tags().collect::<Vec<&MetaTag>>(),
+            expected_tags.values().collect::<Vec<&MetaTag>>()
+        );
+    }
+
+    #[test]
+    fn test_extend() {
+        let mut meta1 = Metadata::new();
+        meta1 = meta1.title("Hello").description("World");
+
+        let mut meta2 = Metadata::new();
+        meta2 = meta2.viewport("width=device-width").og_type("website");
+
+        meta1.extend(meta2);
+
+        assert_eq!(meta1.meta_tags().count(), 4);
+        assert!(meta1.meta_tags().any(|m| m.name() == "viewport"));
+        assert!(meta1.meta_tags().any(|m| m.name() == "title"));
+        assert!(meta1.meta_tags().any(|m| m.name() == "description"));
+        assert!(meta1.meta_tags().any(|m| m.name() == "og:type"));
     }
 }
