@@ -44,8 +44,53 @@ impl FromIterator<(String, String)> for Params {
 }
 
 impl<'k, 'v> FromIterator<(&'k str, &'v str)> for Params {
-    fn from_iter<T: IntoIterator<Item = (&'k str,  &'v str)>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = (&'k str, &'v str)>>(iter: T) -> Self {
         let iter = iter.into_iter().map(|(k, v)| (k.to_owned(), v.to_owned()));
         Params::from_iter(iter)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_params() {
+        let mut params = Params::default();
+        params.map.insert("foo".to_owned(), "bar".to_owned());
+        params.map.insert("baz".to_owned(), "qux".to_owned());
+
+        // Test get method
+        assert_eq!(params.get("foo"), Some("bar"));
+        assert_eq!(params.get("nonexistent"), None);
+
+        // Test get_index method
+        assert_eq!(params.get_index(0), Some(("foo", "bar")));
+        assert_eq!(params.get_index(1), Some(("baz", "qux")));
+        assert_eq!(params.get_index(2), None);
+
+        // Test contains method
+        assert!(params.contains("foo"));
+        assert!(!params.contains("nonexistent"));
+
+        // Test len method
+        assert_eq!(params.len(), 2);
+
+        // Test iter method
+        let mut iter = params.iter();
+        assert_eq!(iter.next(), Some((&"foo".to_owned(), &"bar".to_owned())));
+        assert_eq!(iter.next(), Some((&"baz".to_owned(), &"qux".to_owned())));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_from_iterator() {
+        let params = vec![("foo", "bar"), ("baz", "qux")]
+            .into_iter()
+            .collect::<Params>();
+
+        assert_eq!(params.get("foo"), Some("bar"));
+        assert_eq!(params.get("baz"), Some("qux"));
+        assert_eq!(params.len(), 2);
     }
 }
