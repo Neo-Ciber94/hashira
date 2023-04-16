@@ -122,8 +122,6 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        assert_valid_path(path);
-
         Route {
             path: path.to_owned(),
             handler: PageHandler::new(handler),
@@ -214,26 +212,5 @@ impl Route {
     /// Returns a reference to the handler function for this `Route`.
     pub fn handler(&self) -> &PageHandler {
         &self.handler
-    }
-}
-
-pub(crate) fn assert_valid_path(path: &str) {
-    assert!(!path.is_empty(), "route path cannot be empty");
-
-    assert!(
-        !path.starts_with(' ') || !path.ends_with(' '),
-        "route path cannot starts or end with a whitespace but was: {path}"
-    );
-
-    assert!(
-        path.starts_with('/'),
-        "route path must start with `/`, but was: {path}"
-    );
-
-    if path.len() > 1 {
-        assert!(
-            !path.ends_with('/'),
-            "route path cannot end with `/` but was: {path}"
-        );
     }
 }

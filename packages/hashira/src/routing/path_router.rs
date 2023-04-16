@@ -25,6 +25,8 @@ impl<T> PathRouter<T> {
 
     /// Insert the given value at the given route.
     pub fn insert(&mut self, route: impl Into<String>, value: T) -> Result<(), InsertError> {
+        let route = route.into();
+        assert_valid_route(&route);
         self.imp.insert(route, value)
     }
 
@@ -55,4 +57,25 @@ pub enum MatchError {
     /// The route was not found due other error.
     #[error(transparent)]
     Other(Box<dyn std::error::Error + Send + Sync>),
+}
+
+pub(crate) fn assert_valid_route(path: &str) {
+    assert!(!path.is_empty(), "route path cannot be empty");
+
+    assert!(
+        !path.starts_with(' ') || !path.ends_with(' '),
+        "route path cannot starts or end with a whitespace but was: {path}"
+    );
+
+    assert!(
+        path.starts_with('/'),
+        "route path must start with `/`, but was: {path}"
+    );
+
+    if path.len() > 1 {
+        assert!(
+            !path.ends_with('/'),
+            "route path cannot end with `/` but was: {path}"
+        );
+    }
 }
