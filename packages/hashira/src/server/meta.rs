@@ -1,12 +1,10 @@
-use std::fmt::Display;
-
-use indexmap::IndexMap;
+use std::{collections::BTreeMap, fmt::Display};
 
 /// Represents a `<meta>` element.
 #[derive(Debug, Clone)]
 pub struct MetaTag {
     name: String,
-    attrs: IndexMap<String, String>,
+    attrs: BTreeMap<String, String>,
 }
 
 impl MetaTag {
@@ -16,14 +14,14 @@ impl MetaTag {
         I: IntoIterator<Item = (String, String)>,
     {
         let name = name.into();
-        let attrs = attrs.into_iter().collect::<IndexMap<String, String>>();
+        let attrs = attrs.into_iter().collect::<BTreeMap<String, String>>();
         MetaTag { name, attrs }
     }
 
     /// Constructs a tag in the form: `<meta name='...' content='...' />`
     pub fn with_content(name: impl Into<String>, content: impl Into<String>) -> Self {
         let name = name.into();
-        let attrs = IndexMap::from_iter([("content".to_owned(), content.into())]);
+        let attrs = BTreeMap::from_iter([("content".to_owned(), content.into())]);
         MetaTag { name, attrs }
     }
 
@@ -33,7 +31,7 @@ impl MetaTag {
     }
 
     /// Returns the attributes of the tag.
-    pub fn attrs(&self) -> indexmap::map::Iter<String, String> {
+    pub fn attrs(&self) -> std::collections::btree_map::Iter<String, String> {
         self.attrs.iter()
     }
 }
@@ -55,7 +53,7 @@ impl Display for MetaTag {
 #[derive(Default, Debug, Clone)]
 pub struct Metadata {
     // This represents the `name` and additional attributes of the <meta> tag
-    tags: IndexMap<String, MetaTag>,
+    tags: BTreeMap<String, MetaTag>,
 }
 
 impl Metadata {
@@ -65,7 +63,7 @@ impl Metadata {
     }
 
     /// Returns an iterator over the meta elements.
-    pub fn meta_tags(&self) -> indexmap::map::Values<String, MetaTag> {
+    pub fn meta_tags(&self) -> std::collections::btree_map::Values<String, MetaTag> {
         self.tags.values()
     }
 

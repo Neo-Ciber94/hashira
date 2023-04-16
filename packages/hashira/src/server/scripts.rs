@@ -1,11 +1,10 @@
-use indexmap::IndexMap;
-use std::fmt::Display;
+use std::{fmt::Display, collections::BTreeMap};
 
 /// Represents a `<script>` element to insert on the `<body>`.
 /// If you want to insert a script on the head, use [`LinkTag#script`]
 #[derive(Default, Debug, Clone)]
 pub struct ScriptTag {
-    attrs: IndexMap<String, String>,
+    attrs: BTreeMap<String, String>,
     content: Option<String>,
 }
 
