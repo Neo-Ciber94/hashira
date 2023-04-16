@@ -176,4 +176,58 @@ where
     pub fn not_found(self) -> Result<Response, Error> {
         Err(ResponseError::from_status(StatusCode::NOT_FOUND).into())
     }
+
+    /// Renders the given component to html.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_html(self, head: super::page_head::PageHead) -> Result<String, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Default + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        let props = COMP::Properties::default();
+        self.render_html_with_props(props, head).await
+    }
+
+    /// Renders the given component with the specified props to html.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_html_with_props(
+        self,
+        props: COMP::Properties,
+        head: super::page_head::PageHead,
+    ) -> Result<String, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        use crate::{
+            app::{LayoutContext, clone_request_context},
+            server::{render_page_to_html, render_to_static_html, RenderPageOptions},
+        };
+
+        let req_context = self.context;
+        let client_router = req_context.inner.client_router.clone();
+        let error_router = req_context.inner.error_router.clone();
+        let error = req_context.inner.error.clone();
+        let render_layout = req_context.inner.render_layout.clone();
+
+        //
+        let request_context = clone_request_context(&req_context);
+        let layout_ctx = LayoutContext::new(req_context, head.clone());
+        let layout_node = render_layout(layout_ctx).await;
+        let index_html = render_to_static_html(move || layout_node).await;
+
+        let options = RenderPageOptions {
+            head,
+            error,
+            index_html,
+            router: client_router,
+            error_router,
+            request_context,
+        };
+
+        let result_html = render_page_to_html::<COMP, C>(props, options).await?;
+        Ok(result_html)
+    }
 }

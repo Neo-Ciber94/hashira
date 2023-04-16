@@ -7,14 +7,14 @@ use std::sync::Arc;
 use crate::error::Error;
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-struct RequestContextInner {
+pub(crate) struct RequestContextInner {
     path: String,
     params: Params,
     app_data: Arc<AppData>,
-    client_router: PageRouterWrapper,
-    error_router: Arc<ErrorRouter>,
-    request: Arc<Request>,
-    error: Option<ResponseError>,
+    pub(crate) client_router: PageRouterWrapper,
+    pub(crate) error_router: Arc<ErrorRouter>,
+    pub(crate) request: Arc<Request>,
+    pub(crate) error: Option<ResponseError>,
 
     // TODO: The request context should no had access to the `RenderLayout`,
     // but currently this is the way we get the layout to the `RenderContext`,
@@ -24,7 +24,7 @@ struct RequestContextInner {
     // in that method we should create a RenderContext which require the RequestContext,
     // from that render context is where the actual component is being rendered,
     // where the call ends here
-    render_layout: RenderLayout,
+    pub(crate) render_layout: RenderLayout,
 }
 
 // FIXME: We could let this type to be cloneable after we move the `render_layout` from here
@@ -32,7 +32,7 @@ struct RequestContextInner {
 /// Contains information about the current request.
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub struct RequestContext {
-    inner: Arc<RequestContextInner>,
+    pub(crate) inner: Arc<RequestContextInner>,
 }
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
