@@ -196,6 +196,7 @@ impl RequestContext {
         let result_html = render_page_to_stream::<COMP, C>(props, options).await?;
         Ok(result_html)
     }
+
 }
 
 // Required to use the `RequestContext` in a context

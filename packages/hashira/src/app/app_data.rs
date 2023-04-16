@@ -1,5 +1,5 @@
-use std::ops::{Deref, DerefMut};
 use http::Extensions;
+use std::ops::{Deref, DerefMut};
 
 /// Shared data for the application.
 #[derive(Default)]

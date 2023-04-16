@@ -1,3 +1,4 @@
+use super::RenderLayout;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
 pub use crate::error::ResponseError;
@@ -15,6 +16,7 @@ use yew::{html::ChildrenProps, BaseComponent};
 /// Contains information about the current request and allow the render the page to respond.
 pub struct RenderContext<COMP, C> {
     context: RequestContext,
+    render_layout: RenderLayout,
     head: PageHead,
     _marker: PhantomData<(COMP, C)>,
 }
@@ -22,8 +24,13 @@ pub struct RenderContext<COMP, C> {
 #[cfg(not(target_arch = "wasm32"))]
 impl<COMP, C> RenderContext<COMP, C> {
     /// Constructs a new render context from the given request context.
-    pub(crate) fn new(context: RequestContext, head: PageHead) -> Self {
+    pub(crate) fn new(
+        context: RequestContext,
+        head: PageHead,
+        render_layout: RenderLayout,
+    ) -> Self {
         RenderContext {
+            render_layout,
             context,
             head,
             _marker: PhantomData,
@@ -76,141 +83,122 @@ where
     COMP: PageComponent,
     COMP::Properties: Serialize + Send + Clone,
 {
-    /// Render the page and returns the `text/html` response.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render(self) -> Response
-    where
-        COMP::Properties: Default,
-    {
-        use crate::web::{Html, IntoResponse};
-
-        let head = self.head;
-
-        // Return a text/html response
-        match self.context.render::<COMP, C>(head).await {
-            Ok(html) => Html(html).into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
-        }
-    }
-
-    /// Render the page with the given props and returns the `text/html` response.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_with_props(self, props: COMP::Properties) -> Response {
-        use crate::web::{Html, IntoResponse};
-
-        let head = self.head;
-
-        // Return a text/html response
-        match self.context.render_with_props::<COMP, C>(props, head).await {
-            Ok(html) => Html(html).into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
-        }
-    }
-
-    /// Render the page and returns the `text/html` response stream.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_stream(self) -> Response
-    where
-        COMP::Properties: Default,
-    {
-        use crate::web::{IntoResponse, StreamResponse};
-
-        let head = self.head;
-
-        // Return a stream text/html response
-        match self.context.render_stream::<COMP, C>(head).await {
-            Ok(stream) => StreamResponse(stream).into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
-        }
-    }
-
-    /// Render the page with the given props and returns the `text/html` response stream.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_stream_with_props(self, props: COMP::Properties) -> Response {
-        use crate::web::{IntoResponse, StreamResponse};
-
-        let head = self.head;
-
-        // Return a stream text/html response
-        match self
-            .context
-            .render_stream_with_props::<COMP, C>(props, head)
-            .await
-        {
-            Ok(stream) => StreamResponse(stream).into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
-        }
-    }
-
-    /// Render the page and returns the `text/html` response.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render(self) -> Response
-    where
-        COMP::Properties: Default,
-    {
-        unreachable!("this is a server-only function")
-    }
-
-    /// Render the page with the given props and returns the `text/html` response.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render_with_props(self, _: COMP::Properties) -> Response {
-        unreachable!("this is a server-only function")
-    }
-
-    /// Render the page and returns the `text/html` response stream.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render_stream(self) -> Response
-    where
-        COMP::Properties: Default,
-    {
-        unreachable!("this is a server-only function")
-    }
-
-    /// Render the page with the given props and returns the `text/html` response stream.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render_stream_with_props(self, _: COMP::Properties) -> Response {
-        unreachable!("this is a server-only function")
-    }
-
     /// Returns a `404` error.
     pub fn not_found(self) -> Result<Response, Error> {
         Err(ResponseError::from_status(StatusCode::NOT_FOUND).into())
     }
 
-    /// Renders the given component to html.
+    /// Render the page and returns the `text/html` response.
+    pub async fn render(self) -> Response
+    where
+        COMP::Properties: Default,
+    {
+        #[cfg(target_arch = "wasm32")]
+        unreachable!("this is a server-only function");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use crate::web::{Html, IntoResponse};
+
+            // Return a text/html response
+            match self.render_html().await {
+                Ok(html) => Html(html).into_response(),
+                Err(err) => ResponseError::from_error(err).into_response(),
+            }
+        }
+    }
+
+    /// Render the page with the given props and returns the `text/html` response.
+    #[allow(unused_variables)]
+    pub async fn render_with_props(self, props: COMP::Properties) -> Response {
+        #[cfg(target_arch = "wasm32")]
+        unreachable!("this is a server-only function");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use crate::web::{Html, IntoResponse};
+
+            // Return a text/html response
+            match self.render_html_with_props(props).await {
+                Ok(html) => Html(html).into_response(),
+                Err(err) => ResponseError::from_error(err).into_response(),
+            }
+        }
+    }
+
+    /// Render the page and returns the `text/html` response stream.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_html(self, head: super::page_head::PageHead) -> Result<String, Error>
+    pub async fn render_stream(self) -> Response
+    where
+        COMP::Properties: Default,
+    {
+        #[cfg(target_arch = "wasm32")]
+        unreachable!("this is a server-only function");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use crate::web::{IntoResponse, StreamResponse};
+
+            // Return a stream text/html response
+            match self.render_html_stream().await {
+                Ok(stream) => StreamResponse(stream).into_response(),
+                Err(err) => ResponseError::from_error(err).into_response(),
+            }
+        }
+    }
+
+    /// Render the page with the given props and returns the `text/html` response stream.
+    #[allow(unused_variables)]
+    pub async fn render_stream_with_props(self, props: COMP::Properties) -> Response {
+        #[cfg(target_arch = "wasm32")]
+        unreachable!("this is a server-only function");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use crate::web::{IntoResponse, StreamResponse};
+
+            // Return a stream text/html response
+            match self.render_html_stream_with_props(props).await {
+                Ok(stream) => StreamResponse(stream).into_response(),
+                Err(err) => ResponseError::from_error(err).into_response(),
+            }
+        }
+    }
+
+    /// Renders the given component to html.
+    pub async fn render_html(self) -> Result<String, Error>
     where
         COMP: crate::components::PageComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
-        let props = COMP::Properties::default();
-        self.render_html_with_props(props, head).await
+        #[cfg(target_arch = "wasm32")]
+        unreachable!("this is a server-only function");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        self.render_html_with_props(COMP::Properties::default())
+            .await
     }
 
     /// Renders the given component with the specified props to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_html_with_props(
-        self,
-        props: COMP::Properties,
-        head: super::page_head::PageHead,
-    ) -> Result<String, Error>
+    pub async fn render_html_with_props(self, props: COMP::Properties) -> Result<String, Error>
     where
         COMP: crate::components::PageComponent,
         COMP::Properties: serde::Serialize + Send + Clone,
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         use crate::{
-            app::{LayoutContext, clone_request_context},
+            app::{clone_request_context, LayoutContext},
             server::{render_page_to_html, render_to_static_html, RenderPageOptions},
         };
 
         let req_context = self.context;
+        let head = self.head;
         let client_router = req_context.inner.client_router.clone();
         let error_router = req_context.inner.error_router.clone();
         let error = req_context.inner.error.clone();
-        let render_layout = req_context.inner.render_layout.clone();
+        let render_layout = self.render_layout;
 
         //
         let request_context = clone_request_context(&req_context);
@@ -229,5 +217,86 @@ where
 
         let result_html = render_page_to_html::<COMP, C>(props, options).await?;
         Ok(result_html)
+    }
+
+    /// Renders the given component with the specified props to html.
+    #[cfg(target_arch = "wasm32")]
+    pub async fn render_html_with_props(self, _: COMP::Properties) -> Result<String, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        unreachable!("this is a server-only function");
+    }
+
+    /// Renders the given component to html.
+    pub async fn render_html_stream(self) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Default + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        #[cfg(target_arch = "wasm32")]
+        unreachable!("this is a server-only function");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        self.render_html_stream_with_props(COMP::Properties::default())
+            .await
+    }
+
+    /// Renders the given component with the specified props to html.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_html_stream_with_props(
+        self,
+        props: COMP::Properties,
+    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        use crate::{
+            app::{clone_request_context, LayoutContext},
+            server::{render_page_to_stream, render_to_static_html, RenderPageOptions},
+        };
+
+        let req_context = self.context;
+        let head = self.head;
+        let client_router = req_context.inner.client_router.clone();
+        let error_router = req_context.inner.error_router.clone();
+        let error = req_context.inner.error.clone();
+        let render_layout = self.render_layout;
+        //
+        let request_context = clone_request_context(&req_context);
+        let layout_ctx = LayoutContext::new(req_context, head.clone());
+        let layout_node = render_layout(layout_ctx).await;
+        let index_html = render_to_static_html(move || layout_node).await;
+
+        let options = RenderPageOptions {
+            head,
+            error,
+            index_html,
+            router: client_router,
+            error_router,
+            request_context,
+        };
+
+        let result_html = render_page_to_stream::<COMP, C>(props, options).await?;
+        Ok(result_html)
+    }
+
+    /// Renders the given component with the specified props to html.
+    #[cfg(target_arch = "wasm32")]
+    pub async fn render_html_stream_with_props(
+        self,
+        _: COMP::Properties,
+    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        unreachable!("this is a server-only function");
     }
 }

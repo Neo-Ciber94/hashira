@@ -54,13 +54,15 @@ impl<C> AppNested<C> {
         H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response, Error>> + 'static,
     {
+        use crate::app::RenderLayout;
         use super::page_head::PageHead;
 
         self.add_component::<COMP>(path);
 
         self.route(Route::get(path, move |ctx| {
             let head = PageHead::new();
-            let render_ctx = RenderContext::new(ctx, head);
+            let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+            let render_ctx = RenderContext::new(ctx, head, render_layout);
             let fut = handler(render_ctx);
             async { fut.await }
         }))

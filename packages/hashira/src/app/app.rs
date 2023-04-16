@@ -201,7 +201,8 @@ where
         self.add_component::<COMP>(path);
         self.route(Route::get(path, move |ctx| {
             let head = PageHead::new();
-            let render_ctx = RenderContext::new(ctx, head);
+            let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+            let render_ctx = RenderContext::new(ctx, head, render_layout);
             let fut = handler(render_ctx);
             async { fut.await }
         }))
@@ -234,8 +235,9 @@ where
         self.server_error_router.insert(
             status,
             ErrorPageHandler::new(move |ctx, status| {
-                let layout_data = PageHead::new();
-                let render_ctx = RenderContext::new(ctx, layout_data);
+                let head = PageHead::new();
+                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                let render_ctx = RenderContext::new(ctx, head, render_layout);
                 let fut = handler(render_ctx, status);
                 async { fut.await }
             }),
@@ -270,8 +272,9 @@ where
 
         self.server_error_router
             .fallback(ErrorPageHandler(Box::new(move |ctx, status| {
-                let layout_data = PageHead::new();
-                let render_ctx = RenderContext::new(ctx, layout_data);
+                let head = PageHead::new();
+                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                let render_ctx = RenderContext::new(ctx, head, render_layout);
                 let res = handler(render_ctx, status);
                 Box::pin(res)
             })));
@@ -377,7 +380,7 @@ where
             page_router: client_router,
             client_error_router,
             server_error_router,
-            app_data,
+            mut app_data,
             _marker: _,
 
             #[cfg(feature = "hooks")]
@@ -392,6 +395,10 @@ where
             Arc::new(render_layout)
         });
 
+        // Add startup app data
+        app_data.insert::<RenderLayout>(layout.clone());
+
+        // Construct app service
         let client_router = PageRouterWrapper::from(client_router);
         let client_error_router = Arc::from(client_error_router);
         let app_data = Arc::new(app_data);
