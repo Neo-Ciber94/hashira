@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RenderContext, RequestContext, Route,
+    RenderContext, RequestContext, Route, AppData,
 };
 use crate::{
     components::{
@@ -79,6 +79,7 @@ pub struct App<C> {
     page_router: PageRouter,
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
+    app_data: AppData,
     _marker: PhantomData<C>,
 
     #[cfg(feature = "hooks")]
@@ -94,6 +95,7 @@ impl<C> App<C> {
             page_router: PageRouter::new(),
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
+            app_data: Default::default(),
             _marker: PhantomData,
 
             #[cfg(feature = "hooks")]
@@ -330,6 +332,36 @@ where
         )
     }
 
+    /// Adds a shared state that will be shared between server and client.
+    pub fn app_data<T>(mut self, data: T) -> Self where T: Send + Sync + 'static {
+        self.app_data.insert::<T>(data);
+        self
+    }
+
+    /// Adds a shared state that will be available on the server.
+    #[cfg(not(target_arch="wasm32"))]
+    pub fn server_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
+        self.app_data(data)
+    }
+
+    /// Adds a shared state that will be available on the server.
+    #[cfg(target_arch="wasm32")]
+    pub fn server_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
+        self
+    }
+
+    /// Adds a shared state that will be available on the client.
+    #[cfg(target_arch="wasm32")]
+    pub fn client_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
+        self.app_data(data)
+    }
+
+    /// Adds a shared state that will be available on the client.
+    #[cfg(not(target_arch="wasm32"))]
+    pub fn client_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
+        self
+    }
+
     /// Adds the given `Hooks`.
     #[cfg(feature = "hooks")]
     pub fn hooks(mut self, hooks: crate::events::Hooks) -> Self {
@@ -345,6 +377,7 @@ where
             page_router: client_router,
             client_error_router,
             server_error_router,
+            app_data,
             _marker: _,
 
             #[cfg(feature = "hooks")]
@@ -361,8 +394,10 @@ where
 
         let client_router = PageRouterWrapper::from(client_router);
         let client_error_router = Arc::from(client_error_router);
+        let app_data = Arc::new(app_data);
         let inner = AppServiceInner {
             layout,
+            app_data,
             server_router,
             client_router,
             client_error_router,

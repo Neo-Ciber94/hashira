@@ -1,4 +1,4 @@
-use super::{error_router::ErrorRouter, router::PageRouterWrapper, RenderLayout};
+use super::{error_router::ErrorRouter, router::PageRouterWrapper, AppData, RenderLayout};
 pub use crate::error::ResponseError;
 use crate::{routing::Params, web::Request};
 use std::sync::Arc;
@@ -10,6 +10,7 @@ use crate::error::Error;
 struct RequestContextInner {
     path: String,
     params: Params,
+    app_data: Arc<AppData>,
     client_router: PageRouterWrapper,
     error_router: Arc<ErrorRouter>,
     request: Arc<Request>,
@@ -38,6 +39,7 @@ pub struct RequestContext {
 impl RequestContext {
     pub fn new(
         request: Arc<Request>,
+        app_data: Arc<AppData>,
         client_router: PageRouterWrapper,
         error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
@@ -49,6 +51,7 @@ impl RequestContext {
             path,
             params,
             error,
+            app_data,
             request,
             client_router,
             error_router,
@@ -75,6 +78,14 @@ impl RequestContext {
     /// Returns the matching params of the route.
     pub fn params(&self) -> &Params {
         &self.inner.params
+    }
+
+    /// Returns the the data for the given type.
+    pub fn app_data<T>(&self) -> Option<&T>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.inner.app_data.get::<T>()
     }
 
     /// Renders the given component to html.

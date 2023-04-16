@@ -1,7 +1,7 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::PageRouterWrapper,
-    RenderLayout, RequestContext, Route,
+    AppData, RenderLayout, RequestContext, Route,
 };
 use crate::{
     error::ResponseError,
@@ -17,6 +17,7 @@ pub(crate) struct AppServiceInner {
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
+    pub(crate) app_data: Arc<AppData>,
 
     #[cfg(feature = "hooks")]
     pub(crate) hooks: Arc<crate::events::Hooks>,
@@ -46,9 +47,11 @@ impl AppService {
         let render_layout = self.0.layout.clone();
         let client_router = self.0.client_router.clone();
         let error_router = self.0.client_error_router.clone();
+        let app_data = self.0.app_data.clone();
 
         RequestContext::new(
             request,
+            app_data,
             client_router,
             error_router,
             error,
