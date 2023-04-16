@@ -159,7 +159,7 @@ where
 
     /// Adds nested routes for the given path.
     pub fn nest(mut self, base_path: &str, scope: AppNested<C>) -> Self {
-        crate::routing::assert_valid_route(base_path);
+        crate::routing::assert_valid_route(base_path).expect("invalid base path");
 
         #[cfg(not(target_arch = "wasm32"))]
         {

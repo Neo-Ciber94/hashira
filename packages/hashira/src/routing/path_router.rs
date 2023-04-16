@@ -26,7 +26,7 @@ impl<T> PathRouter<T> {
     /// Insert the given value at the given route.
     pub fn insert(&mut self, route: impl Into<String>, value: T) -> Result<(), InsertError> {
         let route = route.into();
-        assert_valid_route(&route);
+        assert_valid_route(&route).map_err(|err| InsertError(err.into()))?;
         self.imp.insert(route, value)
     }
 
@@ -59,23 +59,118 @@ pub enum MatchError {
     Other(Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub(crate) fn assert_valid_route(path: &str) {
-    assert!(!path.is_empty(), "route path cannot be empty");
+pub(crate) fn assert_valid_route(path: &str) -> Result<(), String> {
+    if path.is_empty() {
+        return Err(String::from("route path cannot be empty"));
+    }
 
-    assert!(
-        !path.starts_with(' ') || !path.ends_with(' '),
-        "route path cannot starts or end with a whitespace but was: {path}"
-    );
+    if path.starts_with(' ') || path.ends_with(' ') {
+        return Err(format!(
+            "route path cannot starts or end with a whitespace but was: {}",
+            path
+        ));
+    }
 
-    assert!(
-        path.starts_with('/'),
-        "route path must start with `/`, but was: {path}"
-    );
+    if !path.starts_with('/') {
+        return Err(format!("route path must start with `/`, but was: {}", path));
+    }
 
-    if path.len() > 1 {
-        assert!(
-            !path.ends_with('/'),
-            "route path cannot end with `/` but was: {path}"
+    if path.len() > 1 && path.ends_with('/') {
+        return Err(format!("route path cannot end with `/` but was: {}", path));
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_route() {
+        let result = assert_valid_route("/test");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_empty_route() {
+        let result = assert_valid_route("");
+        assert_eq!(
+            result.err(),
+            Some(String::from("route path cannot be empty"))
         );
+    }
+
+    #[test]
+    fn test_invalid_whitespace_route() {
+        let result = assert_valid_route(" /test");
+        assert_eq!(
+            result.err(),
+            Some(String::from(
+                "route path cannot starts or end with a whitespace but was:  /test"
+            ))
+        );
+    }
+
+    #[test]
+    fn test_invalid_starting_char_route() {
+        let result = assert_valid_route("test");
+        assert_eq!(
+            result.err(),
+            Some(String::from(
+                "route path must start with `/`, but was: test"
+            ))
+        );
+    }
+
+    #[test]
+    fn test_invalid_ending_char_route() {
+        let result = assert_valid_route("/test/");
+        assert_eq!(
+            result.err(),
+            Some(String::from(
+                "route path cannot end with `/` but was: /test/"
+            ))
+        );
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut router = PathRouter::new();
+        let route = "/test/:param1/:param2";
+        let value = "test-value";
+
+        let result = router.insert(route, value);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_find_match() {
+        let mut router = PathRouter::new();
+        let route = "/test/:param1/:param2";
+        let value = "test-value";
+        router.insert(route, value).unwrap();
+
+        let result = router.find_match("/test/abc/def");
+        assert!(result.is_ok());
+
+        let match_result = result.unwrap();
+        assert_eq!(
+            match_result.params.get("param1"),
+            Some(String::from("abc").as_str())
+        );
+        assert_eq!(
+            match_result.params.get("param2"),
+            Some(String::from("def").as_str())
+        );
+        assert_eq!(*match_result.value, "test-value");
+    }
+
+    #[test]
+    fn test_find_match_not_found() {
+        let router = PathRouter::<&str>::new();
+
+        let result = router.find_match("/not-found");
+        assert!(matches!(result.err().unwrap(), MatchError::NotFound));
     }
 }
