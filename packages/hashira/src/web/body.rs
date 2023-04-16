@@ -1,11 +1,9 @@
-use crate::error::Error;
+use crate::{error::Error, types::TryBoxStream};
 use bytes::{BufMut, Bytes, BytesMut};
-use futures::{Stream, StreamExt, TryStreamExt};
-use std::{convert::Infallible, fmt::Debug, pin::Pin};
+use futures::{StreamExt, TryStreamExt};
+use std::{convert::Infallible, fmt::Debug};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-
-pub type BodyStream = Pin<Box<dyn Stream<Item = Result<Bytes, Error>> + Send + Sync>>;
 
 /// The inner body representation.
 pub enum BodyInner {
@@ -13,7 +11,7 @@ pub enum BodyInner {
     Bytes(Bytes),
 
     /// The body stream.
-    Stream(BodyStream),
+    Stream(TryBoxStream<Bytes>),
 }
 
 /// The body of a request/response.
@@ -56,7 +54,7 @@ impl Body {
     }
 
     /// Returns the stream of this body, fails if the body is no a stream.
-    pub fn try_into_stream(self) -> Result<BodyStream, Self> {
+    pub fn try_into_stream(self) -> Result<TryBoxStream<Bytes>, Self> {
         match self.0 {
             BodyInner::Stream(stream) => Ok(stream),
             inner => Err(Body(inner)),
@@ -108,8 +106,8 @@ impl From<BytesMut> for Body {
     }
 }
 
-impl From<BodyStream> for Body {
-    fn from(value: BodyStream) -> Self {
+impl From<TryBoxStream<Bytes>> for Body {
+    fn from(value: TryBoxStream<Bytes>) -> Self {
         Body(BodyInner::Stream(value))
     }
 }

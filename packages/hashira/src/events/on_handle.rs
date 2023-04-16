@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{web::{Request, Response}, app::BoxFuture};
+use crate::{web::{Request, Response}, types::BoxFuture};
 
 /// Resolves the next request and return the response.
 pub type Next = Box<dyn FnOnce(Arc<Request>) -> BoxFuture<Response> + Send + Sync>;

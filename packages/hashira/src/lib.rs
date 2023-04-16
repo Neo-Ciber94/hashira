@@ -13,6 +13,8 @@ pub mod routing;
 #[cfg(feature = "hooks")]
 pub mod events;
 
+pub(crate) mod types;
+
 // Macros
 pub use hashira_macros::*;
 

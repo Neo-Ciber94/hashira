@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
 use crate::app::error_router::ErrorRouter;
 use crate::app::page_head::PageHead;
@@ -12,38 +10,53 @@ use crate::components::{
     HASHIRA_SCRIPTS_MARKER, HASHIRA_TITLE_MARKER,
 };
 use crate::context::ServerContext;
-use crate::error::ResponseError;
+use crate::error::{Error, ResponseError};
+use crate::types::TryBoxStream;
+use bytes::Bytes;
+use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
+use std::sync::Arc;
 use yew::{
     function_component,
     html::{ChildrenProps, ChildrenRenderer},
     BaseComponent, Html, LocalServerRenderer, ServerRenderer,
 };
 
-pub struct RenderPageOptions {
+pub(crate) struct RenderPageOptions {
     // Represents the shell where the page will be rendered
-    pub(crate) index_html: String,
+    pub index_html: String,
 
     // Contains the the `<head>` elements
-    pub(crate) head: PageHead,
+    pub head: PageHead,
 
     // The context of the current request
-    pub(crate) request_context: RequestContext,
+    pub request_context: RequestContext,
 
     // An error that occurred in the route
-    pub(crate) error: Option<ResponseError>,
+    pub error: Option<ResponseError>,
 
     // The router used to render the page
-    pub(crate) router: PageRouterWrapper,
+    pub router: PageRouterWrapper,
 
     // The router used to render errors
-    pub(crate) error_router: Arc<ErrorRouter>,
+    pub error_router: Arc<ErrorRouter>,
 }
 
-pub async fn render_page_to_html<COMP, ROOT>(
+struct BeforeContentElements {
+    title: Option<String>,
+    metadata: Metadata,
+    links: PageLinks,
+}
+
+struct AfterContentElements {
+    scripts: PageScripts,
+}
+
+/// Renders the given component inside the given root as a stream of bytes.
+pub(crate) async fn render_page_to_stream<COMP, ROOT>(
     props: COMP::Properties,
     options: RenderPageOptions,
-) -> Result<String, RenderError>
+) -> Result<TryBoxStream<Bytes>, RenderError>
 where
     COMP: PageComponent,
     COMP::Properties: Serialize + Send + Clone,
@@ -59,10 +72,9 @@ where
     } = options;
 
     let path = request_context.path();
-    let (title, metadata, links, scripts) = head.into_parts();
 
     // The base layout
-    let mut result_html = index_html;
+    let result_html = index_html;
 
     if !result_html.contains(HASHIRA_ROOT) {
         return Err(RenderError::NoRoot);
@@ -94,32 +106,100 @@ where
         server_context: ServerContext::new(Some(request_context)),
     };
 
+    let (title, metadata, links, scripts) = head.into_parts();
+    let before_content = BeforeContentElements {
+        title,
+        metadata,
+        links,
+    };
+    let after_content = AfterContentElements { scripts };
+
+    // We split the content to render
+    let (before_content_html, after_content_html) = result_html
+        .split_once(HASHIRA_CONTENT_MARKER)
+        .map(|(a, b)| (a.to_owned(), b.to_owned()))
+        .unwrap();
+
+    // Render the page as a stream
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);
-    let page_html = renderer.render().await;
+    let page_html = renderer.render_stream().map(Result::<_, Error>::Ok);
 
-    // Build the root html
-    result_html = result_html.replace(HASHIRA_CONTENT_MARKER, &page_html);
+    // We chain all the produced streams together
+    let html_stream = stream::once(async move {
+        // Before content
+        render_before_content_markers(before_content_html, before_content).map_err(|e| e.into())
+    })
+    // content
+    .chain(page_html)
+    .chain(stream::once(async move {
+        // After content
+        render_after_content_markers::<COMP>(after_content_html, after_content, page_data)
+            .map_err(|e| e.into())
+    }))
+    .map_ok(Bytes::from);
 
-    // Insert the <title> element
-    insert_title(&mut result_html, title);
+    Ok(Box::pin(html_stream))
+}
 
-    // Insert the <meta> elements from `struct Metadata`
-    insert_metadata(&mut result_html, metadata);
+/// Renders the given component inside the given root as a html string.
+pub(crate) async fn render_page_to_html<COMP, ROOT>(
+    props: COMP::Properties,
+    options: RenderPageOptions,
+) -> Result<String, RenderError>
+where
+    COMP: PageComponent,
+    COMP::Properties: Serialize + Send + Clone,
+    ROOT: BaseComponent<Properties = ChildrenProps>,
+{
+    let mut html_stream = render_page_to_stream::<COMP, ROOT>(props, options).await?;
+    let mut result_html = String::new();
 
-    // Insert the <link> elements from `struct PageLinks`
-    insert_links(&mut result_html, links);
-
-    // Insert the <script> elements from `struct PageScripts`
-    insert_scripts::<COMP>(&mut result_html, scripts, page_data)?;
-
-    // Prettify html
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(debug_assertions)]
-    {
-        prettify_html(&mut result_html);
+    while let Some(chunk) = html_stream.next().await {
+        let chunk = chunk.map_err(RenderError::ChunkError)?.to_vec();
+        let next_str = String::from_utf8(chunk).map_err(|e| RenderError::ChunkError(e.into()))?;
+        result_html.push_str(&next_str);
     }
 
     Ok(result_html)
+}
+
+fn render_before_content_markers(
+    mut html: String,
+    elements: BeforeContentElements,
+) -> Result<String, RenderError> {
+    let BeforeContentElements {
+        title,
+        metadata,
+        links,
+    } = elements;
+
+    // Insert the <title> element
+    insert_title(&mut html, title);
+
+    // Insert the <meta> elements from `struct Metadata`
+    insert_metadata(&mut html, metadata);
+
+    // Insert the <link> elements from `struct PageLinks`
+    insert_links(&mut html, links);
+
+    Ok(html)
+}
+
+fn render_after_content_markers<COMP>(
+    mut html: String,
+    elements: AfterContentElements,
+    page_data: PageData,
+) -> Result<String, RenderError>
+where
+    COMP: BaseComponent,
+    COMP::Properties: Serialize,
+{
+    let AfterContentElements { scripts } = elements;
+
+    // Insert the <script> elements from `struct PageScripts`
+    insert_scripts::<COMP>(&mut html, scripts, page_data)?;
+
+    Ok(html)
 }
 
 fn insert_title(html: &mut String, title: Option<String>) {
@@ -177,7 +257,7 @@ where
 
 pub async fn render_to_static_html<F>(f: F) -> String
 where
-    F: FnOnce() -> Html + 'static,
+    F: FnOnce() -> Html,
 {
     #[function_component]
     fn Dummy(props: &ChildrenProps) -> Html {
@@ -192,33 +272,4 @@ where
     });
 
     renderer.hydratable(false).render().await
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(debug_assertions)]
-fn prettify_html(html: &mut String) {
-    use lol_html::{HtmlRewriter, Settings};
-
-    let mut output = vec![];
-    let mut rewriter =
-        HtmlRewriter::new(Settings::default(), |c: &[u8]| output.extend_from_slice(c));
-
-    if let Err(err) = rewriter.write(html.as_bytes()) {
-        log::warn!("Failed to write html for prettify: {err}");
-        return;
-    }
-
-    if let Err(err) = rewriter.end() {
-        log::warn!("Failed to close html writer for prettify: {err}");
-        return;
-    }
-
-    match String::from_utf8(output) {
-        Ok(pretty_html) => {
-            *html = pretty_html;
-        }
-        Err(err) => {
-            log::warn!("Failed to write pretty html: {err}");
-        }
-    }
 }

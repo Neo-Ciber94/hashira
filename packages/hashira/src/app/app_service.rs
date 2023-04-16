@@ -86,7 +86,7 @@ impl AppService {
 
         #[cfg(feature = "hooks")]
         {
-            use crate::{app::BoxFuture, events::Next};
+            use crate::{events::Next, types::BoxFuture};
 
             let hooks = &self.0.hooks.on_handle_hooks;
 

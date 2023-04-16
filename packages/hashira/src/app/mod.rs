@@ -22,5 +22,4 @@ pub mod router;
 //
 pub(crate) mod page_head;
 
-// A convenient boxed future.
-pub(crate) type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output = T>>>;
+

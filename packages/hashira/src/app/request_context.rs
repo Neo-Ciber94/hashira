@@ -1,7 +1,10 @@
 use super::{error_router::ErrorRouter, router::PageRouterWrapper, RenderLayout};
 pub use crate::error::ResponseError;
-use crate::{web::Request, routing::Params};
+use crate::{routing::Params, web::Request};
 use std::sync::Arc;
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::error::Error;
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 struct RequestContextInner {
@@ -76,7 +79,7 @@ impl RequestContext {
 
     /// Renders the given component to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render<COMP, C>(self, head: super::page_head::PageHead) -> String
+    pub async fn render<COMP, C>(self, head: super::page_head::PageHead) -> Result<String, Error>
     where
         COMP: crate::components::PageComponent,
         COMP::Properties: serde::Serialize + Default + Send + Clone,
@@ -92,7 +95,7 @@ impl RequestContext {
         self,
         props: COMP::Properties,
         head: super::page_head::PageHead,
-    ) -> String
+    ) -> Result<String, Error>
     where
         COMP: crate::components::PageComponent,
         COMP::Properties: serde::Serialize + Send + Clone,
@@ -123,10 +126,64 @@ impl RequestContext {
             request_context,
         };
 
-        let result_html = render_page_to_html::<COMP, C>(props, options)
-            .await
-            .unwrap();
-        result_html
+        let result_html = render_page_to_html::<COMP, C>(props, options).await?;
+        Ok(result_html)
+    }
+
+    /// Renders the given component to html.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_stream<COMP, C>(
+        self,
+        head: super::page_head::PageHead,
+    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Default + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        let props = COMP::Properties::default();
+        self.render_stream_with_props::<COMP, C>(props, head).await
+    }
+
+    /// Renders the given component with the specified props to html.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_stream_with_props<COMP, C>(
+        self,
+        props: COMP::Properties,
+        head: super::page_head::PageHead,
+    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    where
+        COMP: crate::components::PageComponent,
+        COMP::Properties: serde::Serialize + Send + Clone,
+        C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
+    {
+        use crate::{
+            app::LayoutContext,
+            server::{render_page_to_stream, render_to_static_html, RenderPageOptions},
+        };
+
+        let client_router = self.inner.client_router.clone();
+        let error_router = self.inner.error_router.clone();
+        let error = self.inner.error.clone();
+        let render_layout = self.inner.render_layout.clone();
+
+        //
+        let request_context = clone_request_context(&self);
+        let layout_ctx = LayoutContext::new(self, head.clone());
+        let layout_node = render_layout(layout_ctx).await;
+        let index_html = render_to_static_html(move || layout_node).await;
+
+        let options = RenderPageOptions {
+            head,
+            error,
+            index_html,
+            router: client_router,
+            error_router,
+            request_context,
+        };
+
+        let result_html = render_page_to_stream::<COMP, C>(props, options).await?;
+        Ok(result_html)
     }
 }
 

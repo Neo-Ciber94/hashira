@@ -1,6 +1,8 @@
 use super::{Body, Response, ResponseExt};
-use crate::{app::ResponseError, error::Error};
+use crate::{app::ResponseError, error::Error, types::TryBoxStream};
+use bytes::Bytes;
 use cookie::Cookie;
+use futures::Stream;
 use http::{header, uri::InvalidUri, HeaderMap, StatusCode, Uri};
 use serde::Serialize;
 use std::convert::TryFrom;
@@ -149,7 +151,9 @@ impl IntoResponse for HeaderMap {
         for (header_name, header_value) in self.into_iter() {
             // SAFETY: A valid header name must be emitted before any `None` header
             let header_name = header_name.unwrap_or_else(|| last_header_name.unwrap());
-            response.headers_mut().append(header_name.clone(), header_value);
+            response
+                .headers_mut()
+                .append(header_name.clone(), header_value);
             last_header_name = Some(header_name);
         }
 
@@ -203,6 +207,23 @@ impl<T: AsRef<str>> IntoResponse for Html<T> {
             header::HeaderValue::from_static("text/html; charset=utf-8"),
         );
         res
+    }
+}
+
+/// Represents a streamed response.
+pub struct StreamResponse<S>(pub S);
+impl<S> IntoResponse for StreamResponse<S>
+where
+    S: Stream<Item = Result<Bytes, Error>> + Send + Sync + 'static,
+{
+    fn into_response(self) -> Response {
+        let stream = Box::pin(self.0) as TryBoxStream<Bytes>;
+        let body = Body::from(stream);
+        let response = Response::builder()
+            .header(header::TRANSFER_ENCODING, "chunked")
+            .body(body)
+            .unwrap();
+        response
     }
 }
 

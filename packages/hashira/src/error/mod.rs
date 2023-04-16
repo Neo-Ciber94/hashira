@@ -26,10 +26,6 @@ impl ResponseError {
     /// Constructs a new `ResponseError` from an error.
     pub fn from_error<E: Into<Error>>(error: E) -> Self {
         let err = error.into();
-
-        // TODO: Check for other error types like io::Error and serde::Error
-        // to return a correct status code
-
         match err.downcast::<ResponseError>() {
             Ok(err) => *err,
             Err(err) => ResponseError {

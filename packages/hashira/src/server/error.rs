@@ -1,27 +1,20 @@
-use std::fmt::Display;
+use thiserror::Error;
+use crate::error::Error;
 
 /// An error that ocurred while rendering.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RenderError {
     /// Not root found
+    #[error(
+        "No element was marked with 'HASHIRA_ROOT' marker, ex. <div id={{HASHIRA_ROOT}}></div>"
+    )]
     NoRoot,
 
     /// Failed to parse the props
+    #[error("Failed to serialize the page props: {0}")]
     InvalidProps(serde_json::Error),
-}
 
-impl Display for RenderError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RenderError::NoRoot => write!(
-                f,
-                "No element was marked with 'HASHIRA_ROOT' marker, ex <body id={{HASHIRA_ROOT}}>"
-            ),
-            RenderError::InvalidProps(err) => {
-                write!(f, "Failed to serialize the page props: {err}")
-            }
-        }
-    }
+    /// An error ocurred rendering one of the chunks of the html.
+    #[error("Failed to render one of the chunks: {0}")]
+    ChunkError(Error),
 }
-
-impl std::error::Error for RenderError {}

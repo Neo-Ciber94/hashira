@@ -82,29 +82,64 @@ where
     where
         COMP::Properties: Default,
     {
-        use crate::web::IntoResponse;
+        use crate::web::{Html, IntoResponse};
 
-        let layout_data = self.head;
+        let head = self.head;
 
         // Return a text/html response
-        let html = self.context.render::<COMP, C>(layout_data).await;
-        crate::web::Html(html).into_response()
+        match self.context.render::<COMP, C>(head).await {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => ResponseError::from_error(err).into_response(),
+        }
     }
 
     /// Render the page with the given props and returns the `text/html` response.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_with_props(self, props: COMP::Properties) -> Response {
-        use crate::web::IntoResponse;
+        use crate::web::{Html, IntoResponse};
 
-        let layout_data = self.head;
+        let head = self.head;
 
         // Return a text/html response
-        let html = self
-            .context
-            .render_with_props::<COMP, C>(props, layout_data)
-            .await;
+        match self.context.render_with_props::<COMP, C>(props, head).await {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => ResponseError::from_error(err).into_response(),
+        }
+    }
 
-        crate::web::Html(html).into_response()
+    /// Render the page and returns the `text/html` response stream.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_stream(self) -> Response
+    where
+        COMP::Properties: Default,
+    {
+        use crate::web::{IntoResponse, StreamResponse};
+
+        let head = self.head;
+
+        // Return a stream text/html response
+        match self.context.render_stream::<COMP, C>(head).await {
+            Ok(stream) => StreamResponse(stream).into_response(),
+            Err(err) => ResponseError::from_error(err).into_response(),
+        }
+    }
+
+    /// Render the page with the given props and returns the `text/html` response stream.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn render_stream_with_props(self, props: COMP::Properties) -> Response {
+        use crate::web::{IntoResponse, StreamResponse};
+
+        let head = self.head;
+
+        // Return a stream text/html response
+        match self
+            .context
+            .render_stream_with_props::<COMP, C>(props, head)
+            .await
+        {
+            Ok(stream) => StreamResponse(stream).into_response(),
+            Err(err) => ResponseError::from_error(err).into_response(),
+        }
     }
 
     /// Render the page and returns the `text/html` response.
@@ -119,6 +154,21 @@ where
     /// Render the page with the given props and returns the `text/html` response.
     #[cfg(target_arch = "wasm32")]
     pub async fn render_with_props(self, _: COMP::Properties) -> Response {
+        unreachable!("this is a server-only function")
+    }
+
+    /// Render the page and returns the `text/html` response stream.
+    #[cfg(target_arch = "wasm32")]
+    pub async fn render_stream(self) -> Response
+    where
+        COMP::Properties: Default,
+    {
+        unreachable!("this is a server-only function")
+    }
+
+    /// Render the page with the given props and returns the `text/html` response stream.
+    #[cfg(target_arch = "wasm32")]
+    pub async fn render_stream_with_props(self, _: COMP::Properties) -> Response {
         unreachable!("this is a server-only function")
     }
 
