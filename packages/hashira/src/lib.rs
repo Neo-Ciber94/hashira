@@ -1,5 +1,4 @@
 pub mod app;
-pub mod client;
 pub mod components;
 pub mod context;
 pub mod env;
@@ -9,6 +8,8 @@ pub mod server;
 pub mod web;
 pub mod routing;
 
+#[cfg(target_arch="wasm32")]
+pub mod client;
 
 #[cfg(feature = "hooks")]
 pub mod events;
