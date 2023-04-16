@@ -301,7 +301,7 @@ where
         self.error_page(
             StatusCode::NOT_FOUND,
             move |mut ctx: RenderContext<NotFoundPage, C>, status: StatusCode| async move {
-                ctx.add_title(format!(
+                ctx.title(format!(
                     "{} | {}",
                     status.as_u16(),
                     status.canonical_reason().unwrap_or("Page Error")
@@ -314,7 +314,7 @@ where
         )
         .error_page_fallback(
             move |mut ctx: RenderContext<ErrorPage, C>, status| async move {
-                ctx.add_title(format!(
+                ctx.title(format!(
                     "{} | {}",
                     status.as_u16(),
                     status.canonical_reason().unwrap_or("Page Error")

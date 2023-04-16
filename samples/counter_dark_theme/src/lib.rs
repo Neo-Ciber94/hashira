@@ -64,13 +64,13 @@ where
         .use_default_error_pages()
         .layout(root_layout)
         .page("/", |mut ctx: RenderContext<HomePage, C>| async {
-            ctx.add_metadata(Metadata::new().description("A Hashira sample app"));
+            ctx.metadata(Metadata::new().description("A Hashira sample app"));
             let res = ctx.render().await;
             Ok(res)
         })
         .page("/counter", |mut ctx: RenderContext<CounterPage, C>| async {
-            ctx.add_title("Hashira | Counter");
-            ctx.add_metadata(Metadata::new().description("A Hashira sample counter"));
+            ctx.title("Hashira | Counter");
+            ctx.metadata(Metadata::new().description("A Hashira sample counter"));
             let props = yew::props! { CounterPageProps {} };
             let res = ctx.render_with_props(props).await;
             Ok(res)
