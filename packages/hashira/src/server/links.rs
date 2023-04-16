@@ -23,7 +23,7 @@ impl LinkTag {
     /// Constructs a new `<link href='...' rel='stylesheet' type='text/css'>`.
     pub fn stylesheet(href: impl Into<String>) -> Self {
         Self::new()
-            .attr("href", href)
+            .attr("href", href.into())
             .attr("rel", "stylesheet")
             .attr("type", "text/css")
     }
@@ -37,8 +37,8 @@ impl LinkTag {
     }
 
     /// Sets an attribute on the `<link>` element.
-    pub fn attr(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.attrs.insert(key.into(), value.into());
+    pub fn attr(mut self, key: impl Into<String>, value: impl Display) -> Self {
+        self.attrs.insert(key.into(), value.to_string());
         self
     }
 }
