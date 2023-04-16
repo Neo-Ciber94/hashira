@@ -1,7 +1,8 @@
-use crate::app::{clone_request_context, RequestContext};
+use crate::app::RequestContext;
 use std::ops::Deref;
 use yew::{function_component, hook, use_context, Children, ContextProvider, Properties};
 
+#[derive(Clone)]
 struct ServerContextInner {
     ctx: RequestContext,
 }
@@ -11,14 +12,6 @@ impl Deref for ServerContextInner {
 
     fn deref(&self) -> &Self::Target {
         &self.ctx
-    }
-}
-
-impl Clone for ServerContextInner {
-    fn clone(&self) -> Self {
-        Self {
-            ctx: clone_request_context(&self.ctx),
-        }
     }
 }
 

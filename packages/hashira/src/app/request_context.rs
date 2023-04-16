@@ -14,10 +14,9 @@ pub(crate) struct RequestContextInner {
     pub(crate) error: Option<ResponseError>,
 }
 
-// FIXME: We could let this type to be cloneable after we move the `render_layout` from here
-
 /// Contains information about the current request.
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+#[derive(Clone)]
 pub struct RequestContext {
     pub(crate) inner: Arc<RequestContextInner>,
 }
@@ -78,12 +77,5 @@ impl RequestContext {
 impl PartialEq for RequestContext {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.inner, &other.inner)
-    }
-}
-
-// A helper method to prevent cloning the context directly
-pub(crate) fn clone_request_context(ctx: &RequestContext) -> RequestContext {
-    RequestContext {
-        inner: ctx.inner.clone(),
     }
 }

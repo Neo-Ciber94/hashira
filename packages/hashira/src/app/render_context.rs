@@ -198,7 +198,7 @@ where
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         use crate::{
-            app::{clone_request_context, LayoutContext},
+            app::LayoutContext,
             server::{render_page_to_html, render_to_static_html, RenderPageOptions},
         };
 
@@ -210,7 +210,7 @@ where
         let render_layout = self.render_layout;
 
         //
-        let request_context = clone_request_context(&req_context);
+        let request_context = req_context.clone();
         let layout_ctx = LayoutContext::new(req_context, head.clone());
         let layout_node = render_layout(layout_ctx).await;
         let index_html = render_to_static_html(move || layout_node).await;
@@ -266,7 +266,7 @@ where
         C: yew::BaseComponent<Properties = yew::html::ChildrenProps>,
     {
         use crate::{
-            app::{clone_request_context, LayoutContext},
+            app::LayoutContext,
             server::{render_page_to_stream, render_to_static_html, RenderPageOptions},
         };
 
@@ -277,7 +277,7 @@ where
         let error = req_context.inner.error.clone();
         let render_layout = self.render_layout;
         //
-        let request_context = clone_request_context(&req_context);
+        let request_context = req_context.clone();
         let layout_ctx = LayoutContext::new(req_context, head.clone());
         let layout_node = render_layout(layout_ctx).await;
         let index_html = render_to_static_html(move || layout_node).await;
