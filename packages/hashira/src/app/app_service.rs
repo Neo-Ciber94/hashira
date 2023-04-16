@@ -81,7 +81,7 @@ impl AppService {
         // Handle the request normally
         #[cfg(not(feature = "hooks"))]
         {
-            self.handle_request(req, &path).await
+            self.handle_request(req, path).await
         }
 
         #[cfg(feature = "hooks")]

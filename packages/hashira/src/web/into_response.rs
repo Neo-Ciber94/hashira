@@ -219,11 +219,10 @@ where
     fn into_response(self) -> Response {
         let stream = Box::pin(self.0) as TryBoxStream<Bytes>;
         let body = Body::from(stream);
-        let response = Response::builder()
+        Response::builder()
             .header(header::TRANSFER_ENCODING, "chunked")
             .body(body)
-            .unwrap();
-        response
+            .unwrap()
     }
 }
 

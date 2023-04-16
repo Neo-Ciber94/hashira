@@ -100,7 +100,7 @@ where
         id: component_id,
         path: path.to_owned(),
         error: page_error,
-        props_json: props_json.clone(),
+        props_json,
         router,
         error_router,
         server_context: ServerContext::new(Some(request_context)),

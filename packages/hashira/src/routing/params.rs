@@ -29,6 +29,11 @@ impl Params {
         self.map.len()
     }
 
+    /// Returns `true` if there are no values.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
     /// Returns an iterator over the key-values.
     pub fn iter(&self) -> indexmap::map::Iter<String, String> {
         self.map.iter()

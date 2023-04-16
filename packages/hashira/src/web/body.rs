@@ -29,7 +29,7 @@ impl Body {
         let (tx, rx) = unbounded_channel::<Bytes>();
 
         let stream = UnboundedReceiverStream::new(rx)
-            .map(|bytes| Ok::<_, Infallible>(bytes))
+            .map(Ok::<_, Infallible>)
             .map_err(|e| e.into());
         let body_stream = Box::pin(stream);
         (tx, Body(BodyInner::Stream(body_stream)))

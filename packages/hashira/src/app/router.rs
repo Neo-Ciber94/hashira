@@ -69,13 +69,10 @@ impl PageRouter {
     /// Returns the page that matches the given path.
     pub fn find_match<'a>(&'a self, path: &'a str) -> Option<RouteMatch<&ClientPageRoute>> {
         match self.path_to_id.find_match(path) {
-            Ok(RouteMatch { value: id, params }) => {
-                if let Some(value) = self.id_to_page.get(id) {
-                    Some(RouteMatch { value, params })
-                } else {
-                    None
-                }
-            }
+            Ok(RouteMatch { value: id, params }) => self
+                .id_to_page
+                .get(id)
+                .map(|value| RouteMatch { value, params }),
             Err(_) => None,
         }
     }
