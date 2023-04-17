@@ -12,3 +12,11 @@ pub use redirect::*;
 mod form;
 pub use form::*;
 
+mod bytes_;
+pub use bytes_::*;
+
+mod option;
+pub use option::*;
+
+mod result;
+pub use result::*;

@@ -45,10 +45,10 @@ where
     T: DeserializeOwned,
 {
     type Error = Error;
-    type Fut = ExtractJsonFuture<T>;
+    type Fut = FromRequestJsonFuture<T>;
 
     fn from_request(ctx: RequestContext) -> Self::Fut {
-        ExtractJsonFuture {
+        FromRequestJsonFuture {
             ctx,
             _marker: PhantomData,
         }
@@ -56,12 +56,12 @@ where
 }
 
 #[doc(hidden)]
-pub struct ExtractJsonFuture<T> {
+pub struct FromRequestJsonFuture<T> {
     ctx: RequestContext,
     _marker: PhantomData<T>,
 }
 
-impl<T> Future for ExtractJsonFuture<T>
+impl<T> Future for FromRequestJsonFuture<T>
 where
     T: DeserializeOwned,
 {

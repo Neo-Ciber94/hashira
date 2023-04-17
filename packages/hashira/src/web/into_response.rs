@@ -41,6 +41,12 @@ impl IntoResponse for Vec<u8> {
     }
 }
 
+impl<const N: usize> IntoResponse for [u8; N] {
+    fn into_response(self) -> Response {
+        self.to_vec().into_response()
+    }
+}
+
 impl IntoResponse for &'static [u8] {
     fn into_response(self) -> Response {
         let body = Body::from(self);

@@ -27,6 +27,7 @@ tokio-stream = { version = "0.1.12", features = ["sync"] }
 tokio = { version = "1.27.0", features = ["sync"] }
 mime = "0.3.17"
 serde_urlencoded = "0.7.1"
+pin-project-lite = "0.2.9"
 
 [features]
 hooks = ["async-trait"]

@@ -139,7 +139,6 @@ impl Route {
         Self::new(path, None, handler)
     }
 
-
     /// Creates a new `Route` with the HTTP method set to POST.
     pub fn post<H, R, Fut>(path: &str, handler: H) -> Self
     where

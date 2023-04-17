@@ -60,22 +60,6 @@ impl Body {
         }
     }
 
-    /// Returns the bytes of this body if possible, fails if the body is a stream.
-    pub fn try_into_bytes(self) -> Result<Bytes, Self> {
-        match self.0 {
-            BodyInner::Bytes(bytes) => Ok(bytes),
-            inner => Err(Body(inner)),
-        }
-    }
-
-    /// Returns the stream of this body, fails if the body is no a stream.
-    pub fn try_into_stream(self) -> Result<TryBoxStream<Bytes>, Self> {
-        match self.0 {
-            BodyInner::Stream(stream) => Ok(stream),
-            inner => Err(Body(inner)),
-        }
-    }
-
     /// Returns a future that resolves to the bytes of this body.
     pub async fn into_bytes(self) -> Result<Bytes, Error> {
         match self.0 {

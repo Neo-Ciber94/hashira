@@ -46,10 +46,10 @@ where
     T: DeserializeOwned,
 {
     type Error = Error;
-    type Fut = ExtractFormFuture<T>;
+    type Fut = FromRequestFormFuture<T>;
 
     fn from_request(ctx: crate::app::RequestContext) -> Self::Fut {
-        ExtractFormFuture {
+        FromRequestFormFuture {
             ctx,
             _marker: PhantomData,
         }
@@ -57,12 +57,12 @@ where
 }
 
 #[doc(hidden)]
-pub struct ExtractFormFuture<T> {
+pub struct FromRequestFormFuture<T> {
     ctx: RequestContext,
     _marker: PhantomData<T>,
 }
 
-impl<T> Future for ExtractFormFuture<T>
+impl<T> Future for FromRequestFormFuture<T>
 where
     T: DeserializeOwned,
 {
