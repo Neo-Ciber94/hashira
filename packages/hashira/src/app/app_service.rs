@@ -137,10 +137,16 @@ impl AppService {
         match self.0.server_router.find_match(path) {
             Ok(mtch) => {
                 let route = mtch.value;
-                let method = req.method().into();
 
-                if !route.method().matches(&method) {
-                    return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
+                // Check if the methods matches
+                if let Some(m) = route.method() {
+                    let method = req.method().into();
+                    if !m.matches(&method) {
+                        return Response::with_status(
+                            StatusCode::METHOD_NOT_ALLOWED,
+                            Body::default(),
+                        );
+                    }
                 }
 
                 let params = mtch.params;

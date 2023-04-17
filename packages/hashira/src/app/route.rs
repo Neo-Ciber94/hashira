@@ -109,14 +109,14 @@ pub struct Route {
     /// The path that the route matches, e.g. "/users/:id" or "/login".
     path: String,
     /// The HTTP method that the route matches, e.g. HttpMethod::GET or HttpMethod::POST.
-    method: HttpMethod,
+    method: Option<HttpMethod>,
     /// The handler function that should be called when this route matches a request.
     handler: PageHandler,
 }
 
 impl Route {
     /// Creates a new `ServerPageRoute` with the given path, HTTP method, and handler function.
-    pub fn new<H, R, Fut>(path: &str, method: HttpMethod, handler: H) -> Self
+    pub fn new<H, R, Fut>(path: &str, method: Option<HttpMethod>, handler: H) -> Self
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
@@ -129,6 +129,17 @@ impl Route {
         }
     }
 
+    /// Creates a new `Route` that matches any http method.
+    pub fn any<H, R, Fut>(path: &str, handler: H) -> Self
+    where
+        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
+        R: IntoResponse,
+        Fut: Future<Output = R> + 'static,
+    {
+        Self::new(path, None, handler)
+    }
+
+
     /// Creates a new `Route` with the HTTP method set to POST.
     pub fn post<H, R, Fut>(path: &str, handler: H) -> Self
     where
@@ -136,7 +147,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::POST, handler)
+        Self::new(path, Some(HttpMethod::POST), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to GET.
@@ -146,7 +157,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::GET, handler)
+        Self::new(path, Some(HttpMethod::GET), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to HEAD.
@@ -156,7 +167,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::HEAD, handler)
+        Self::new(path, Some(HttpMethod::HEAD), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to PUT.
@@ -166,7 +177,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::PUT, handler)
+        Self::new(path, Some(HttpMethod::PUT), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to DELETE.
@@ -176,7 +187,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::DELETE, handler)
+        Self::new(path, Some(HttpMethod::DELETE), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to OPTIONS.
@@ -186,7 +197,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::OPTIONS, handler)
+        Self::new(path, Some(HttpMethod::OPTIONS), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to PATCH.
@@ -196,7 +207,7 @@ impl Route {
         R: IntoResponse,
         Fut: Future<Output = R> + 'static,
     {
-        Self::new(path, HttpMethod::PATCH, handler)
+        Self::new(path, Some(HttpMethod::PATCH), handler)
     }
 
     /// Returns a reference to the path for this `Route`.
@@ -205,7 +216,7 @@ impl Route {
     }
 
     /// Returns the HTTP method for this `Route`.
-    pub fn method(&self) -> HttpMethod {
+    pub fn method(&self) -> Option<HttpMethod> {
         self.method
     }
 
