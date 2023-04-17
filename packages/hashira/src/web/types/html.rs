@@ -1,5 +1,4 @@
 use http::header;
-
 use crate::web::{Body, IntoResponse, Response};
 
 /// Represents a HTML.

@@ -30,3 +30,6 @@ serde_urlencoded = "0.7.1"
 
 [features]
 hooks = ["async-trait"]
+
+[dev-dependencies]
+tokio = { version = "1.27.0", features = ["macros", "rt"] }

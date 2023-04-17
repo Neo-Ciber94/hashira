@@ -23,16 +23,21 @@ impl ResponseError {
         }
     }
 
-    /// Constructs a new `ResponseError` from an error.
-    pub fn from_error<E: Into<Error>>(error: E) -> Self {
+    /// Constructs a new `ResponseError` from an error and the given `StatusCode`.
+    pub fn from_error_with_status<E: Into<Error>>(status: StatusCode, error: E) -> Self {
         let err = error.into();
         match err.downcast::<ResponseError>() {
             Ok(err) => *err,
             Err(err) => ResponseError {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
+                status,
                 message: Some(err.to_string()),
             },
         }
+    }
+
+    /// Constructs a new `ResponseError` from an error.
+    pub fn from_error<E: Into<Error>>(error: E) -> Self {
+        Self::from_error_with_status(StatusCode::INTERNAL_SERVER_ERROR, error)
     }
 
     /// Constructs an error from the given status code.
@@ -56,6 +61,38 @@ impl ResponseError {
     /// Returns the status code and error message of this error.
     pub fn into_parts(self) -> (StatusCode, Option<String>) {
         (self.status, self.message)
+    }
+}
+
+impl ResponseError {
+    /// Returns a `400` bad request response error
+    pub fn bad_request(error: impl Into<Error>) -> Self {
+        ResponseError::from_error_with_status(StatusCode::BAD_REQUEST, error)
+    }
+
+    /// Returns a `401` unauthorized response error
+    pub fn unauthorized(error: impl Into<Error>) -> Self {
+        ResponseError::from_error_with_status(StatusCode::UNAUTHORIZED, error)
+    }
+
+    /// Returns a `403` forbidden response error
+    pub fn forbidden(error: impl Into<Error>) -> Self {
+        ResponseError::from_error_with_status(StatusCode::FORBIDDEN, error)
+    }
+
+    /// Returns a `404` not found response error
+    pub fn not_found(error: impl Into<Error>) -> Self {
+        ResponseError::from_error_with_status(StatusCode::NOT_FOUND, error)
+    }
+
+    /// Returns a `422` unprocessable entity response error
+    pub fn unprocessable_entity(error: impl Into<Error>) -> Self {
+        ResponseError::from_error_with_status(StatusCode::UNPROCESSABLE_ENTITY, error)
+    }
+
+    /// Returns a `500` internal server error response error
+    pub fn internal_server_error(error: impl Into<Error>) -> Self {
+        ResponseError::from_error_with_status(StatusCode::INTERNAL_SERVER_ERROR, error)
     }
 }
 

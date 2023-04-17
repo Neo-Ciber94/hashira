@@ -11,6 +11,7 @@ pub struct PageRouterWrapper {
     inner: Arc<PageRouter>,
 }
 
+
 impl From<PageRouter> for PageRouterWrapper {
     fn from(value: PageRouter) -> Self {
         PageRouterWrapper {

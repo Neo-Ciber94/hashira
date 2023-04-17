@@ -41,10 +41,9 @@ impl Future for ExtractBytesFuture {
         let bytes = match body.try_as_bytes() {
             Ok(b) => b,
             Err(err) => {
-                return Poll::Ready(Err(ResponseError::new(
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    format!("invalid body: {err}"),
-                )
+                return Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
+                    "invalid body: {err}"
+                ))
                 .into()))
             }
         };

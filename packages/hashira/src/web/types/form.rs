@@ -1,7 +1,7 @@
-use std::{marker::PhantomData, task::Poll};
 use futures::Future;
-use http::{header, HeaderValue, StatusCode};
+use http::{header, HeaderValue};
 use serde::{de::DeserializeOwned, Serialize};
+use std::{marker::PhantomData, task::Poll};
 
 use crate::{
     app::{RequestContext, ResponseError},
@@ -9,7 +9,7 @@ use crate::{
     web::{parse_body_to_bytes, Body, FromRequest, IntoResponse, ParseBodyOptions, Response},
 };
 
-use super::check_content_type;
+use super::utils::validate_content_type;
 
 /// Represents form data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -65,11 +65,11 @@ where
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = check_content_type(
+        if let Err(err) = validate_content_type(
             mime::APPLICATION_WWW_FORM_URLENCODED.into(),
             self.ctx.request(),
         ) {
-            return Poll::Ready(Err(err));
+            return Poll::Ready(Err(ResponseError::unprocessable_entity(err).into()));
         }
 
         let opts = ParseBodyOptions { allow_empty: false };
@@ -80,10 +80,9 @@ where
 
         match serde_urlencoded::from_bytes::<T>(&bytes) {
             Ok(x) => Poll::Ready(Ok(Form(x))),
-            Err(err) => Poll::Ready(Err(ResponseError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                format!("failed to deserialize form: {err}"),
-            )
+            Err(err) => Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
+                "failed to deserialize form: {err}"
+            ))
             .into())),
         }
     }

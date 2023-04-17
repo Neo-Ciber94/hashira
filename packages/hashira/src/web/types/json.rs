@@ -9,7 +9,7 @@ use crate::{
     web::{parse_body_to_bytes, Body, FromRequest, IntoResponse, ParseBodyOptions, Response},
 };
 
-use super::check_content_type;
+use super::utils::validate_content_type;
 
 /// Represents a JSON.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -70,8 +70,8 @@ where
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = check_content_type(mime::APPLICATION_JSON, self.ctx.request()) {
-            return Poll::Ready(Err(err));
+        if let Err(err) = validate_content_type(mime::APPLICATION_JSON, self.ctx.request()) {
+            return Poll::Ready(Err(ResponseError::unprocessable_entity(err).into()));
         }
 
         let opts = ParseBodyOptions { allow_empty: false };
@@ -88,5 +88,101 @@ where
             )
             .into())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use http::header;
+    use serde::Deserialize;
+
+    use crate::{
+        app::{
+            error_router::ErrorRouter,
+            router::{PageRouter, PageRouterWrapper},
+            AppData, RequestContext,
+        },
+        routing::Params,
+        web::{Body, FromRequest, Json, Request},
+    };
+
+    #[tokio::test]
+    async fn test_json_from_request() {
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct MagicGirl {
+            name: String,
+            age: u32,
+            dead: bool,
+        }
+
+        let req = Request::builder()
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                r#"{
+                "name": "Homura Akemi",
+                "age": 14,
+                "dead": false 
+            }"#,
+            ))
+            .unwrap();
+
+        let ctx = create_request_context(req);
+        let json = Json::<MagicGirl>::from_request(ctx).await.unwrap();
+
+        assert_eq!(
+            json.into_inner(),
+            MagicGirl {
+                name: String::from("Homura Akemi"),
+                age: 14,
+                dead: false
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_invalid_content_type() {
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct MagicGirl {
+            name: String,
+            age: u32,
+            dead: bool,
+        }
+
+        let req = Request::builder()
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                r#"{
+                "name": "Homura Akemi",
+                "age": 14,
+                "dead": false 
+            }"#,
+            ))
+            .unwrap();
+
+        let ctx = create_request_context(req);
+        let json = Json::<MagicGirl>::from_request(ctx).await.unwrap();
+
+        assert_eq!(
+            json.into_inner(),
+            MagicGirl {
+                name: String::from("Homura Akemi"),
+                age: 14,
+                dead: false
+            }
+        );
+    }
+
+    fn create_request_context(req: Request) -> RequestContext {
+        RequestContext::new(
+            Arc::new(req),
+            Arc::new(AppData::default()),
+            PageRouterWrapper::from(PageRouter::new()),
+            Arc::new(ErrorRouter::new()),
+            None,
+            String::new(),
+            Params::default(),
+        )
     }
 }
