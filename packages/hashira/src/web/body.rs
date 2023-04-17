@@ -2,8 +2,15 @@ use crate::{error::Error, types::TryBoxStream};
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::{StreamExt, TryStreamExt};
 use std::{convert::Infallible, fmt::Debug};
+use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+#[derive(Debug, Error)]
+pub enum InvalidBodyError {
+    #[error("body is a stream")]
+    Stream,
+}
 
 /// The inner body representation.
 pub enum BodyInner {
@@ -43,6 +50,14 @@ impl Body {
     /// Returns the inner body.
     pub fn into_inner(self) -> BodyInner {
         self.0
+    }
+
+    /// Returns a references to the bytes of the body.
+    pub fn try_as_bytes(&self) -> Result<&Bytes, InvalidBodyError> {
+        match &self.0 {
+            BodyInner::Bytes(bytes) => Ok(bytes),
+            BodyInner::Stream(_) => Err(InvalidBodyError::Stream),
+        }
     }
 
     /// Returns the bytes of this body if possible, fails if the body is a stream.
