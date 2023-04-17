@@ -1,5 +1,5 @@
 [package]
-name = "hashira_actix_web"
+name = "hashira-actix-web"
 description = "Actix-web adapter for hashira"
 version = "0.1.0"
 edition = "2021"

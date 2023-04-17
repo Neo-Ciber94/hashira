@@ -14,7 +14,7 @@ wasm-logger = "0.2.0"
 env_logger = "0.10.0"
 actix-web = "4.3.1"
 actix-files = "0.6.2"
-hashira_actix_web = { path = "../../packages/hashira_actix_web" }
+hashira-actix-web = { path = "../../packages/hashira-actix-web" }
 tokio = { version = "1.27.0", features = ["macros"] }
 
 [dependencies]
