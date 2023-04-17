@@ -145,7 +145,8 @@ where
 
     /// Adds a route handler.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn route(mut self, route: Route) -> Self {
+    pub fn route(mut self, route: impl Into<Route>) -> Self {
+        let route = route.into();
         let path = route.path().to_owned(); // To please the borrow checker
         self.server_router.insert(&path, route).expect("failed to add route");
         self
@@ -153,7 +154,7 @@ where
 
     /// Adds a route handler.
     #[cfg(target_arch = "wasm32")]
-    pub fn route(self, _: Route) -> Self {
+    pub fn route(self, _: impl Into<Route>) -> Self {
         self
     }
 
