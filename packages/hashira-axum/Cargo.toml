@@ -1,0 +1,12 @@
+[package]
+name = "hashira-axum"
+description = "Axum adapter for hashira"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.68"
+axum = "0.6.15"
+axum-macros = "0.3.7"
+hashira = { path = "../hashira" }
+hyper = { version = "0.14.26", features = ["stream"] }
