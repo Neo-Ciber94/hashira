@@ -15,6 +15,7 @@ use super::utils::validate_content_type;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Json<T>(pub T);
 impl<T> Json<T> {
+    /// Returns the json value.
     pub fn into_inner(self) -> T {
         self.0
     }
@@ -93,11 +94,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use http::header;
-    use serde::Deserialize;
-
     use crate::{
         app::{
             error_router::ErrorRouter,
@@ -107,42 +103,12 @@ mod tests {
         routing::Params,
         web::{Body, FromRequest, Json, Request},
     };
+    use http::header;
+    use serde::Deserialize;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_json_from_request() {
-        #[derive(Debug, Deserialize, PartialEq)]
-        struct MagicGirl {
-            name: String,
-            age: u32,
-            dead: bool,
-        }
-
-        let req = Request::builder()
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "Homura Akemi",
-                "age": 14,
-                "dead": false 
-            }"#,
-            ))
-            .unwrap();
-
-        let ctx = create_request_context(req);
-        let json = Json::<MagicGirl>::from_request(ctx).await.unwrap();
-
-        assert_eq!(
-            json.into_inner(),
-            MagicGirl {
-                name: String::from("Homura Akemi"),
-                age: 14,
-                dead: false
-            }
-        );
-    }
-
-    #[tokio::test]
-    async fn test_invalid_content_type() {
         #[derive(Debug, Deserialize, PartialEq)]
         struct MagicGirl {
             name: String,

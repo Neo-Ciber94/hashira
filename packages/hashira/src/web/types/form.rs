@@ -15,6 +15,13 @@ use super::utils::validate_content_type;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Form<T>(pub T);
 
+impl<T> Form<T> {
+    /// Returns the form value.
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
 impl<T> IntoResponse for Form<T>
 where
     T: Serialize,
@@ -85,5 +92,60 @@ where
             ))
             .into())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        app::{
+            error_router::ErrorRouter,
+            router::{PageRouter, PageRouterWrapper},
+            AppData, RequestContext,
+        },
+        routing::Params,
+        web::{Body, Form, FromRequest, Request},
+    };
+    use http::header;
+    use serde::Deserialize;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_form_from_request() {
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct MagicGirl {
+            name: String,
+            age: u32,
+            dead: bool,
+        }
+
+        let req = Request::builder()
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from("name=Homura%20Akemi&age=14&dead=false"))
+            .unwrap();
+
+        let ctx = create_request_context(req);
+        let form = Form::<MagicGirl>::from_request(ctx).await.unwrap();
+
+        assert_eq!(
+            form.0,
+            MagicGirl {
+                name: String::from("Homura Akemi"),
+                age: 14,
+                dead: false
+            }
+        );
+    }
+
+    fn create_request_context(req: Request) -> RequestContext {
+        RequestContext::new(
+            Arc::new(req),
+            Arc::new(AppData::default()),
+            PageRouterWrapper::from(PageRouter::new()),
+            Arc::new(ErrorRouter::new()),
+            None,
+            String::new(),
+            Params::default(),
+        )
     }
 }
