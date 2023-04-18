@@ -1,4 +1,8 @@
-use actix_web::{web::Bytes, HttpRequest, HttpResponse, Resource};
+use actix_files::Files;
+use actix_web::{
+    web::{self, Bytes},
+    HttpRequest, HttpResponse,
+};
 use futures::TryStreamExt;
 use hashira::{
     app::AppService,
@@ -6,14 +10,40 @@ use hashira::{
 };
 use std::io::{Error, ErrorKind};
 
-/// Returns a handler that matches all the requests.
-pub fn router() -> Resource {
-    actix_web::web::resource("/{params:.*}").to(|req: HttpRequest, body: Bytes| async {
-        // We just forward the request and body to the handler
-        handle_request(req, body).await
-    })
+/// Returns a function which adds a configuration to the actix web `App`
+pub fn router(app_service: AppService) -> impl FnMut(&mut web::ServiceConfig) {
+    move |cfg| {
+        let current_dir = get_current_dir().join("public");
+        let static_dir = hashira::env::get_static_dir();
+
+        cfg.app_data(app_service.clone())
+            .service(Files::new(&static_dir, &current_dir))
+            .default_service(web::to(|req: HttpRequest, body: Bytes| async {
+                // We just forward the request and body to the handler
+                handle_request(req, body).await
+            }));
+    }
 }
 
+/// Returns a function which adds a configuration to the actix web `App` and handling the `hashira`
+/// request at the given path.
+pub fn router_with(path: &str, app_service: AppService) -> impl FnMut(&mut web::ServiceConfig) {
+    let path = format!("{path}/{{params:.*}}");
+
+    move |cfg| {
+        let current_dir = get_current_dir().join("public");
+        let static_dir = hashira::env::get_static_dir();
+
+        cfg.app_data(app_service.clone())
+            .service(Files::new(&static_dir, &current_dir))
+            .service(
+                web::resource(&path).to(|req: HttpRequest, body: Bytes| async {
+                    // We just forward the request and body to the handler
+                    handle_request(req, body).await
+                }),
+            );
+    }
+}
 /// Handle a request.
 pub async fn handle_request(req: HttpRequest, body: Bytes) -> actix_web::Result<HttpResponse> {
     let path = req.path().to_string();
@@ -59,4 +89,10 @@ fn map_response(res: Response) -> HttpResponse {
             builder.streaming(stream.map_err(|err| Error::new(ErrorKind::Other, err)))
         }
     }
+}
+
+fn get_current_dir() -> std::path::PathBuf {
+    let mut current_dir = std::env::current_exe().expect("failed to get current directory");
+    current_dir.pop();
+    current_dir
 }
