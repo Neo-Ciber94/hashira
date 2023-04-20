@@ -249,6 +249,7 @@ impl BuildTask {
         let opts = &self.options;
         let mut optimize = opts.optimize;
 
+        // If not set we default to the max level on release.
         if opts.release && optimize.is_none() {
             optimize = Some(WasmOptimizationLevel::Level4);
         }
