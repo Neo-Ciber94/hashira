@@ -1,4 +1,4 @@
-use crate::{app::RequestContext, web::QueryParamsError};
+use crate::{context::use_page_data, web::QueryParamsError};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::ops::Deref;
 use yew::hook;
@@ -14,23 +14,6 @@ impl<Q> QueryParamsHandle<Q>
 where
     Q: Serialize + DeserializeOwned,
 {
-    // // Define a new() method that creates a new QueryParamsHandle instance
-    // // and initializes its query_params field by parsing the search string
-    // // from the current window's location using serde_qs
-    // pub fn new() -> Result<Self, QueryParamsError> {
-    //     let window = web_sys::window().expect("failed to get window");
-    //     let location = window.location();
-    //     let search = location.search().expect("failed to get location.search");
-
-    //     // Return an error if the search string is empty
-    //     if search.is_empty() {
-    //         return Err(QueryParamsError::NotFound);
-    //     }
-
-    //     // Deserialize the search string using serde_qs and return any errors
-    //     serde_qs::from_str(search.as_str()).map_err(QueryParamsError::Parse)
-    // }
-
     pub fn new(query: Q) -> Self {
         QueryParamsHandle { query }
     }
@@ -81,46 +64,17 @@ pub fn use_query_params<Q>() -> Result<QueryParamsHandle<Q>, QueryParamsError>
 where
     Q: Serialize + DeserializeOwned + 'static,
 {
-    use super::{use_sync_snapshot, SyncSnapshot};
-
-    let query: Result<Q, QueryParamsError> = use_sync_snapshot(SyncSnapshot {
-        server: get_server_snapshot,
-        client: get_client_snapshot,
-    });
-
-    query.map(QueryParamsHandle::new)
-}
-
-fn get_client_snapshot<Q>() -> Result<Q, QueryParamsError>
-where
-    Q: Serialize + DeserializeOwned + 'static,
-{
-    let window = web_sys::window().expect("failed to get window");
-    let location = window.location();
-    let search = location
-        .search()
-        .expect("failed to get location.search")
-        .trim_start_matches('?')
-        .to_owned();
+    let page_data = use_page_data();
+    let query = page_data
+        .uri
+        .query()
+        .ok_or_else(|| QueryParamsError::NotFound)?;
 
     // Return an error if the search string is empty
-    if search.is_empty() {
+    if query.is_empty() {
         return Err(QueryParamsError::NotFound);
     }
 
     // Deserialize the search string using serde_qs and return any errors
-    serde_qs::from_str(&search).map_err(QueryParamsError::Parse)
-}
-
-fn get_server_snapshot<Q>(ctx: &RequestContext) -> Result<Q, QueryParamsError>
-where
-    Q: Serialize + DeserializeOwned + 'static,
-{
-    let search = ctx
-        .request()
-        .uri()
-        .query()
-        .ok_or(QueryParamsError::NotFound)?;
-
-    serde_qs::from_str(search).map_err(QueryParamsError::Parse)
+    serde_qs::from_str(query).map_err(QueryParamsError::Parse)
 }

@@ -1,12 +1,14 @@
 pub mod app;
 pub mod components;
-pub mod context;
 pub mod env;
 pub mod error;
 pub mod hooks;
 pub mod server;
 pub mod web;
 pub mod routing;
+
+// Allow public?
+pub(crate) mod context;
 
 #[cfg(target_arch="wasm32")]
 pub mod client;
