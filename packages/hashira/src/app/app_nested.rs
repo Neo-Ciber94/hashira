@@ -1,7 +1,8 @@
+use super::Rendered;
 use super::{ClientPageRoute, RenderContext, Route};
 use crate::components::id::PageId;
 use crate::components::PageComponent;
-use crate::{error::Error, web::Response};
+use crate::error::Error;
 use serde::de::DeserializeOwned;
 use std::future::Future;
 use std::{collections::HashMap, marker::PhantomData};
@@ -32,16 +33,14 @@ impl<C> AppNested<C> {
     }
 
     /// Adds a route handler.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
-        let path = route.path().to_owned(); // To please the borrow checker
-        self.server_router.insert(path, route);
-        self
-    }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let path = route.path().to_owned(); // To please the borrow checker
+            self.server_router.insert(path, route);
+        }
 
-    /// Adds a route handler.
-    #[cfg(target_arch = "wasm32")]
-    pub fn route(self, _: Route) -> Self {
         self
     }
 
@@ -52,10 +51,10 @@ impl<C> AppNested<C> {
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
-        use crate::app::RenderLayout;
         use super::page_head::PageHead;
+        use crate::app::RenderLayout;
 
         self.add_component::<COMP>(path);
 
@@ -75,7 +74,7 @@ impl<C> AppNested<C> {
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self

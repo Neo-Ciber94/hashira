@@ -145,16 +145,14 @@ where
     }
 
     /// Adds a route handler.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
-        let path = route.path().to_owned(); // To please the borrow checker
-        self.server_router.insert(&path, route).expect("failed to add route");
-        self
-    }
+         #[cfg(not(target_arch = "wasm32"))]
+        {
+            let path = route.path().to_owned(); // To please the borrow checker
+            self.server_router.insert(&path, route).expect("failed to add route");
+        }
 
-    /// Adds a route handler.
-    #[cfg(target_arch = "wasm32")]
-    pub fn route(self, _: Route) -> Self {
         self
     }
 
@@ -197,11 +195,9 @@ where
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
-        use super::page_head::PageHead;
-
         self.add_component::<COMP>(path);
         self.route(Route::get(path, move |ctx| {
-            let head = PageHead::new();
+            let head = super::page_head::PageHead::new();
             let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
             let render_ctx = RenderContext::new(ctx, head, render_layout);
             let fut = handler(render_ctx);
@@ -223,7 +219,7 @@ where
     }
 
     /// Adds an error page for teh given status code.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
     pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -231,38 +227,28 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
-        use futures::TryFutureExt;
-        use super::page_head::PageHead;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use futures::TryFutureExt;
 
-        self.server_error_router.insert(
-            status,
-            ErrorPageHandler::new(move |ctx, status| {
-                let head = PageHead::new();
-                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-                let render_ctx = RenderContext::new(ctx, head, render_layout);
-                let fut = handler(render_ctx, status).map_ok(|x| x.into_response());
-                async { fut.await }
-            }),
-        );
+            self.server_error_router.insert(
+                status,
+                ErrorPageHandler::new(move |ctx, status| {
+                    let head = super::page_head::PageHead::new();
+                    let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                    let render_ctx = RenderContext::new(ctx, head, render_layout);
+                    let fut = handler(render_ctx, status).map_ok(|x| x.into_response());
+                    async { fut.await }
+                }),
+            );
+        }
 
         self.add_error_component::<COMP>(status);
         self
     }
 
-    /// Adds an error page for teh given status code.
-    #[cfg(target_arch = "wasm32")]
-    pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, _: H) -> Self
-    where
-        COMP: PageComponent,
-        COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
-    {
-        self.add_error_component::<COMP>(status);
-        self
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
+    /// Register a page to handle any error.
+    #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
     pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -270,33 +256,19 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
-        use futures::TryFutureExt;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use futures::TryFutureExt;
 
-        use super::page_head::PageHead;
-
-        self.server_error_router
-            .fallback(ErrorPageHandler(Box::new(move |ctx, status| {
-                let head = PageHead::new();
-                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-                let render_ctx = RenderContext::new(ctx, head, render_layout);
-                let res = handler(render_ctx, status).map_ok(|x| x.into_response());
-                Box::pin(res)
-            })));
-
-        self.add_error_fallback_component::<COMP>();
-        self
-    }
-
-    /// Adds a default error page to handle all the errors when not matching page error is found.
-    #[cfg(target_arch = "wasm32")]
-    pub fn error_page_fallback<COMP, H, Fut>(mut self, _: H) -> Self
-    where
-        COMP: PageComponent,
-        COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
-    {
-  
+            self.server_error_router
+                .fallback(ErrorPageHandler(Box::new(move |ctx, status| {
+                    let head = super::page_head::PageHead::new();
+                    let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                    let render_ctx = RenderContext::new(ctx, head, render_layout);
+                    let res = handler(render_ctx, status).map_ok(|x| x.into_response());
+                    Box::pin(res)
+                })));
+        }
 
         self.add_error_fallback_component::<COMP>();
         self
