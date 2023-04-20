@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) struct RequestContextInner {
-    path: String,
     params: Params,
     app_data: Arc<AppData>,
     pub(crate) client_router: PageRouterWrapper,
@@ -29,11 +28,9 @@ impl RequestContext {
         client_router: PageRouterWrapper,
         error_router: Arc<ErrorRouter>,
         error: Option<ResponseError>,
-        path: String,
         params: Params,
     ) -> Self {
         let inner = RequestContextInner {
-            path,
             params,
             error,
             app_data,
@@ -51,7 +48,7 @@ impl RequestContext {
 impl RequestContext {
     /// Returns the path of the current request.
     pub fn path(&self) -> &str {
-        self.inner.path.as_str()
+        self.inner.request.uri().path()
     }
 
     /// Returns the current request.

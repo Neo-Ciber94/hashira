@@ -38,7 +38,6 @@ impl AppService {
     /// Create a context to be used in the request.
     pub fn create_context(
         &self,
-        path: String,
         request: Arc<Request>,
         params: Params,
         error: Option<ResponseError>,
@@ -53,7 +52,6 @@ impl AppService {
             client_router,
             error_router,
             error,
-            path,
             params,
         )
     }
@@ -75,13 +73,13 @@ impl AppService {
 
     // TODO: Remove the path, we could take that value from the request
     /// Process the incoming request and return the response.
-    pub async fn handle(&self, req: Request, path: &str) -> Response {
+    pub async fn handle(&self, req: Request) -> Response {
         let req = Arc::new(req);
 
         // Handle the request normally
         #[cfg(not(feature = "hooks"))]
         {
-            self.handle_request(req, path).await
+            self.handle_request(req).await
         }
 
         #[cfg(feature = "hooks")]
@@ -91,14 +89,13 @@ impl AppService {
             let hooks = &self.0.hooks.on_handle_hooks;
 
             if !hooks.is_empty() {
-                return self.handle_request(req, &path).await;
+                return self.handle_request(req).await;
             }
 
             let this = self.clone();
-            let path = path.to_owned();
             let next = Box::new(move |req| {
                 Box::pin(async move {
-                    let fut = this.handle_request(req, &path);
+                    let fut = this.handle_request(req);
                     let res = fut.await;
                     res
                 }) as BoxFuture<Response>
@@ -120,13 +117,14 @@ impl AppService {
         }
     }
 
-    async fn handle_request(&self, req: Arc<Request>, mut path: &str) -> Response {
+    async fn handle_request(&self, req: Arc<Request>) -> Response {
         // We remove the trailing slash from the path,
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
 
-        path = path.trim();
+        let mut path = req.uri().path().trim();
 
+        // We trim the trailing slash or should we redirect?
         if path.len() > 1 && path.ends_with('/') {
             path = path.trim_end_matches('/');
         }
@@ -147,26 +145,24 @@ impl AppService {
                 }
 
                 let params = mtch.params;
-                let ctx = self.create_context(path.to_owned(), req.clone(), params, None);
+                let ctx = self.create_context(req.clone(), params, None);
 
                 let res = route.handler().call(ctx).await;
                 let status = res.status();
                 if status.is_client_error() || status.is_server_error() {
-                    return self
-                        .handle_error(path, req, ErrorSource::Response(res))
-                        .await;
+                    return self.handle_error(req, ErrorSource::Response(res)).await;
                 }
 
                 res
             }
             Err(_) => {
                 let src = ErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
-                self.handle_error(path, req, src).await
+                self.handle_error(req, src).await
             }
         }
     }
 
-    async fn handle_error(&self, path: &str, req: Arc<Request>, src: ErrorSource) -> Response {
+    async fn handle_error(&self, req: Arc<Request>, src: ErrorSource) -> Response {
         let err = match src {
             ErrorSource::Response(res) => {
                 let status = res.status();
@@ -186,7 +182,7 @@ impl AppService {
         match self.0.server_error_router.find_match(&status) {
             Some(error_handler) => {
                 let params = Params::default();
-                let ctx = self.create_context(path.to_owned(), req, params, Some(err));
+                let ctx = self.create_context(req, params, Some(err));
 
                 match error_handler.call(ctx, status).await {
                     Ok(res) => res,

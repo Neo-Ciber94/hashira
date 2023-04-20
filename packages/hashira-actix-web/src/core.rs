@@ -46,14 +46,13 @@ pub fn router_with(path: &str, app_service: AppService) -> impl FnMut(&mut web::
 
 /// Handle a request.
 pub async fn handle_request(req: HttpRequest, body: Bytes) -> actix_web::Result<HttpResponse> {
-    let path = req.path().to_string();
     let service = req
         .app_data::<AppService>()
         .cloned()
         .expect("Unable to find hashira `AppService`");
 
     let req = map_request(req, body).await?;
-    let res = service.handle(req, &path).await;
+    let res = service.handle(req).await;
     let actix_web_response = map_response(res);
     Ok(actix_web_response)
 }

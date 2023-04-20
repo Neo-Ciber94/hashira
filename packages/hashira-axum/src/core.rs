@@ -36,11 +36,9 @@ pub async fn handle_request(
     Extension(service): Extension<AppService>,
     axum_request: Request<axum::body::Body>,
 ) -> impl IntoResponse {
-    let path = axum_request.uri().path().to_string();
-
     match map_request(axum_request).await {
         Ok(req) => {
-            let res = service.handle(req, &path).await;
+            let res = service.handle(req).await;
             map_response(res)
         }
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
