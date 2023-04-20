@@ -1,27 +1,42 @@
-use axum::{response::IntoResponse, Extension, Router};
-use axum_macros::debug_handler;
+use axum::{body::BoxBody, response::IntoResponse, routing::get, Extension, Router};
 use hashira::{
     app::AppService,
     web::{Body, Request, Response},
 };
-use hyper::{body::to_bytes, StatusCode};
+use hyper::{body::to_bytes, StatusCode, Uri};
+use tower::ServiceExt;
+use tower_http::services::ServeDir;
 
 // Returns a router for a `Axum` application.
 pub fn router(app_service: AppService) -> Router {
+    let static_dir = hashira::env::get_static_dir();
+
     Router::new()
-        .layer(Extension(app_service))
+        .nest_service(&static_dir, get(get_static_file))
         .fallback(handle_request)
+        .layer(Extension(app_service))
+}
+
+async fn get_static_file(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
+    let serve_dir = get_current_dir().join("public");
+    let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
+
+    // `ServeDir` implements `tower::Service` so we can call it with `tower::ServiceExt::oneshot`
+    match ServeDir::new(serve_dir).oneshot(req).await {
+        Ok(res) => Ok(res.map(axum::body::boxed)),
+        Err(err) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", err),
+        )),
+    }
 }
 
 /// Handle a request.
-#[debug_handler]
-pub async fn handle_request(axum_request: Request<axum::body::Body>) -> impl IntoResponse {
+pub async fn handle_request(
+    Extension(service): Extension<AppService>,
+    axum_request: Request<axum::body::Body>,
+) -> impl IntoResponse {
     let path = axum_request.uri().path().to_string();
-    let service = axum_request
-        .extensions()
-        .get::<Extension<AppService>>()
-        .cloned()
-        .expect("Unable to find hashira `AppService`");
 
     match map_request(axum_request).await {
         Ok(req) => {
@@ -71,4 +86,10 @@ fn map_response(mut res: Response) -> axum::response::Response {
     };
 
     builder.body(axum::body::boxed(body)).unwrap()
+}
+
+fn get_current_dir() -> std::path::PathBuf {
+    let mut current_dir = std::env::current_exe().expect("failed to get current directory");
+    current_dir.pop();
+    current_dir
 }

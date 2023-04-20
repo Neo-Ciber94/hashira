@@ -5,8 +5,8 @@ use hashira::{
 use yew::Html;
 
 pub async fn root_layout(mut ctx: LayoutContext) -> Html {
-    ctx.add_title("Hashira");
-    ctx.add_links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
+    ctx.title("Hashira");
+    ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
     
     yew::html! {
         <html lang="en">

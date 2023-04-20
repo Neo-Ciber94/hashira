@@ -127,9 +127,6 @@ impl AppService {
 
         path = path.trim();
 
-        // FIXME: Ensure the path always starts with `/`
-        debug_assert!(path.starts_with('/'));
-
         if path.len() > 1 && path.ends_with('/') {
             path = path.trim_end_matches('/');
         }

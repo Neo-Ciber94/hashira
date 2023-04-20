@@ -12,11 +12,11 @@ use hashira::{
 /// Returns a function which adds a configuration to the actix web `App`
 pub fn router(app_service: AppService) -> impl FnMut(&mut web::ServiceConfig) {
     move |cfg| {
-        let current_dir = get_current_dir().join("public");
+        let serve_dir = get_current_dir().join("public");
         let static_dir = hashira::env::get_static_dir();
 
         cfg.app_data(app_service.clone())
-            .service(Files::new(&static_dir, &current_dir))
+            .service(Files::new(&static_dir, &serve_dir))
             .default_service(web::to(|req: HttpRequest, body: Bytes| async {
                 // We just forward the request and body to the handler
                 handle_request(req, body).await

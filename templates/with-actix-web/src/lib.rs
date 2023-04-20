@@ -3,7 +3,8 @@ mod components;
 use crate::components::{root_layout, Counter};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    server::Metadata, page_component,
+    page_component,
+    server::{LinkTag, Metadata, PageLinks},
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, BaseComponent, Properties};
@@ -61,14 +62,16 @@ where
     HashiraApp::<C>::new()
         .use_default_error_pages()
         .layout(root_layout)
-        .page::<HomePage, _, _>("/", |mut ctx: RenderContext| async {
+        .page("/", |mut ctx: RenderContext| async {
             ctx.metadata(Metadata::new().description("An Hashira x Actix Web example"));
+            ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
             let res = ctx.render::<HomePage, C>().await;
             Ok(res)
         })
-        .page::<CounterPage, _, _>("/counter", |mut ctx: RenderContext| async {
+        .page("/counter", |mut ctx: RenderContext| async {
             ctx.title("Hashira | Counter");
             ctx.metadata(Metadata::new().description("A counter made with hashira actix-web"));
+            ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
             let props = yew::props! { CounterPageProps {} };
             let res = ctx.render_with_props::<CounterPage, C>(props).await;
             Ok(res)

@@ -13,6 +13,7 @@ use crate::{
     error::Error,
     web::{IntoResponse, Response}, routing::PathRouter, types::BoxFuture,
 };
+use super::Rendered;
 use http::status::StatusCode;
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc};
@@ -194,7 +195,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
         use super::page_head::PageHead;
 
@@ -215,7 +216,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self
@@ -228,8 +229,9 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
+        use futures::TryFutureExt;
         use super::page_head::PageHead;
 
         self.server_error_router.insert(
@@ -238,7 +240,7 @@ where
                 let head = PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
-                let fut = handler(render_ctx, status);
+                let fut = handler(render_ctx, status).map_ok(|x| x.into_response());
                 async { fut.await }
             }),
         );
@@ -254,7 +256,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
         self.add_error_component::<COMP>(status);
         self
@@ -266,8 +268,10 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
+        use futures::TryFutureExt;
+
         use super::page_head::PageHead;
 
         self.server_error_router
@@ -275,7 +279,7 @@ where
                 let head = PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
-                let res = handler(render_ctx, status);
+                let res = handler(render_ctx, status).map_ok(|x| x.into_response());
                 Box::pin(res)
             })));
 
@@ -290,8 +294,10 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
     {
+  
+
         self.add_error_fallback_component::<COMP>();
         self
     }
@@ -301,7 +307,7 @@ where
     where
         C: BaseComponent<Properties = ChildrenProps>,
     {
-        self.error_page::<NotFoundPage, _, _>(
+        self.error_page(
             StatusCode::NOT_FOUND,
             move |mut ctx: RenderContext, status: StatusCode| async move {
                 ctx.title(format!(
@@ -315,7 +321,7 @@ where
                 Ok(res)
             },
         )
-        .error_page_fallback::<ErrorPage, _, _>(
+        .error_page_fallback(
             move |mut ctx: RenderContext, status| async move {
                 ctx.title(format!(
                     "{} | {}",
@@ -373,7 +379,7 @@ where
     }
 
     /// Constructs an `AppService` using this instance.
-    pub fn build(self) -> AppService {
+    pub fn build(self) -> AppService where C: BaseComponent<Properties =ChildrenProps>{
         let App {
             layout,
             server_router,
@@ -422,7 +428,7 @@ where
         COMP::Properties: DeserializeOwned,
     {
         use crate::components::AnyComponent;
-
+        
         log::debug!(
             "Registering component `{}` on {path}",
             std::any::type_name::<COMP>()

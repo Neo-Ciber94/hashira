@@ -9,6 +9,5 @@ axum = "0.6.15"
 futures = "0.3.28"
 hashira = { path = "../hashira" }
 hyper = { version = "0.14.26", features = ["stream"] }
-
-# Delete
-axum-macros = "0.3.7"
+tower-http = { version = "0.4.0", features = ["fs"] }
+tower = "0.4.13"

@@ -1,8 +1,12 @@
+use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
+
 use super::RenderLayout;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
 pub use crate::error::ResponseError;
 use crate::routing::Params;
+use crate::web::IntoResponse;
 use crate::{error::Error, web::Request};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
@@ -43,6 +47,7 @@ impl RenderContext {
         }
     }
 }
+
 impl RenderContext {
     /// Returns the path of the current request.
     pub fn path(&self) -> &str {
@@ -87,7 +92,7 @@ impl RenderContext {
     }
 
     /// Render the page and returns the `text/html` response.
-    pub async fn render<COMP, C>(self) -> Response
+    pub async fn render<COMP, C>(self) -> Rendered<COMP, C>
     where
         C: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -98,19 +103,19 @@ impl RenderContext {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use crate::web::{Html, IntoResponse};
+            use crate::web::Html;
 
             // Return a text/html response
             match self.render_html::<COMP, C>().await {
-                Ok(html) => Html(html).into_response(),
-                Err(err) => ResponseError::from_error(err).into_response(),
+                Ok(html) => Rendered::new(Html(html)),
+                Err(err) => Rendered::new(ResponseError::from_error(err)),
             }
         }
     }
 
     /// Render the page with the given props and returns the `text/html` response.
     #[allow(unused_variables)]
-    pub async fn render_with_props<COMP, C>(self, props: COMP::Properties) -> Response
+    pub async fn render_with_props<COMP, C>(self, props: COMP::Properties) -> Rendered<COMP, C>
     where
         C: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -121,12 +126,12 @@ impl RenderContext {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use crate::web::{Html, IntoResponse};
+            use crate::web::Html;
 
             // Return a text/html response
             match self.render_html_with_props::<COMP, C>(props).await {
-                Ok(html) => Html(html).into_response(),
-                Err(err) => ResponseError::from_error(err).into_response(),
+                Ok(html) => Rendered::new(Html(html)),
+                Err(err) => Rendered::new(ResponseError::from_error(err)),
             }
         }
     }
@@ -144,7 +149,7 @@ impl RenderContext {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use crate::web::{IntoResponse, StreamResponse};
+            use crate::web::StreamResponse;
 
             // Return a stream text/html response
             match self.render_html_stream::<COMP, C>().await {
@@ -167,7 +172,7 @@ impl RenderContext {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use crate::web::{IntoResponse, StreamResponse};
+            use crate::web::StreamResponse;
 
             // Return a stream text/html response
             match self.render_html_stream_with_props::<COMP, C>(props).await {
@@ -332,5 +337,43 @@ impl RenderContext {
         COMP::Properties: Serialize + Send + Clone,
     {
         server_only!();
+    }
+}
+
+/// Represents a rendered component.
+pub struct Rendered<COMP, C> {
+    response: Response,
+    _marker: PhantomData<(COMP, C)>,
+}
+
+impl<COMP, C> Deref for Rendered<COMP, C> {
+    type Target = Response;
+
+    fn deref(&self) -> &Self::Target {
+        &self.response
+    }
+}
+
+impl<COMP, C> DerefMut for Rendered<COMP, C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.response
+    }
+}
+
+impl<COMP, C> Rendered<COMP, C> {
+    #[allow(dead_code)]
+    pub(crate) fn new<T: IntoResponse>(response: T) -> Self {
+        let response = response.into_response();
+
+        Rendered {
+            response,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<COMP, C> IntoResponse for Rendered<COMP, C> {
+    fn into_response(self) -> Response {
+        self.response
     }
 }
