@@ -92,6 +92,10 @@ impl RenderContext {
     }
 
     /// Returns a redirection.
+    /// 
+    /// # Panic
+    /// - If the status is not a valid redirection
+    /// - the `to` is no a valid uri
     pub fn redirect(self, to: &str, status: StatusCode) -> PageResponse<(), ()> {
         assert!(
             status.is_redirection(),
