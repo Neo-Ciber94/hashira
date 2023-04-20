@@ -11,7 +11,7 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response}, routing::PathRouter, types::BoxFuture,
+    web::{IntoResponse, Response, Redirect}, routing::PathRouter, types::BoxFuture,
 };
 use super::PageResponse;
 use http::status::StatusCode;
@@ -488,4 +488,19 @@ impl<C> Default for App<C> {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Creates a redirection route.
+/// 
+/// # Panic
+/// - If the status code is not a redirection
+/// - The from/to are invalid uri
+pub fn redirect(from: &str, to: &str, status: StatusCode) -> Route {
+    let to = to.to_owned();
+    Route::any(from, move |_| {
+        let to = to.clone();
+        async move {       
+            Redirect::new(to, status).expect("invalid redirection")
+        }
+    })
 }
