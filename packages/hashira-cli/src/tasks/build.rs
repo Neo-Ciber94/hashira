@@ -63,8 +63,8 @@ impl BuildTask {
         log::info!("Generating wasm bindings...");
         self.wasm_bindgen().await?;
 
-        // If the optimization flag is set or is release mode
-        self.optimize_wasm()?;
+        // If the optimization flag is set or in release mode
+        self.optimize_wasm().await?;
 
         log::info!("Copying files to public directory...");
         self.include_files().await?;
@@ -245,7 +245,7 @@ impl BuildTask {
         Ok(child)
     }
 
-    fn optimize_wasm(&self) -> anyhow::Result<()> {
+    async fn optimize_wasm(&self) -> anyhow::Result<()> {
         let opts = &self.options;
         let mut optimize = opts.optimize;
 
@@ -276,30 +276,30 @@ impl BuildTask {
 
         match opt_level {
             WasmOptimizationLevel::Size => {
-                OptimizationOptions::new_optimize_for_size().run(wasm_input, wasm_out)?;
+                OptimizationOptions::new_optimize_for_size().run(&wasm_input, &wasm_out)?;
             }
             WasmOptimizationLevel::SizeAggressive => {
                 OptimizationOptions::new_optimize_for_size_aggressively()
-                    .run(wasm_input, wasm_out)?;
+                    .run(&wasm_input, &wasm_out)?;
             }
             WasmOptimizationLevel::Level0 => {
-                OptimizationOptions::new_opt_level_0().run(wasm_input, wasm_out)?;
+                OptimizationOptions::new_opt_level_0().run(&wasm_input, &wasm_out)?;
             }
             WasmOptimizationLevel::Level1 => {
-                OptimizationOptions::new_opt_level_1().run(wasm_input, wasm_out)?;
+                OptimizationOptions::new_opt_level_1().run(&wasm_input, &wasm_out)?;
             }
             WasmOptimizationLevel::Level2 => {
-                OptimizationOptions::new_opt_level_2().run(wasm_input, wasm_out)?;
+                OptimizationOptions::new_opt_level_2().run(&wasm_input, &wasm_out)?;
             }
             WasmOptimizationLevel::Level3 => {
-                OptimizationOptions::new_opt_level_3().run(wasm_input, wasm_out)?;
+                OptimizationOptions::new_opt_level_3().run(&wasm_input, &wasm_out)?;
             }
             WasmOptimizationLevel::Level4 => {
-                OptimizationOptions::new_opt_level_4().run(wasm_input, wasm_out)?;
+                OptimizationOptions::new_opt_level_4().run(&wasm_input, &wasm_out)?;
             }
         }
 
-        /// Replace files
+        // Replace files
         tokio::fs::rename(wasm_out, wasm_input)
             .await
             .context("failed to move optimized wasm")?;
