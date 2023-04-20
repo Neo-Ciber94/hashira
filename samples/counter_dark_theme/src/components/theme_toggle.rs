@@ -1,4 +1,4 @@
-use hashira::{context::use_server_context, web::RequestExt};
+use hashira::{hooks::use_server_context, web::RequestExt};
 use yew::function_component;
 
 #[function_component]

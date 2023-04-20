@@ -271,7 +271,7 @@ impl BuildTask {
         );
 
         // We output to itself
-        let wasm_out = wasm_input.clone();
+        let wasm_out = wasm_dir.join(format!("{lib_name}_bg_opt.wasm"));
 
         match opt_level {
             WasmOptimizationLevel::Size => {
@@ -297,6 +297,11 @@ impl BuildTask {
                 OptimizationOptions::new_opt_level_4().run(wasm_input, wasm_out)?;
             }
         }
+
+        /// Replace files
+        tokio::fs::rename(wasm_out, wasm_input)
+            .await
+            .context("failed to move optimized wasm")?;
 
         log::info!("✅ Wasm optimization done");
         Ok(())
