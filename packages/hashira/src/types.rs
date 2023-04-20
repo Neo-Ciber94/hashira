@@ -7,4 +7,6 @@ use futures::Stream;
 pub type TryBoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + Sync>>;
 
 // A convenient boxed future.
-pub type BoxFuture<T> = Pin<Box<dyn std::future::Future<Output = T>>>;
+//pub type BoxFuture<T> = Pin<Box<dyn std::future::Future<Output = T>>>;
+
+pub type BoxFuture<T> = futures::future::BoxFuture<'static, T>;

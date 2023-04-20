@@ -1,8 +1,11 @@
+use std::{cell::RefCell, sync::Arc, pin::Pin};
+
 use axum::{response::IntoResponse, Extension, Router};
 use axum_macros::debug_handler;
+use futures::{FutureExt, TryFutureExt, task::FutureObj};
 use hashira::{
     app::AppService,
-    web::{Body, Request, Response},
+    web::{Body, Request, Response}, components::error::NotFoundPage,
 };
 use hyper::{body::to_bytes, StatusCode};
 
@@ -24,9 +27,8 @@ pub async fn handle_request(axum_request: Request<axum::body::Body>) -> impl Int
 
     match map_request(axum_request).await {
         Ok(req) => {
-            // let res = service.handle(req, &path).await;
-            // map_response(res)
-            todo!()
+            let res = service.handle(req, &path).await;
+            map_response(res)
         }
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
     }

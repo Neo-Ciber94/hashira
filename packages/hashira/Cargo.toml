@@ -22,7 +22,7 @@ serde_qs = "0.12.0"
 thiserror = "1.0.40"
 async-trait = { version = "0.1.68", optional = true }
 matchit = "0.7.0"
-futures = "0.3.28"
+futures = { version="0.3.28", features = ["executor"] }
 tokio-stream = { version = "0.1.12", features = ["sync"] }
 tokio = { version = "1.27.0", features = ["sync"] }
 mime = "0.3.17"

@@ -19,7 +19,7 @@ use std::sync::Arc;
 use yew::{
     function_component,
     html::{ChildrenProps, ChildrenRenderer},
-    BaseComponent, Html, LocalServerRenderer, ServerRenderer,
+    BaseComponent, Html, ServerRenderer,
 };
 
 pub(crate) struct RenderPageOptions {
@@ -87,6 +87,7 @@ where
         message: e.message().map(|s| s.to_owned()),
     });
 
+    // TODO: Include page Uri and params?
     // The data inserted in the html
     let page_data = PageData {
         id: component_id.clone(),
@@ -257,7 +258,7 @@ where
 
 pub async fn render_to_static_html<F>(f: F) -> String
 where
-    F: FnOnce() -> Html,
+    F: FnOnce() -> Html + Send + Sync + 'static,
 {
     #[function_component]
     fn Dummy(props: &ChildrenProps) -> Html {
@@ -266,10 +267,17 @@ where
         }
     }
 
-    // FIXME: Found a  way to use the `ServerRenderer` instead?
-    let renderer = LocalServerRenderer::<Dummy>::with_props(ChildrenProps {
-        children: ChildrenRenderer::new(vec![f()]),
+    let (tx, rx) = tokio::sync::oneshot::channel::<String>();
+
+    // FIXME: Not sure if may be a downgrade to block the thread.
+    futures::executor::block_on(async move {
+        let renderer = ServerRenderer::<Dummy>::with_props(move || ChildrenProps {
+            children: ChildrenRenderer::new(vec![f()]),
+        });
+        let html = renderer.hydratable(false).render().await;
+        tx.send(html).unwrap();
     });
 
-    renderer.hydratable(false).render().await
+    let html = rx.await.unwrap();
+    html
 }

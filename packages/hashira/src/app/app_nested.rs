@@ -51,8 +51,8 @@ impl<C> AppNested<C> {
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         use crate::app::RenderLayout;
         use super::page_head::PageHead;
@@ -74,8 +74,8 @@ impl<C> AppNested<C> {
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self

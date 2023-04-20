@@ -63,16 +63,16 @@ where
     HashiraApp::<C>::new()
         .use_default_error_pages()
         .layout(root_layout)
-        .page("/", |mut ctx: RenderContext<HomePage, C>| async {
+        .page::<HomePage, _, _>("/", |mut ctx: RenderContext| async {
             ctx.metadata(Metadata::new().description("A Hashira sample app"));
-            let res = ctx.render().await;
+            let res = ctx.render::<HomePage, C>().await;
             Ok(res)
         })
-        .page("/counter", |mut ctx: RenderContext<CounterPage, C>| async {
+        .page::<CounterPage, _, _>("/counter", |mut ctx: RenderContext| async {
             ctx.title("Hashira | Counter");
             ctx.metadata(Metadata::new().description("A Hashira sample counter"));
             let props = yew::props! { CounterPageProps {} };
-            let res = ctx.render_with_props(props).await;
+            let res = ctx.render_with_props::<CounterPage, C>(props).await;
             Ok(res)
         })
         .build()

@@ -3,7 +3,8 @@ mod components;
 use crate::components::{root_layout, Counter};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    server::Metadata, page_component,
+    page_component,
+    server::Metadata,
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, BaseComponent, Properties};
@@ -61,16 +62,16 @@ where
     HashiraApp::<C>::new()
         .use_default_error_pages()
         .layout(root_layout)
-        .page("/", |mut ctx: RenderContext<HomePage, C>| async {
+        .page::<HomePage, _, _>("/", |mut ctx: RenderContext| async {
             ctx.metadata(Metadata::new().description("An Hashira x Actix Web example"));
-            let res = ctx.render().await;
+            let res = ctx.render::<HomePage, C>().await;
             Ok(res)
         })
-        .page("/counter", |mut ctx: RenderContext<CounterPage, C>| async {
+        .page::<CounterPage, _, _>("/counter", |mut ctx: RenderContext| async {
             ctx.title("Hashira | Counter");
             ctx.metadata(Metadata::new().description("A counter made with hashira actix-web"));
             let props = yew::props! { CounterPageProps {} };
-            let res = ctx.render_with_props(props).await;
+            let res = ctx.render_with_props::<CounterPage, C>(props).await;
             Ok(res)
         })
         .build()

@@ -29,7 +29,7 @@ impl PageHandler {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + 'static,
+        Fut: Future<Output = R> + Send + Sync + 'static,
     {
         PageHandler(Box::new(move |ctx| {
             let ret = handler(ctx);
@@ -55,7 +55,7 @@ impl ErrorPageHandler {
     pub fn new<H, Fut>(handler: H) -> Self
     where
         H: Fn(RequestContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         ErrorPageHandler(Box::new(move |ctx, status| {
             let fut = handler(ctx, status);
@@ -134,7 +134,7 @@ where
     pub fn layout<F, Fut>(mut self, layout: F) -> Self
     where
         F: Fn(LayoutContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Html> + 'static,
+        Fut: Future<Output = Html> + Send + Sync + 'static,
     {
         self.layout = Some(Arc::new(move |ctx| {
             let fut = layout(ctx);
@@ -193,8 +193,8 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         use super::page_head::PageHead;
 
@@ -214,8 +214,8 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self
@@ -227,8 +227,8 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         use super::page_head::PageHead;
 
@@ -253,8 +253,8 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         self.add_error_component::<COMP>(status);
         self
@@ -265,8 +265,8 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         use super::page_head::PageHead;
 
@@ -289,8 +289,8 @@ where
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext<COMP, C>, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + 'static,
+        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
     {
         self.add_error_fallback_component::<COMP>();
         self
@@ -301,22 +301,22 @@ where
     where
         C: BaseComponent<Properties = ChildrenProps>,
     {
-        self.error_page(
+        self.error_page::<NotFoundPage, _, _>(
             StatusCode::NOT_FOUND,
-            move |mut ctx: RenderContext<NotFoundPage, C>, status: StatusCode| async move {
+            move |mut ctx: RenderContext, status: StatusCode| async move {
                 ctx.title(format!(
                     "{} | {}",
                     status.as_u16(),
-                    status.canonical_reason().unwrap_or("Page Error")
+                    status.canonical_reason().unwrap_or("Not Found")
                 ));
 
-                let mut res = ctx.render().await;
+                let mut res = ctx.render::<NotFoundPage, C>().await;
                 *res.status_mut() = status;
                 Ok(res)
             },
         )
-        .error_page_fallback(
-            move |mut ctx: RenderContext<ErrorPage, C>, status| async move {
+        .error_page_fallback::<ErrorPage, _, _>(
+            move |mut ctx: RenderContext, status| async move {
                 ctx.title(format!(
                     "{} | {}",
                     status.as_u16(),
@@ -324,7 +324,7 @@ where
                 ));
 
                 let mut res = ctx
-                    .render_with_props(ErrorPageProps {
+                    .render_with_props::<ErrorPage, C>(ErrorPageProps {
                         status,
                         message: None,
                     })

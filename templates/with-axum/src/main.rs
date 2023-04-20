@@ -5,8 +5,8 @@ mod server;
 
 // Starts the server
 #[cfg(not(target_arch = "wasm32"))]
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     crate::server::start_server::<App>().await
 }
 
