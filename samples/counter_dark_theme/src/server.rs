@@ -1,8 +1,9 @@
-use actix_files::{Files, NamedFile};
+use actix_files::NamedFile;
 use actix_web::{
-    cookie::Cookie, http::header, App, HttpRequest, HttpResponse, HttpServer, Responder,
+    cookie::Cookie, http::header, web::ServiceConfig, HttpRequest, HttpResponse, Responder,
 };
 use counter_dark_theme_web::hashira;
+use hashira_actix_web::HashiraActixWeb;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<C>() -> std::io::Result<()>
@@ -11,20 +12,12 @@ where
 {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
-    let port = hashira::env::get_port().unwrap_or(5000);
+    let app = hashira::<C>();
+    HashiraActixWeb::from(actix_web).serve(app).await
+}
 
-    println!("⚡ Server started at: `http://{host}:{port}`");
-    // Create and run the server
-    HttpServer::new(move || {
-        App::new()
-            .service(favicon)
-            .service(change_theme)
-            .configure(hashira_actix_web::router(hashira::<C>()))
-    })
-    .bind((host, port))?
-    .run()
-    .await
+fn actix_web(cfg: &mut ServiceConfig) {
+    cfg.service(favicon).service(change_theme);
 }
 
 #[actix_web::get("/api/change_theme")]

@@ -1,5 +1,6 @@
 use actix_files::NamedFile;
-use actix_web::{App, HttpServer, Responder};
+use actix_web::{web::ServiceConfig, Responder};
+use hashira_actix_web::HashiraActixWeb;
 use with_actix_web_client::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
@@ -8,20 +9,12 @@ where
     C: BaseComponent<Properties = ChildrenProps>,
 {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    let app = hashira::<C>();
+    HashiraActixWeb::from(actix_web).serve(app).await
+}
 
-    let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
-    let port = hashira::env::get_port().unwrap_or(5000);
-    log::info!("⚡ Server started at: http://{host}:{port}");
-
-    // Create and run the server
-    HttpServer::new(move || {
-        App::new()
-            .service(favicon)
-            .configure(hashira_actix_web::router(hashira::<C>()))
-    })
-    .bind((host, port))?
-    .run()
-    .await
+fn actix_web(cfg: &mut ServiceConfig) {
+    cfg.service(favicon);
 }
 
 // Serves the favicon

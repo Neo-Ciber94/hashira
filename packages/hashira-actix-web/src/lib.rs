@@ -1,98 +1,78 @@
-use actix_files::Files;
-use actix_web::{
-    web::{self, Bytes},
-    HttpRequest, HttpResponse,
-};
-use futures::TryStreamExt;
-use hashira::{
-    app::AppService,
-    web::{Body, BodyInner, Request, Response},
-};
-use std::io::{Error, ErrorKind};
+pub mod core;
 
-/// Returns a function which adds a configuration to the actix web `App`
-pub fn router(app_service: AppService) -> impl FnMut(&mut web::ServiceConfig) {
-    move |cfg| {
-        let current_dir = get_current_dir().join("public");
-        let static_dir = hashira::env::get_static_dir();
+use std::net::SocketAddr;
 
-        cfg.app_data(app_service.clone())
-            .service(Files::new(&static_dir, &current_dir))
-            .default_service(web::to(|req: HttpRequest, body: Bytes| async {
-                // We just forward the request and body to the handler
-                handle_request(req, body).await
-            }));
+use actix_web::{web::ServiceConfig, HttpServer};
+use hashira::app::AppService;
+
+/// A basic hashira adapter for `actix-web`.
+pub struct HashiraActixWeb<F = ()>(F);
+
+impl HashiraActixWeb<()> {
+    /// Constructs an adapter without any configuration.
+    pub fn new() -> HashiraActixWeb<()> {
+        HashiraActixWeb(())
     }
 }
 
-/// Returns a function which adds a configuration to the actix web `App` and handling the `hashira`
-/// request at the given path.
-pub fn router_with(path: &str, app_service: AppService) -> impl FnMut(&mut web::ServiceConfig) {
-    let path = format!("{path}/{{params:.*}}");
+impl<F> HashiraActixWeb<F>
+where
+    F: ConfigureActixService + Send + Clone + 'static,
+{
+    /// Starts the server.
+    pub async fn serve(self, app: AppService) -> Result<(), std::io::Error> {
+        let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
+        let port = hashira::env::get_port().unwrap_or(5000);
+        let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();
 
-    move |cfg| {
-        let current_dir = get_current_dir().join("public");
-        let static_dir = hashira::env::get_static_dir();
+        println!("⚡ Server started at: `http://{addr}`");
 
-        cfg.app_data(app_service.clone())
-            .service(Files::new(&static_dir, &current_dir))
-            .service(
-                web::resource(&path).to(|req: HttpRequest, body: Bytes| async {
-                    // We just forward the request and body to the handler
-                    handle_request(req, body).await
-                }),
-            );
-    }
-}
-/// Handle a request.
-pub async fn handle_request(req: HttpRequest, body: Bytes) -> actix_web::Result<HttpResponse> {
-    let path = req.path().to_string();
-    let service = req
-        .app_data::<AppService>()
-        .cloned()
-        .expect("Unable to find hashira `AppService`");
+        // Create and run the server
+        HttpServer::new(move || {
+            let config = self.0.clone();
+            actix_web::App::new()
+                .configure(move |cfg| config.configure(cfg))
+                .configure(core::router(app.clone()))
+        })
+        .bind(addr)?
+        .run()
+        .await?;
 
-    let req = map_request(req, body).await?;
-    let res = service.handle(req, &path).await;
-    let actix_web_response = map_response(res);
-    Ok(actix_web_response)
-}
-
-async fn map_request(src: HttpRequest, bytes: Bytes) -> actix_web::Result<Request> {
-    let mut request = Request::builder()
-        .uri(src.uri())
-        .method(src.method())
-        .version(src.version());
-
-    let headers = request.headers_mut().unwrap();
-    for (name, value) in src.headers() {
-        headers.append(name, value.into());
-    }
-
-    let body = Body::from(bytes);
-    request.body(body).map_err(actix_web::Error::from)
-}
-
-fn map_response(res: Response) -> HttpResponse {
-    use actix_web::HttpResponseBuilder;
-
-    let mut builder = HttpResponseBuilder::new(res.status());
-
-    for (name, value) in res.headers() {
-        builder.append_header((name, value));
-    }
-
-    match res.into_body().into_inner() {
-        BodyInner::Bytes(bytes) => builder.body(bytes),
-        BodyInner::Stream(stream) => {
-            // We need to wrap the error on a sized type to be passed to `streaming`
-            builder.streaming(stream.map_err(|err| Error::new(ErrorKind::Other, err)))
-        }
+        Ok(())
     }
 }
 
-fn get_current_dir() -> std::path::PathBuf {
-    let mut current_dir = std::env::current_exe().expect("failed to get current directory");
-    current_dir.pop();
-    current_dir
+impl<F> From<F> for HashiraActixWeb<F>
+where
+    F: ConfigureActixService + Send + Clone + 'static,
+{
+    fn from(value: F) -> Self {
+        HashiraActixWeb(value)
+    }
+}
+
+#[doc(hidden)]
+pub trait ConfigureActixService: sealed::Sealed {
+    fn configure(self, config: &mut ServiceConfig);
+}
+
+impl<F> sealed::Sealed for F where F: FnOnce(&mut ServiceConfig) + Send + Clone + 'static {}
+impl sealed::Sealed for () {}
+
+impl<F> ConfigureActixService for F
+where
+    F: FnOnce(&mut ServiceConfig) + Send + Clone + 'static,
+{
+    fn configure(self, config: &mut ServiceConfig) {
+        (self)(config)
+    }
+}
+
+impl ConfigureActixService for () {
+    fn configure(self, _: &mut ServiceConfig) {}
+}
+
+#[doc(hidden)]
+pub(crate) mod sealed {
+    pub trait Sealed {}
 }
