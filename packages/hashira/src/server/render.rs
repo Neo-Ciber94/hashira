@@ -71,8 +71,6 @@ where
         request_context,
     } = options;
 
-    let path = request_context.path();
-
     // The base layout
     let result_html = index_html;
 
@@ -99,10 +97,7 @@ where
 
     // The props passed to the container page
     let page_props = PageProps {
-        id: component_id,
-        path: path.to_owned(),
-        error: page_error,
-        props_json,
+        page_data: page_data.clone(),
         router,
         error_router,
 

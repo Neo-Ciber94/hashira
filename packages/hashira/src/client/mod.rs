@@ -23,10 +23,7 @@ where
     let router = service.page_router().clone();
     let error_router = service.error_router().clone();
     let props = PageProps {
-        id: page_data.id,
-        path: page_data.uri.path().to_owned(),
-        props_json: page_data.props,
-        error: page_data.error,
+        page_data,
         error_router,
         router,
         server_context: ServerContext::new(None),

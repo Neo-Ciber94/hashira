@@ -1,4 +1,5 @@
-use crate::context::{ServerContext, ServerContextProvider};
+use super::id::PageId;
+use crate::context::{PageDataContextProvider, ServerContext, ServerContextProvider};
 use crate::routing::Params;
 use crate::{
     app::{error_router::ErrorRouter, router::PageRouterWrapper},
@@ -9,22 +10,12 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use yew::Suspense;
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
-use super::id::PageId;
 
 /// The props for the current page.
 #[derive(Clone, PartialEq, Properties)]
 pub struct PageProps {
-    /// The id of the current page component.
-    pub id: PageId,
-
-    /// The path of the request
-    pub path: String,
-
-    /// An error that occurred while processing the request
-    pub error: Option<PageError>,
-
-    /// The props of the current page as JSON
-    pub props_json: serde_json::Value,
+    /// Data for the current page.
+    pub page_data: PageData,
 
     /// The router to render the page
     pub router: PageRouterWrapper,
@@ -44,12 +35,15 @@ where
     let props = props.clone();
 
     yew::html! {
-        <ServerContextProvider server_context={props.server_context.clone()}>
-            <PageRouter<ROOT> ..props/>
-        </ServerContextProvider>
+        <PageDataContextProvider data={props.page_data.clone()}>
+            <ServerContextProvider server_context={props.server_context.clone()}>
+                <PageRouter<ROOT> ..props/>
+            </ServerContextProvider>
+        </PageDataContextProvider>
     }
 }
 
+#[doc(hidden)]
 #[function_component]
 pub fn PageRouter<ROOT>(props: &PageProps) -> Html
 where
@@ -57,11 +51,12 @@ where
 {
     let router = &props.router;
     let error_router = &props.error_router;
+    let page_data = &props.page_data;
 
-    if let Some(error) = &props.error {
+    if let Some(error) = &page_data.error {
         return match error_router.find_match(&error.status) {
             Some(comp) => {
-                let props = props.props_json.clone();
+                let props = page_data.props.clone();
                 yew::html! {
                     <Suspense>
                         {comp.render_with_props(props)}
@@ -77,9 +72,9 @@ where
         };
     }
 
-    match router.find_by_id(&props.id) {
+    match router.find_by_id(&page_data.id) {
         Some(route) => {
-            let props = props.props_json.clone();
+            let props = page_data.props.clone();
 
             yew::html! {
                 <ROOT>
@@ -91,7 +86,7 @@ where
         }
         None => match error_router.find_match(&StatusCode::NOT_FOUND) {
             Some(comp) => {
-                let props = props.props_json.clone();
+                let props = page_data.props.clone();
                 yew::html! {
                     <Suspense>
                         {comp.render_with_props(props)}
@@ -109,7 +104,7 @@ where
 }
 
 /// Represents an error that occurred on the server.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Properties)]
 pub struct PageError {
     /// The status code of the error.
     #[serde(with = "crate::web::serde::status_code")]
@@ -120,7 +115,7 @@ pub struct PageError {
 }
 
 /// Represents the data of the current page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PageData {
     /// The id of the component of this page.
     pub id: PageId,

@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use serde::{Serialize, Deserialize};
 
 /// Represents the params of a route match.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(transparent)]
 pub struct Params(IndexMap<String, String>);
 
