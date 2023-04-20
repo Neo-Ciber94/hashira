@@ -13,7 +13,7 @@ use crate::{
     error::Error,
     web::{IntoResponse, Response}, routing::PathRouter, types::BoxFuture,
 };
-use super::Rendered;
+use super::PageResponse;
 use http::status::StatusCode;
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc};
@@ -193,7 +193,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self.route(Route::get(path, move |ctx| {
@@ -212,7 +212,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self
@@ -225,7 +225,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
     {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -254,7 +254,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Rendered<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
     {
         #[cfg(not(target_arch = "wasm32"))]
         {
