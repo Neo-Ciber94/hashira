@@ -48,9 +48,9 @@ where
     type Error = Error;
     type Fut = FromRequestFormFuture<T>;
 
-    fn from_request(ctx: crate::app::RequestContext) -> Self::Fut {
+    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
         FromRequestFormFuture {
-            ctx,
+            ctx: ctx.clone(),
             _marker: PhantomData,
         }
     }
@@ -125,7 +125,7 @@ mod tests {
             .unwrap();
 
         let ctx = create_request_context(req);
-        let form = Form::<MagicGirl>::from_request(ctx).await.unwrap();
+        let form = Form::<MagicGirl>::from_request(&ctx).await.unwrap();
 
         assert_eq!(
             form.0,
@@ -144,7 +144,6 @@ mod tests {
             PageRouterWrapper::from(PageRouter::new()),
             Arc::new(ErrorRouter::new()),
             None,
-            String::new(),
             Params::default(),
         )
     }

@@ -47,9 +47,9 @@ where
     type Error = Error;
     type Fut = FromRequestJsonFuture<T>;
 
-    fn from_request(ctx: RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
         FromRequestJsonFuture {
-            ctx,
+            ctx: ctx.clone(),
             _marker: PhantomData,
         }
     }
@@ -128,7 +128,7 @@ mod tests {
             .unwrap();
 
         let ctx = create_request_context(req);
-        let json = Json::<MagicGirl>::from_request(ctx).await.unwrap();
+        let json = Json::<MagicGirl>::from_request(&ctx).await.unwrap();
 
         assert_eq!(
             json.into_inner(),
@@ -147,7 +147,6 @@ mod tests {
             PageRouterWrapper::from(PageRouter::new()),
             Arc::new(ErrorRouter::new()),
             None,
-            String::new(),
             Params::default(),
         )
     }

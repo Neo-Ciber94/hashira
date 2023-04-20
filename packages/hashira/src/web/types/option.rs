@@ -11,7 +11,7 @@ where
     type Error = Infallible;
     type Fut = FromRequestOptionFuture<T::Fut>;
 
-    fn from_request(ctx: RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
         FromRequestOptionFuture {
             fut: T::from_request(ctx),
         }

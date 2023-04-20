@@ -12,7 +12,7 @@ where
     type Error = Infallible;
     type Fut = FromRequestResultFuture<T::Fut, E>;
 
-    fn from_request(ctx: RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
         FromRequestResultFuture {
             fut: T::from_request(ctx),
             _marker: PhantomData,

@@ -12,8 +12,8 @@ impl FromRequest for Bytes {
     type Error = Error;
     type Fut = ExtractBytesFuture;
 
-    fn from_request(ctx: RequestContext) -> Self::Fut {
-        ExtractBytesFuture(ctx)
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ExtractBytesFuture(ctx.clone())
     }
 }
 
