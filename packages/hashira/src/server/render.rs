@@ -92,8 +92,9 @@ where
     let page_data = PageData {
         id: component_id.clone(),
         props: props_json.clone(),
-        path: path.to_owned(),
+        uri: request_context.request().uri().clone(),
         error: page_error.clone(),
+        params: request_context.params().clone(),
     };
 
     // The props passed to the container page
@@ -104,6 +105,8 @@ where
         props_json,
         router,
         error_router,
+
+        // Unnecessary?
         server_context: ServerContext::new(Some(request_context)),
     };
 

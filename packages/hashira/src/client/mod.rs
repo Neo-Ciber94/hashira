@@ -24,7 +24,7 @@ where
     let error_router = service.error_router().clone();
     let props = PageProps {
         id: page_data.id,
-        path: page_data.path.clone(),
+        path: page_data.uri.path().to_owned(),
         props_json: page_data.props,
         error: page_data.error,
         error_router,

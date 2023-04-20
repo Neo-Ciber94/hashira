@@ -1,42 +1,42 @@
 use indexmap::IndexMap;
+use serde::{Serialize, Deserialize};
 
 /// Represents the params of a route match.
-#[derive(Debug, Clone, Default)]
-pub struct Params {
-    map: IndexMap<String, String>,
-}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Params(IndexMap<String, String>);
 
 impl Params {
     /// Returns the value for the given param key, or `None` if not found.
     pub fn get(&self, key: impl AsRef<str>) -> Option<&str> {
-        self.map.get(key.as_ref()).map(|s| s.as_str())
+        self.0.get(key.as_ref()).map(|s| s.as_str())
     }
 
     /// Returns the key-value at the given index.
     pub fn get_index(&self, index: usize) -> Option<(&str, &str)> {
-        self.map
+        self.0
             .get_index(index)
             .map(|(k, v)| (k.as_str(), v.as_str()))
     }
 
     /// Returns `true` if contains the given key
     pub fn contains(&self, key: impl AsRef<str>) -> bool {
-        self.map.contains_key(key.as_ref())
+        self.0.contains_key(key.as_ref())
     }
 
     /// Returns the number of key-values.
     pub fn len(&self) -> usize {
-        self.map.len()
+        self.0.len()
     }
 
     /// Returns `true` if there are no values.
     pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
+        self.0.is_empty()
     }
 
     /// Returns an iterator over the key-values.
     pub fn iter(&self) -> indexmap::map::Iter<String, String> {
-        self.map.iter()
+        self.0.iter()
     }
 }
 
@@ -44,7 +44,7 @@ impl FromIterator<(String, String)> for Params {
     fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
         let iter = iter.into_iter();
         let map = IndexMap::from_iter(iter);
-        Params { map }
+        Params(map)
     }
 }
 
@@ -62,8 +62,8 @@ mod tests {
     #[test]
     fn test_params() {
         let mut params = Params::default();
-        params.map.insert("foo".to_owned(), "bar".to_owned());
-        params.map.insert("baz".to_owned(), "qux".to_owned());
+        params.0.insert("foo".to_owned(), "bar".to_owned());
+        params.0.insert("baz".to_owned(), "qux".to_owned());
 
         // Test get method
         assert_eq!(params.get("foo"), Some("bar"));

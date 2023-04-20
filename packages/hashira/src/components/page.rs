@@ -1,14 +1,14 @@
 use crate::context::{ServerContext, ServerContextProvider};
+use crate::routing::Params;
 use crate::{
     app::{error_router::ErrorRouter, router::PageRouterWrapper},
     components::error::{ErrorPage, NotFoundPage},
 };
-use http::StatusCode;
+use http::{StatusCode, Uri};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use yew::Suspense;
 use yew::{function_component, html::ChildrenProps, BaseComponent, Html, Properties};
-
 use super::id::PageId;
 
 /// The props for the current page.
@@ -125,12 +125,16 @@ pub struct PageData {
     /// The id of the component of this page.
     pub id: PageId,
 
-    /// The path of the component.
-    pub path: String,
+    /// The uri of the current page.
+    #[serde(with = "crate::web::serde::uri")]
+    pub uri: Uri,
 
     /// An error that ocurred in the route.
     pub error: Option<PageError>,
 
-    /// Properties of the current component.
+    /// Properties of the current page.
     pub props: serde_json::Value,
+
+    /// Params of the page, if any.
+    pub params: Params,
 }
