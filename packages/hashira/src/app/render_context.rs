@@ -317,11 +317,13 @@ impl RenderContext {
         let error_router = request_context.inner.error_router.clone();
         let error = request_context.inner.error.clone();
 
+        let layout_head = PageHead::new();
+
         // Render the html template where the content will be rendered
         let index_html = render_to_static_html({
             let render_layout = self.render_layout.clone();
             let request_context = request_context.clone();
-            let head = head.clone();
+            let head = layout_head.clone();
             let layout_ctx = LayoutContext::new(request_context, head);
 
             move || {
@@ -330,6 +332,9 @@ impl RenderContext {
             }
         })
         .await;
+
+        // Merge the layout head with the current component head
+        let head = layout_head.merge(head);
 
         RenderPageOptions {
             head,
