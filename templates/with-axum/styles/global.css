@@ -105,6 +105,11 @@ nav a:hover {
   cursor: pointer;
 }
 
+.logo-container img {
+  width: 100px;
+  height: 100px;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background-color: rgb(15, 15, 15);

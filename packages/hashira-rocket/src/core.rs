@@ -38,6 +38,12 @@ impl DefaultRequestHandler {
     }
 }
 
+impl Into<Vec<rocket::Route>> for DefaultRequestHandler {
+    fn into(self) -> Vec<rocket::Route> {
+        DefaultRequestHandler::routes(Some(100))
+    }
+}
+
 #[rocket::async_trait]
 impl Handler for DefaultRequestHandler {
     async fn handle<'r>(
@@ -68,22 +74,6 @@ impl Handler for DefaultRequestHandler {
 
         let rocket_res = map_response(res).await;
         route::Outcome::Success(rocket_res)
-    }
-}
-
-impl Into<Vec<rocket::Route>> for DefaultRequestHandler {
-    fn into(self) -> Vec<rocket::Route> {
-        let mut routes = vec![];
-        for method in [Get, Put, Post, Delete, Options, Head, Trace, Connect, Patch] {
-            routes.push(rocket::Route::ranked(
-                100,
-                method,
-                "/<path..>",
-                self.clone(),
-            ));
-        }
-
-        routes
     }
 }
 

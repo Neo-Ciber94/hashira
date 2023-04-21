@@ -19,6 +19,9 @@ impl From<Rocket<Build>> for HashiraRocket {
     }
 }
 
+#[derive(Clone)]
+struct HelloHandler;
+
 #[hashira::async_trait]
 impl Adapter for HashiraRocket {
     /// Starts the server.
@@ -28,14 +31,16 @@ impl Adapter for HashiraRocket {
         let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();
 
         let shutdown = rocket::config::Shutdown {
-            ctrlc: false,
+            ctrlc: false, // hashira cli handle the shutdown
             ..rocket::config::Shutdown::default()
         };
 
+        let mut rocket = self.0;
+
         // Attach the router to the rocket
-        let rocket = {
+        rocket = {
             let configure = core::router(app);
-            configure(self.0)
+            configure(rocket)
         };
 
         let figment = rocket
@@ -43,11 +48,15 @@ impl Adapter for HashiraRocket {
             .clone()
             .merge((rocket::Config::ADDRESS, addr.ip()))
             .merge((rocket::Config::PORT, addr.port()))
-            //.merge((rocket::Config::LOG_LEVEL, rocket::config::LogLevel::Off))
+            .merge((rocket::Config::LOG_LEVEL, rocket::config::LogLevel::Off))
             .merge((rocket::Config::SHUTDOWN, shutdown));
 
+        let rocket = rocket.configure(figment).ignite().await?;
         println!("⚡ Server started at: `http://{addr}`");
-        Rocket::build().configure(figment).launch().await?;
+
+        // Start the server
+        rocket.launch().await?;
+
         Ok(())
     }
 }

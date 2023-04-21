@@ -15,7 +15,7 @@ pub(crate) struct Inner {
     pub(crate) scripts: PageScripts,
 }
 
-pub struct PageHead(Arc<Mutex<Inner>>); // 
+pub struct PageHead(Arc<Mutex<Inner>>); //
 
 impl PageHead {
     pub(crate) fn new() -> Self {
@@ -41,7 +41,14 @@ impl PageHead {
 
     /// Adds a `<title>` element to the page head.
     pub fn title(&mut self, title: impl Into<String>) {
-        self.0.lock().unwrap().title.replace(title.into());
+        let mut lock = self.0.lock().unwrap();
+
+        // To prevent the `LayoutContext` to override the page title
+        if lock.title.is_some() {
+            return;
+        }
+
+        lock.title.replace(title.into());
     }
 
     /// Adds a `<meta>` element to the page head.

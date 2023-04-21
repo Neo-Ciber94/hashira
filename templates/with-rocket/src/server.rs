@@ -11,11 +11,12 @@ where
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let app = hashira::<BASE>();
-    HashiraRocket::from(rocket()).serve(app).await
+    HashiraRocket::from(rocket()).serve(app).await?;
+    Ok(())
 }
 
 fn rocket() -> Rocket<Build> {
-    Rocket::build()
+    Rocket::build().mount("/", routes![favicon])
 }
 
 #[get("/favicon.ico")]

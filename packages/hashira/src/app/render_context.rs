@@ -91,7 +91,7 @@ impl RenderContext {
     }
 
     /// Returns a redirection.
-    /// 
+    ///
     /// # Panic
     /// - If the status is not a valid redirection
     /// - the `to` is no a valid uri
@@ -129,7 +129,10 @@ impl RenderContext {
 
     /// Render the page with the given props and returns the `text/html` response.
     #[allow(unused_variables)]
-    pub async fn render_with_props<COMP, BASE>(self, props: COMP::Properties) -> PageResponse<COMP, BASE>
+    pub async fn render_with_props<COMP, BASE>(
+        self,
+        props: COMP::Properties,
+    ) -> PageResponse<COMP, BASE>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -192,7 +195,10 @@ impl RenderContext {
             use crate::web::StreamResponse;
 
             // Return a stream text/html response
-            match self.render_html_stream_with_props::<COMP, BASE>(props).await {
+            match self
+                .render_html_stream_with_props::<COMP, BASE>(props)
+                .await
+            {
                 Ok(stream) => PageResponse::new(StreamResponse(stream)),
                 Err(err) => PageResponse::new(ResponseError::from_error(err)),
             }
@@ -265,7 +271,10 @@ impl RenderContext {
 
     /// Renders the given component with the specified props to html.
     #[cfg(target_arch = "wasm32")]
-    pub async fn render_html_with_props<COMP, BASE>(self, _: COMP::Properties) -> Result<String, Error>
+    pub async fn render_html_with_props<COMP, BASE>(
+        self,
+        _: COMP::Properties,
+    ) -> Result<String, Error>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -347,7 +356,7 @@ impl RenderContext {
         _: COMP::Properties,
     ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
     where
-    BASE: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
