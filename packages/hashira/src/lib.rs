@@ -24,7 +24,6 @@ pub use hashira_macros::*;
 
 mod reexports {
     pub use async_trait::async_trait;
-    pub use yew;
 }
 
 pub use reexports::*;
