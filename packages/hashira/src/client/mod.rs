@@ -9,9 +9,9 @@ use crate::components::{Page, HASHIRA_PAGE_DATA, HASHIRA_ROOT};
 
 // TODO: Add custom panic hook
 
-pub fn mount<C>(service: AppService)
+pub fn mount<BASE>(service: AppService)
 where
-    C: BaseComponent<Properties = ChildrenProps>,
+    BASE: BaseComponent<Properties = ChildrenProps>,
 {
     let page_data_element = find_element_by_id(HASHIRA_PAGE_DATA);
     let content = page_data_element
@@ -30,7 +30,7 @@ where
     };
 
     let root = find_element_by_id(HASHIRA_ROOT);
-    let renderer = Renderer::<Page<C>>::with_root_and_props(root, props);
+    let renderer = Renderer::<Page<BASE>>::with_root_and_props(root, props);
     renderer.hydrate();
 }
 

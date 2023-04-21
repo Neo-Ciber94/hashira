@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RenderContext, RequestContext, Route, AppData,
+    RenderContext, RequestContext, Route, AppData, page_head::PageHead,
 };
 use crate::{
     components::{
@@ -74,20 +74,20 @@ impl ErrorPageHandler {
 }
 
 /// A builder for a `hashira` application.
-pub struct App<C> {
+pub struct App<BASE> {
     layout: Option<RenderLayout>,
     server_router: PathRouter<Route>,
     page_router: PageRouter,
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
     app_data: AppData,
-    _marker: PhantomData<C>,
+    _marker: PhantomData<BASE>,
 
     #[cfg(feature = "hooks")]
     hooks: crate::events::Hooks,
 }
 
-impl<C> App<C> {
+impl<BASE> App<BASE> {
     /// Constructs a new empty builder.
     pub fn new() -> Self {
         App {
@@ -105,9 +105,9 @@ impl<C> App<C> {
     }
 }
 
-impl<C> App<C>
+impl<BASE> App<BASE>
 where
-    C: 'static,
+    BASE: 'static,
 {
     /// Adds a handler that renders the base `index.html` for the requests.
     ///
@@ -157,7 +157,7 @@ where
     }
 
     /// Adds nested routes for the given path.
-    pub fn nest(mut self, base_path: &str, scope: AppNested<C>) -> Self {
+    pub fn nest(mut self, base_path: &str, scope: AppNested<BASE>) -> Self {
         crate::routing::assert_valid_route(base_path).expect("invalid base path");
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -193,7 +193,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self.route(Route::get(path, move |ctx| {
@@ -212,7 +212,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self
@@ -225,7 +225,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -254,7 +254,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -277,7 +277,7 @@ where
     /// Adds the default `404` error page and a fallback error page.
     pub fn use_default_error_pages(self) -> Self
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
     {
         self.error_page(
             StatusCode::NOT_FOUND,
@@ -288,7 +288,7 @@ where
                     status.canonical_reason().unwrap_or("Not Found")
                 ));
 
-                let mut res = ctx.render::<NotFoundPage, C>().await;
+                let mut res = ctx.render::<NotFoundPage, BASE>().await;
                 *res.status_mut() = status;
                 Ok(res)
             },
@@ -302,7 +302,7 @@ where
                 ));
 
                 let mut res = ctx
-                    .render_with_props::<ErrorPage, C>(ErrorPageProps {
+                    .render_with_props::<ErrorPage, BASE>(ErrorPageProps {
                         status,
                         message: None,
                     })
@@ -351,7 +351,7 @@ where
     }
 
     /// Constructs an `AppService` using this instance.
-    pub fn build(self) -> AppService where C: BaseComponent<Properties =ChildrenProps>{
+    pub fn build(self) -> AppService where BASE: BaseComponent<Properties =ChildrenProps>{
         let App {
             layout,
             server_router,
@@ -484,7 +484,7 @@ where
     }
 }
 
-impl<C> Default for App<C> {
+impl<BASE> Default for App<BASE> {
     fn default() -> Self {
         Self::new()
     }
@@ -502,5 +502,37 @@ pub fn redirect(from: &str, to: &str, status: StatusCode) -> Route {
         async move {       
             Redirect::new(to, status).expect("invalid redirection")
         }
+    })
+}
+
+/// Returns a route that renders the given component with the given `<head>`.
+pub fn render<COMP, BASE>(route: &str, head: PageHead) -> Route     
+    where
+        BASE: BaseComponent<Properties = ChildrenProps>,
+        COMP: PageComponent,
+        COMP::Properties: Default + serde::Serialize + Send + Sync + Clone {
+    Route::get(route, move |ctx| {
+        let head = head.clone();
+        let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+        let render_ctx = RenderContext::new(ctx, head, render_layout);
+        let fut = render_ctx.render::<COMP, BASE>();
+        async { fut.await }
+    })
+}
+
+/// Returns a route that renders the given component with props, with the given `<head>`.
+pub fn render_with_props<COMP, BASE>(route: &str, props: COMP::Properties, head: PageHead) -> Route     
+    where
+        BASE: BaseComponent<Properties = ChildrenProps>,
+        COMP: PageComponent,
+        COMP::Properties: serde::Serialize + Send + Sync + Clone {
+    Route::get(route, move |ctx| {
+        let head = head.clone();
+        let props = props.clone();
+
+        let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+        let render_ctx = RenderContext::new(ctx, head, render_layout);
+        let fut = render_ctx.render_with_props::<COMP, BASE>(props);
+        async { fut.await }
     })
 }

@@ -4,12 +4,12 @@ use hashira_actix_web::HashiraActixWeb;
 use with_actix_web_client::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
-pub async fn start_server<C>() -> std::io::Result<()>
+pub async fn start_server<BASE>() -> std::io::Result<()>
 where
-    C: BaseComponent<Properties = ChildrenProps>,
+    BASE: BaseComponent<Properties = ChildrenProps>,
 {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-    let app = hashira::<C>();
+    let app = hashira::<BASE>();
     HashiraActixWeb::from(actix_web).serve(app).await
 }
 

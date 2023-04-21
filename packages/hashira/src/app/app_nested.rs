@@ -9,7 +9,7 @@ use std::{collections::HashMap, marker::PhantomData};
 
 /// Represents a nested route in a `App`.
 #[derive(Default)]
-pub struct AppNested<C> {
+pub struct AppNested<BASE> {
     // Inner server routes
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) server_router: HashMap<String, Route>,
@@ -18,10 +18,10 @@ pub struct AppNested<C> {
     pub(crate) page_router: HashMap<String, ClientPageRoute>,
 
     //
-    _marker: PhantomData<C>,
+    _marker: PhantomData<BASE>,
 }
 
-impl<C> AppNested<C> {
+impl<BASE> AppNested<BASE> {
     /// Creates a new nested route.
     pub fn new() -> Self {
         AppNested {
@@ -51,7 +51,7 @@ impl<C> AppNested<C> {
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         use super::page_head::PageHead;
         use crate::app::RenderLayout;
@@ -74,7 +74,7 @@ impl<C> AppNested<C> {
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, C>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
         self
@@ -110,6 +110,6 @@ impl<C> AppNested<C> {
 }
 
 /// Creates a new nested app.
-pub fn nested<C>() -> AppNested<C> {
+pub fn nested<BASE>() -> AppNested<BASE> {
     AppNested::new()
 }

@@ -107,9 +107,9 @@ impl RenderContext {
     }
 
     /// Render the page and returns the `text/html` response.
-    pub async fn render<COMP, C>(self) -> PageResponse<COMP, C>
+    pub async fn render<COMP, BASE>(self) -> PageResponse<COMP, BASE>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
@@ -121,7 +121,7 @@ impl RenderContext {
             use crate::web::Html;
 
             // Return a text/html response
-            match self.render_html::<COMP, C>().await {
+            match self.render_html::<COMP, BASE>().await {
                 Ok(html) => PageResponse::new(Html(html)),
                 Err(err) => PageResponse::new(ResponseError::from_error(err)),
             }
@@ -130,9 +130,9 @@ impl RenderContext {
 
     /// Render the page with the given props and returns the `text/html` response.
     #[allow(unused_variables)]
-    pub async fn render_with_props<COMP, C>(self, props: COMP::Properties) -> PageResponse<COMP, C>
+    pub async fn render_with_props<COMP, BASE>(self, props: COMP::Properties) -> PageResponse<COMP, BASE>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
@@ -144,7 +144,7 @@ impl RenderContext {
             use crate::web::Html;
 
             // Return a text/html response
-            match self.render_html_with_props::<COMP, C>(props).await {
+            match self.render_html_with_props::<COMP, BASE>(props).await {
                 Ok(html) => PageResponse::new(Html(html)),
                 Err(err) => PageResponse::new(ResponseError::from_error(err)),
             }
@@ -153,9 +153,9 @@ impl RenderContext {
 
     /// Render the page and returns the `text/html` response stream.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_stream<COMP, C>(self) -> PageResponse<COMP, C>
+    pub async fn render_stream<COMP, BASE>(self) -> PageResponse<COMP, BASE>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
@@ -167,7 +167,7 @@ impl RenderContext {
             use crate::web::StreamResponse;
 
             // Return a stream text/html response
-            match self.render_html_stream::<COMP, C>().await {
+            match self.render_html_stream::<COMP, BASE>().await {
                 Ok(stream) => PageResponse::new(StreamResponse(stream)),
                 Err(err) => PageResponse::new(ResponseError::from_error(err)),
             }
@@ -176,12 +176,12 @@ impl RenderContext {
 
     /// Render the page with the given props and returns the `text/html` response stream.
     #[allow(unused_variables)]
-    pub async fn render_stream_with_props<COMP, C>(
+    pub async fn render_stream_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
-    ) -> PageResponse<COMP, C>
+    ) -> PageResponse<COMP, BASE>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
@@ -193,7 +193,7 @@ impl RenderContext {
             use crate::web::StreamResponse;
 
             // Return a stream text/html response
-            match self.render_html_stream_with_props::<COMP, C>(props).await {
+            match self.render_html_stream_with_props::<COMP, BASE>(props).await {
                 Ok(stream) => PageResponse::new(StreamResponse(stream)),
                 Err(err) => PageResponse::new(ResponseError::from_error(err)),
             }
@@ -201,9 +201,9 @@ impl RenderContext {
     }
 
     /// Renders the given component to html.
-    pub async fn render_html<COMP, C>(self) -> Result<String, Error>
+    pub async fn render_html<COMP, BASE>(self) -> Result<String, Error>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
@@ -211,18 +211,18 @@ impl RenderContext {
         server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
-        self.render_html_with_props::<COMP, C>(COMP::Properties::default())
+        self.render_html_with_props::<COMP, BASE>(COMP::Properties::default())
             .await
     }
 
     /// Renders the given component with the specified props to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_html_with_props<COMP, C>(
+    pub async fn render_html_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
     ) -> Result<String, Error>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
@@ -261,15 +261,15 @@ impl RenderContext {
             request_context,
         };
 
-        let result_html = render_page_to_html::<COMP, C>(props, options).await?;
+        let result_html = render_page_to_html::<COMP, BASE>(props, options).await?;
         Ok(result_html)
     }
 
     /// Renders the given component with the specified props to html.
     #[cfg(target_arch = "wasm32")]
-    pub async fn render_html_with_props<COMP, C>(self, _: COMP::Properties) -> Result<String, Error>
+    pub async fn render_html_with_props<COMP, BASE>(self, _: COMP::Properties) -> Result<String, Error>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
@@ -277,11 +277,11 @@ impl RenderContext {
     }
 
     /// Renders the given component to html.
-    pub async fn render_html_stream<COMP, C>(
+    pub async fn render_html_stream<COMP, BASE>(
         self,
     ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
@@ -289,18 +289,18 @@ impl RenderContext {
         server_only!();
 
         #[cfg(not(target_arch = "wasm32"))]
-        self.render_html_stream_with_props::<COMP, C>(COMP::Properties::default())
+        self.render_html_stream_with_props::<COMP, BASE>(COMP::Properties::default())
             .await
     }
 
     /// Renders the given component with the specified props to html.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn render_html_stream_with_props<COMP, C>(
+    pub async fn render_html_stream_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
     ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+        BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
@@ -339,18 +339,18 @@ impl RenderContext {
             request_context,
         };
 
-        let result_html = render_page_to_stream::<COMP, C>(props, options).await?;
+        let result_html = render_page_to_stream::<COMP, BASE>(props, options).await?;
         Ok(result_html)
     }
 
     /// Renders the given component with the specified props to html.
     #[cfg(target_arch = "wasm32")]
-    pub async fn render_html_stream_with_props<COMP, C>(
+    pub async fn render_html_stream_with_props<COMP, BASE>(
         self,
         _: COMP::Properties,
     ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
     where
-        C: BaseComponent<Properties = ChildrenProps>,
+    BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
@@ -359,12 +359,12 @@ impl RenderContext {
 }
 
 /// Represents the response out a page route.
-pub struct PageResponse<COMP, C> {
+pub struct PageResponse<COMP, BASE> {
     response: Response,
-    _marker: PhantomData<(COMP, C)>,
+    _marker: PhantomData<(COMP, BASE)>,
 }
 
-impl<COMP, C> Deref for PageResponse<COMP, C> {
+impl<COMP, BASE> Deref for PageResponse<COMP, BASE> {
     type Target = Response;
 
     fn deref(&self) -> &Self::Target {
@@ -372,13 +372,13 @@ impl<COMP, C> Deref for PageResponse<COMP, C> {
     }
 }
 
-impl<COMP, C> DerefMut for PageResponse<COMP, C> {
+impl<COMP, BASE> DerefMut for PageResponse<COMP, BASE> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.response
     }
 }
 
-impl<COMP, C> PageResponse<COMP, C> {
+impl<COMP, BASE> PageResponse<COMP, BASE> {
     #[allow(dead_code)]
     pub(crate) fn new<T: IntoResponse>(response: T) -> Self {
         let response = response.into_response();
@@ -390,7 +390,7 @@ impl<COMP, C> PageResponse<COMP, C> {
     }
 }
 
-impl<COMP, C> IntoResponse for PageResponse<COMP, C> {
+impl<COMP, BASE> IntoResponse for PageResponse<COMP, BASE> {
     fn into_response(self) -> Response {
         self.response
     }

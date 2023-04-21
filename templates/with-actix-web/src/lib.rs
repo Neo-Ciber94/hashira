@@ -55,17 +55,17 @@ pub fn CounterPage(props: &CounterPageProps) -> yew::Html {
 }
 
 // Setup all the components
-pub fn hashira<C>() -> AppService
+pub fn hashira<BASE>() -> AppService
 where
-    C: BaseComponent<Properties = ChildrenProps>,
+    BASE: BaseComponent<Properties = ChildrenProps>,
 {
-    HashiraApp::<C>::new()
+    HashiraApp::<BASE>::new()
         .use_default_error_pages()
         .layout(root_layout)
         .page("/", |mut ctx: RenderContext| async {
             ctx.metadata(Metadata::new().description("An Hashira x Actix Web example"));
             ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
-            let res = ctx.render::<HomePage, C>().await;
+            let res = ctx.render::<HomePage, BASE>().await;
             Ok(res)
         })
         .page("/counter", |mut ctx: RenderContext| async {
@@ -73,7 +73,7 @@ where
             ctx.metadata(Metadata::new().description("A counter made with hashira actix-web"));
             ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
             let props = yew::props! { CounterPageProps {} };
-            let res = ctx.render_with_props::<CounterPage, C>(props).await;
+            let res = ctx.render_with_props::<CounterPage, BASE>(props).await;
             Ok(res)
         })
         .build()

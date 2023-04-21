@@ -2,13 +2,13 @@ use with_axum_client::hashira;
 use hashira_axum::HashiraAxum;
 use yew::{html::ChildrenProps, BaseComponent};
 
-pub async fn start_server<C>() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+pub async fn start_server<BASE>() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 where
-    C: BaseComponent<Properties = ChildrenProps>,
+    BASE: BaseComponent<Properties = ChildrenProps>,
 {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let app = hashira::<C>();
+    let app = hashira::<BASE>();
     HashiraAxum::new().serve(app).await
 }
 
