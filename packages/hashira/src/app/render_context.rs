@@ -231,40 +231,9 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
-        use crate::{
-            app::LayoutContext,
-            server::{render_page_to_html, render_to_static_html, RenderPageOptions},
-        };
+        use crate::server::render_page_to_html;
 
-        let request_context = self.context;
-        let head = self.head;
-        let router = request_context.inner.client_router.clone();
-        let error_router = request_context.inner.error_router.clone();
-        let error = request_context.inner.error.clone();
-
-        // Render the html template where the content will be rendered
-        let index_html = render_to_static_html({
-            let render_layout = self.render_layout;
-            let request_context = request_context.clone();
-            let head = head.clone();
-            let layout_ctx = LayoutContext::new(request_context, head);
-
-            move || {
-                // We need to block to pass the node to the function because the returned type is no `Send`
-                futures::executor::block_on(render_layout(layout_ctx))
-            }
-        })
-        .await;
-
-        let options = RenderPageOptions {
-            head,
-            error,
-            index_html,
-            router,
-            error_router,
-            request_context,
-        };
-
+        let options = self.get_render_options::<COMP>().await;
         let result_html = render_page_to_html::<COMP, BASE>(props, options).await?;
         Ok(result_html)
     }
@@ -311,40 +280,9 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
-        use crate::{
-            app::LayoutContext,
-            server::{render_page_to_stream, render_to_static_html, RenderPageOptions},
-        };
+        use crate::server::render_page_to_stream;
 
-        let request_context = self.context;
-        let head = self.head;
-        let router = request_context.inner.client_router.clone();
-        let error_router = request_context.inner.error_router.clone();
-        let error = request_context.inner.error.clone();
-
-        // Render the html template where the content will be rendered
-        let index_html = render_to_static_html({
-            let render_layout = self.render_layout;
-            let request_context = request_context.clone();
-            let head = head.clone();
-            let layout_ctx = LayoutContext::new(request_context, head);
-
-            move || {
-                // We need to block to pass the node to the function because the returned type is no `Send`
-                futures::executor::block_on(render_layout(layout_ctx))
-            }
-        })
-        .await;
-
-        let options = RenderPageOptions {
-            head,
-            error,
-            index_html,
-            router,
-            error_router,
-            request_context,
-        };
-
+        let options = self.get_render_options::<COMP>().await;
         let result_html = render_page_to_stream::<COMP, BASE>(props, options).await?;
         Ok(result_html)
     }
@@ -361,6 +299,46 @@ impl RenderContext {
         COMP::Properties: Serialize + Send + Clone,
     {
         server_only!();
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn get_render_options<COMP>(&self) -> crate::server::RenderPageOptions
+    where
+        COMP: PageComponent,
+    {
+        use crate::{
+            app::LayoutContext,
+            server::{render_to_static_html, RenderPageOptions},
+        };
+
+        let request_context = self.context.clone();
+        let head = self.head.clone();
+        let router = request_context.inner.client_router.clone();
+        let error_router = request_context.inner.error_router.clone();
+        let error = request_context.inner.error.clone();
+
+        // Render the html template where the content will be rendered
+        let index_html = render_to_static_html({
+            let render_layout = self.render_layout.clone();
+            let request_context = request_context.clone();
+            let head = head.clone();
+            let layout_ctx = LayoutContext::new(request_context, head);
+
+            move || {
+                // We need to block to pass the node to the function because the returned type is no `Send`
+                futures::executor::block_on(render_layout(layout_ctx))
+            }
+        })
+        .await;
+
+        RenderPageOptions {
+            head,
+            error,
+            index_html,
+            router,
+            error_router,
+            request_context,
+        }
     }
 }
 
