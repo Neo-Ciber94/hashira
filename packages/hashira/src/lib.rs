@@ -1,16 +1,17 @@
+pub mod adapter;
 pub mod app;
 pub mod components;
 pub mod env;
 pub mod error;
 pub mod hooks;
+pub mod routing;
 pub mod server;
 pub mod web;
-pub mod routing;
 
 // Allow public?
 pub(crate) mod context;
 
-#[cfg(target_arch="wasm32")]
+#[cfg(target_arch = "wasm32")]
 pub mod client;
 
 #[cfg(feature = "hooks")]
@@ -20,6 +21,13 @@ pub(crate) mod types;
 
 // Macros
 pub use hashira_macros::*;
+
+mod reexports {
+    pub use async_trait::async_trait;
+    pub use yew;
+}
+
+pub use reexports::*;
 
 /// Constants.
 pub mod consts {

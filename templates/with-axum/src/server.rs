@@ -1,19 +1,23 @@
-use with_axum_client::hashira;
+use axum::{routing::get_service, Router};
+use hashira::adapter::Adapter;
 use hashira_axum::HashiraAxum;
+use tower_http::services::ServeFile;
+use with_axum_client::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
-pub async fn start_server<BASE>() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+pub async fn start_server<BASE>() -> Result<(), hashira::error::Error>
 where
     BASE: BaseComponent<Properties = ChildrenProps>,
 {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let app = hashira::<BASE>();
-    HashiraAxum::new().serve(app).await
+    HashiraAxum::from(axum()).serve(app).await
 }
 
-// #[actix_web::get("/favicon.ico")]
-// async fn favicon() -> actix_web::Result<impl Responder> {
-//     let favicon = NamedFile::open_async("./public/favicon.ico").await?;
-//     Ok(favicon)
-// }
+fn axum() -> Router {
+    Router::new().nest_service(
+        "/favicon.icon",
+        get_service(ServeFile::new("./public/favicon.ico")),
+    )
+}

@@ -1,10 +1,11 @@
 use actix_files::NamedFile;
 use actix_web::{web::ServiceConfig, Responder};
+use hashira::adapter::Adapter;
 use hashira_actix_web::HashiraActixWeb;
 use with_actix_web_client::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
-pub async fn start_server<BASE>() -> std::io::Result<()>
+pub async fn start_server<BASE>() -> Result<(), hashira::error::Error>
 where
     BASE: BaseComponent<Properties = ChildrenProps>,
 {

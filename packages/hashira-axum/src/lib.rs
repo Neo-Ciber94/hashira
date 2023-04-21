@@ -1,21 +1,14 @@
 pub mod core;
-use hashira::app::AppService;
+use hashira::{adapter::Adapter, app::AppService};
 use std::net::SocketAddr;
 
-/// A basic hashira adapter for `axum`.
+/// An adapter for `axum`.
 pub struct HashiraAxum(Option<axum::Router>);
 
-impl HashiraAxum {
-    /// Constructs a default hashira adapter.
-    pub fn new() -> Self {
-        HashiraAxum(None)
-    }
-
+#[hashira::async_trait]
+impl Adapter for HashiraAxum {
     /// Starts the server.
-    pub async fn serve(
-        self,
-        app: AppService,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn serve(self, app: AppService) -> Result<(), hashira::error::Error> {
         let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
         let port = hashira::env::get_port().unwrap_or(5000);
         let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();
@@ -29,6 +22,13 @@ impl HashiraAxum {
             .await?;
 
         Ok(())
+    }
+}
+
+impl HashiraAxum {
+    /// Constructs a default hashira adapter.
+    pub fn new() -> Self {
+        HashiraAxum(None)
     }
 }
 

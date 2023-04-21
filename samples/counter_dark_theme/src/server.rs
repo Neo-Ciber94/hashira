@@ -3,10 +3,11 @@ use actix_web::{
     cookie::Cookie, http::header, web::ServiceConfig, HttpRequest, HttpResponse, Responder,
 };
 use counter_dark_theme_web::hashira;
+use hashira::adapter::Adapter;
 use hashira_actix_web::HashiraActixWeb;
 use yew::{html::ChildrenProps, BaseComponent};
 
-pub async fn start_server<BASE>() -> std::io::Result<()>
+pub async fn start_server<BASE>() -> Result<(), hashira::error::Error>
 where
     BASE: BaseComponent<Properties = ChildrenProps>,
 {

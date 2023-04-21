@@ -32,7 +32,6 @@ pub struct RenderContext {
     render_layout: RenderLayout,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl RenderContext {
     /// Constructs a new render context from the given request context.
     pub(crate) fn new(

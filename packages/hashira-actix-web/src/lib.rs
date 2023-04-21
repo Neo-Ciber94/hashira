@@ -3,9 +3,10 @@ pub mod core;
 use std::net::SocketAddr;
 
 use actix_web::{web::ServiceConfig, HttpServer};
-use hashira::app::AppService;
+use hashira::{adapter::Adapter, app::AppService};
 
-/// A basic hashira adapter for `actix-web`.
+/// An adapter for `actix-web`.
+#[derive(Clone)]
 pub struct HashiraActixWeb<F = ()>(F);
 
 impl HashiraActixWeb<()> {
@@ -15,12 +16,13 @@ impl HashiraActixWeb<()> {
     }
 }
 
-impl<F> HashiraActixWeb<F>
+#[hashira::async_trait]
+impl<F> Adapter for HashiraActixWeb<F>
 where
     F: ConfigureActixService + Send + Clone + 'static,
 {
     /// Starts the server.
-    pub async fn serve(self, app: AppService) -> Result<(), std::io::Error> {
+    async fn serve(self, app: AppService) -> Result<(), hashira::error::Error> {
         let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
         let port = hashira::env::get_port().unwrap_or(5000);
         let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();
@@ -28,15 +30,17 @@ where
         println!("⚡ Server started at: `http://{addr}`");
 
         // Create and run the server
-        HttpServer::new(move || {
+        let server = HttpServer::new(move || {
             let config = self.0.clone();
             actix_web::App::new()
                 .configure(move |cfg| config.configure(cfg))
                 .configure(core::router(app.clone()))
         })
         .bind(addr)?
-        .run()
-        .await?;
+        .run();
+
+        // Awaits
+        server.await?;
 
         Ok(())
     }

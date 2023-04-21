@@ -28,3 +28,5 @@ pub use http::uri;
 pub use http::version;
 pub use http::Error;
 pub use http::Extensions;
+pub use cookie::*;
+pub use bytes::*;

@@ -15,6 +15,7 @@ env_logger = "0.10.0"
 hashira-axum = { path = "../../packages/hashira-axum" }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
 axum = "0.6.15"
+tower-http = { version = "0.4.0", features = ["fs"] }
 
 [dependencies]
 yew = "0.20"

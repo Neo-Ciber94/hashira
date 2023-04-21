@@ -1,34 +1,20 @@
-use axum::{body::BoxBody, response::IntoResponse, routing::get, Extension, Router};
+use axum::{response::IntoResponse, routing::get_service, Extension, Router};
 use hashira::{
     app::AppService,
     web::{Body, Request, Response},
 };
-use hyper::{body::to_bytes, StatusCode, Uri};
-use tower::ServiceExt;
+use hyper::{body::to_bytes, StatusCode};
 use tower_http::services::ServeDir;
 
 // Returns a router for a `Axum` application.
 pub fn router(app_service: AppService) -> Router {
     let static_dir = hashira::env::get_static_dir();
+    let serve_dir = get_current_dir().join("public");
 
     Router::new()
-        .nest_service(&static_dir, get(get_static_file))
+        .nest_service(&static_dir, get_service(ServeDir::new(serve_dir)))
         .fallback(handle_request)
         .layer(Extension(app_service))
-}
-
-async fn get_static_file(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
-    let serve_dir = get_current_dir().join("public");
-    let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
-
-    // `ServeDir` implements `tower::Service` so we can call it with `tower::ServiceExt::oneshot`
-    match ServeDir::new(serve_dir).oneshot(req).await {
-        Ok(res) => Ok(res.map(axum::body::boxed)),
-        Err(err) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", err),
-        )),
-    }
 }
 
 /// Handle a request.
