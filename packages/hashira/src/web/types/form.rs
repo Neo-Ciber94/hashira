@@ -73,7 +73,7 @@ where
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         if let Err(err) = validate_content_type(
-            mime::APPLICATION_WWW_FORM_URLENCODED.into(),
+            mime::APPLICATION_WWW_FORM_URLENCODED,
             self.ctx.request(),
         ) {
             return Poll::Ready(Err(ResponseError::unprocessable_entity(err).into()));

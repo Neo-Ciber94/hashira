@@ -3,16 +3,21 @@ use http::header;
 use std::str::FromStr;
 use thiserror::Error;
 
+#[doc(hidden)]
+#[derive(Debug, Error)]
+#[error("expected content type `{expected}` but was `{actual}`")]
+pub struct InvalidContentType {
+    pub expected: mime::Mime,
+    pub actual: mime::Mime,
+}
+
 #[derive(Debug, Error)]
 pub(crate) enum ContentTypeError {
     #[error("content type not found")]
     NoContentType,
 
-    #[error("expected content type `{expected}` but was `{actual}`")]
-    InvalidContentType {
-        expected: mime::Mime,
-        actual: mime::Mime,
-    },
+    #[error(transparent)]
+    InvalidContentType(Box<InvalidContentType>),
 
     #[error("failed to parse content type: {0}")]
     ParseError(Error),
@@ -22,7 +27,7 @@ pub(crate) fn validate_content_type(
     expected: mime::Mime,
     req: &Request,
 ) -> Result<(), ContentTypeError> {
-    let header = req.headers().get(header::CONTENT_TYPE);
+    let header: Option<&http::HeaderValue> = req.headers().get(header::CONTENT_TYPE);
     let Some(header)  = header else {
         return Err(ContentTypeError::NoContentType);
     };
@@ -42,10 +47,12 @@ pub(crate) fn validate_content_type(
     };
 
     if mime != expected {
-        return Err(ContentTypeError::InvalidContentType {
-            expected,
-            actual: mime,
-        });
+        return Err(ContentTypeError::InvalidContentType(Box::new(
+            InvalidContentType {
+                actual: mime,
+                expected,
+            },
+        )));
     }
 
     Ok(())

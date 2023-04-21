@@ -246,8 +246,7 @@ impl RenderContext {
 
             move || {
                 // We need to block to pass the node to the function because the returned type is no `Send`
-                let layout_node = futures::executor::block_on(render_layout(layout_ctx));
-                layout_node
+                futures::executor::block_on(render_layout(layout_ctx))
             }
         })
         .await;
@@ -324,8 +323,7 @@ impl RenderContext {
 
             move || {
                 // We need to block to pass the node to the function because the returned type is no `Send`
-                let layout_node = futures::executor::block_on(render_layout(layout_ctx));
-                layout_node
+                futures::executor::block_on(render_layout(layout_ctx))
             }
         })
         .await;

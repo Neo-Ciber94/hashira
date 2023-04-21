@@ -65,10 +65,7 @@ where
     Q: Serialize + DeserializeOwned + 'static,
 {
     let page_data = use_page_data();
-    let query = page_data
-        .uri
-        .query()
-        .ok_or_else(|| QueryParamsError::NotFound)?;
+    let query = page_data.uri.query().ok_or(QueryParamsError::NotFound)?;
 
     // Return an error if the search string is empty
     if query.is_empty() {

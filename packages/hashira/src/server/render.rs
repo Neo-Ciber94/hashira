@@ -88,10 +88,10 @@ where
     // TODO: Include page Uri and params?
     // The data inserted in the html
     let page_data = PageData {
-        id: component_id.clone(),
-        props: props_json.clone(),
+        id: component_id,
+        props: props_json,
         uri: request_context.request().uri().clone(),
-        error: page_error.clone(),
+        error: page_error,
         params: request_context.params().clone(),
     };
 
