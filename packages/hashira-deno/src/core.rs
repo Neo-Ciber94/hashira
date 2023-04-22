@@ -127,11 +127,11 @@ async fn map_response(res: Response) -> Result<web_sys::Response, Error> {
     Ok(res)
 }
 
-fn get_current_dir() -> std::path::PathBuf {
-    let mut current_dir = std::env::current_exe().expect("failed to get current directory");
-    current_dir.pop();
-    current_dir
-}
+// fn get_current_dir() -> std::path::PathBuf {
+//     let mut current_dir = std::env::current_exe().expect("failed to get current directory");
+//     current_dir.pop();
+//     current_dir
+// }
 
 fn js_value_to_error(js_value: JsValue) -> Error {
     let Some(str) = js_value.as_string() else {

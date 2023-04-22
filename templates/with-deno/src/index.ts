@@ -26,7 +26,48 @@ async function handleRequest(request: Request): Promise<Response> {
   return handler(request);
 }
 
+// deno-lint-ignore no-explicit-any
+function handleError(error: any): Response {
+  // prettier-ignore
+  const errorMessage = error.message || error.description || "Something went wrong";
+  const status = Number(error.statusCode || error.status || error.code || 500);
+
+  const html = `
+      <html>
+        <head>
+          <title>Error</title>
+          <style>
+            body {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+            }
+            h1 {
+              font-size: 3rem;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${errorMessage}</h1>
+        </body>
+      </html>
+    `;
+
+  return new Response(html, {
+    status: Number.isNaN(status) ? 500 : status,
+    headers: {
+      "content-type": "text/html",
+    },
+  });
+}
+
 await serve(handleRequest, {
   port: 5000,
   hostname: "127.0.0.1",
+  onError: handleError,
+  onListen: ({ hostname, port }) => {
+    console.log(`⚡ Server started at: "http://${hostname}:${port}"`);
+  },
 });

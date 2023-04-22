@@ -1,10 +1,10 @@
-[tasks.install-deno]
-install_crate = { crate_name = "deno", binary = "deno", test_arg = "--help" }
+
 
 [tasks.install-deployctl]
 install_script = '''
 deno install --allow-read --allow-write --allow-env --allow-net --allow-run --no-check --force https://deno.land/x/deploy/deployctl.ts
 '''
+
 ignore_errors = true
 
 [tasks.cargo-build]
@@ -14,7 +14,7 @@ args = ["build", "--target", "wasm32-unknown-unknown"]
 [tasks.wasm-bindgen]
 command = "wasm-bindgen"
 args = [
-    "target/wasm32-unknown-unknown/debug/with_deno.wasm",
+    "../../target/wasm32-unknown-unknown/debug/with_deno.wasm",
     "--target",
     "deno",
     "--out-dir",
@@ -22,12 +22,7 @@ args = [
 ]
 
 [tasks.build-wasm]
-dependencies = [
-    "install-deno",
-    "install-deployctl",
-    "cargo-build",
-    "wasm-bindgen",
-]
+dependencies = ["cargo-build", "wasm-bindgen"]
 
 [tasks.run-deployctl]
 command = "deployctl"
