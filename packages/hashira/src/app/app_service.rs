@@ -8,7 +8,7 @@ use crate::{
     routing::{Params, PathRouter},
     web::{Body, IntoResponse, Request, Response, ResponseExt},
 };
-use http::StatusCode;
+use http::{HeaderMap, StatusCode};
 use std::sync::Arc;
 
 pub(crate) struct AppServiceInner {
@@ -16,6 +16,7 @@ pub(crate) struct AppServiceInner {
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
+    pub(crate) default_headers: HeaderMap,
     pub(crate) app_data: Arc<AppData>,
 
     #[cfg(feature = "hooks")]
@@ -71,9 +72,21 @@ impl AppService {
         &self.0.client_error_router
     }
 
-    // TODO: Remove the path, we could take that value from the request
     /// Process the incoming request and return the response.
     pub async fn handle(&self, req: Request) -> Response {
+        let mut res = self._handle(req).await;
+
+        // Merge the response headers with the default headers
+        if !self.0.default_headers.is_empty() {
+            let mut headers =self.0.default_headers.clone();
+            headers.extend(res.headers().clone());
+            *res.headers_mut() = headers;
+        }
+
+        res
+    }
+
+    async fn _handle(&self, req: Request) -> Response {
         let req = Arc::new(req);
 
         // Handle the request normally

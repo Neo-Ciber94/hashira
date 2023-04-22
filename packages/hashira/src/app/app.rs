@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RenderContext, RequestContext, Route, AppData, page_head::PageHead,
+    RenderContext, RequestContext, Route, AppData, page_head::PageHead, DefaultHeaders,
 };
 use crate::{
     components::{
@@ -14,7 +14,7 @@ use crate::{
     web::{IntoResponse, Response, Redirect}, routing::PathRouter, types::BoxFuture,
 };
 use super::PageResponse;
-use http::status::StatusCode;
+use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
 use yew::{html::ChildrenProps, BaseComponent, Html};
@@ -83,6 +83,7 @@ pub struct App<BASE> {
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
     app_data: AppData,
+    default_headers: HeaderMap,
     _marker: PhantomData<BASE>,
 
     #[cfg(feature = "hooks")]
@@ -99,6 +100,7 @@ impl<BASE> App<BASE> {
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
             app_data: Default::default(),
+            default_headers: Default::default(),
             _marker: PhantomData,
 
             #[cfg(feature = "hooks")]
@@ -342,6 +344,16 @@ where
         self
     }
 
+    /// Adds headers to always append in a response.
+    #[cfg_attr(feature = "client", allow(unused_mut, unused_variables))]
+    pub fn default_headers(mut self, headers: DefaultHeaders) -> Self {
+        #[cfg(not(feature = "client"))]
+        {
+            self.default_headers.extend(headers.into_inner());
+        }
+        self
+    }
+
     /// Adds the given `Hooks`.
     #[cfg(feature = "hooks")]
     pub fn hooks(mut self, hooks: crate::events::Hooks) -> Self {
@@ -357,6 +369,7 @@ where
             page_router: client_router,
             client_error_router,
             server_error_router,
+            default_headers,
             mut app_data,
             _marker: _,
 
@@ -385,6 +398,7 @@ where
             client_router,
             client_error_router,
             server_error_router,
+            default_headers,
 
             #[cfg(feature = "hooks")]
             hooks: Arc::new(hooks),
@@ -482,6 +496,7 @@ where
             }));
     }
 }
+
 
 impl<BASE> Default for App<BASE> {
     fn default() -> Self {
