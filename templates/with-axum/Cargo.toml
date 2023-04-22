@@ -8,9 +8,11 @@ name = "with_axum_client"
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+hashira = { path = "../../packages/hashira", features = ["client", "hooks"] }
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+hashira = { path = "../../packages/hashira", features = ["hooks"] }
 env_logger = "0.10.0"
 hashira-axum = { path = "../../packages/hashira-axum" }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
@@ -20,6 +22,5 @@ tower-http = { version = "0.4.0", features = ["fs"] }
 [dependencies]
 yew = "0.20"
 log = "0.4.17"
-hashira = { path = "../../packages/hashira" }
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = "0.2.84"

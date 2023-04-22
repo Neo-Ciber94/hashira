@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RenderContext, RequestContext, Route, AppData, page_head::PageHead,
+    RenderContext, RequestContext, Route, AppData, page_head::PageHead, DefaultHeaders,
 };
 use crate::{
     components::{
@@ -14,13 +14,15 @@ use crate::{
     web::{IntoResponse, Response, Redirect}, routing::PathRouter, types::BoxFuture,
 };
 use super::PageResponse;
-use http::status::StatusCode;
+use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
-use std::{future::Future, marker::PhantomData, sync::Arc};
+use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
+type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
+
 /// A function that renders the base `index.html`.
-pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxFuture<Html> + Send + Sync>;
+pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxedFuture<Html> + Send + Sync>;
 
 /// A handler for a request.
 pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response> + Send + Sync>);
@@ -81,6 +83,7 @@ pub struct App<BASE> {
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
     app_data: AppData,
+    default_headers: HeaderMap,
     _marker: PhantomData<BASE>,
 
     #[cfg(feature = "hooks")]
@@ -97,6 +100,7 @@ impl<BASE> App<BASE> {
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
             app_data: Default::default(),
+            default_headers: Default::default(),
             _marker: PhantomData,
 
             #[cfg(feature = "hooks")]
@@ -145,9 +149,9 @@ where
     }
 
     /// Adds a route handler.
-    #[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
+    #[cfg_attr(client="client", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
-         #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(client = "client"))]
         {
             let path = route.path().to_owned(); // To please the borrow checker
             self.server_router.insert(&path, route).expect("failed to add route");
@@ -160,7 +164,7 @@ where
     pub fn nest(mut self, base_path: &str, scope: AppNested<BASE>) -> Self {
         crate::routing::assert_valid_route(base_path).expect("invalid base path");
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             for (sub, route) in scope.server_router {
                 let path = if sub == "/" {
@@ -187,7 +191,7 @@ where
     }
 
     /// Adds a page for the given route.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(feature = "client", allow(unused_variables))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -196,30 +200,26 @@ where
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
-        self.route(Route::get(path, move |ctx| {
-            let head = super::page_head::PageHead::new();
-            let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-            let render_ctx = RenderContext::new(ctx, head, render_layout);
-            let fut = handler(render_ctx);
-            async { fut.await }
-        }))
-    }
 
-    /// Adds a page for the given route.
-    #[cfg(target_arch = "wasm32")]
-    pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
-    where
-        COMP: PageComponent,
-        COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
-    {
-        self.add_component::<COMP>(path);
+        #[cfg(not(feature = "client"))]
+        {
+            self.route(Route::get(path, move |ctx| {
+                let head = super::page_head::PageHead::new();
+                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                let render_ctx = RenderContext::new(ctx, head, render_layout);
+                
+                // Returns the future
+                handler(render_ctx)
+            }))
+        }
+
+        // We don't add pages in the client
+        #[cfg(feature = "client")]
         self
     }
 
     /// Adds an error page for teh given status code.
-    #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
+    #[cfg_attr(feature="client", allow(unused_variables))]
     pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -227,7 +227,7 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
 
@@ -237,8 +237,9 @@ where
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
-                    let fut = handler(render_ctx, status).map_ok(|x| x.into_response());
-                    async { fut.await }
+
+                    // Returns the future
+                    handler(render_ctx, status).map_ok(|x| x.into_response())
                 }),
             );
         }
@@ -248,7 +249,7 @@ where
     }
 
     /// Register a page to handle any error.
-    #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
+    #[cfg_attr(feature="client", allow(unused_variables))]
     pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -256,7 +257,7 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
 
@@ -320,26 +321,36 @@ where
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(not(target_arch="wasm32"))]
+    #[cfg(not(feature="wasm32"))]
     pub fn server_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(target_arch="wasm32")]
+    #[cfg(feature="wasm32")]
     pub fn server_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(target_arch="wasm32")]
+    #[cfg(feature="wasm32")]
     pub fn client_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(not(target_arch="wasm32"))]
+    #[cfg(not(feature="wasm32"))]
     pub fn client_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
+        self
+    }
+
+    /// Adds headers to always append in a response.
+    #[cfg_attr(feature = "client", allow(unused_mut, unused_variables))]
+    pub fn default_headers(mut self, headers: DefaultHeaders) -> Self {
+        #[cfg(not(feature = "client"))]
+        {
+            self.default_headers.extend(headers.into_inner());
+        }
         self
     }
 
@@ -358,6 +369,7 @@ where
             page_router: client_router,
             client_error_router,
             server_error_router,
+            default_headers,
             mut app_data,
             _marker: _,
 
@@ -368,7 +380,7 @@ where
         let layout = layout.unwrap_or_else(|| {
             // Pass the default layout
             let render_layout =
-                |ctx| Box::pin(crate::components::root_layout(ctx)) as BoxFuture<yew::Html>;
+                |ctx| Box::pin(crate::components::root_layout(ctx)) as BoxedFuture<yew::Html>;
 
             Arc::new(render_layout)
         });
@@ -386,6 +398,7 @@ where
             client_router,
             client_error_router,
             server_error_router,
+            default_headers,
 
             #[cfg(feature = "hooks")]
             hooks: Arc::new(hooks),
@@ -484,6 +497,7 @@ where
     }
 }
 
+
 impl<BASE> Default for App<BASE> {
     fn default() -> Self {
         Self::new()
@@ -515,8 +529,9 @@ pub fn render<COMP, BASE>(route: &str, head: PageHead) -> Route
         let head = head.clone();
         let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
         let render_ctx = RenderContext::new(ctx, head, render_layout);
-        let fut = render_ctx.render::<COMP, BASE>();
-        async { fut.await }
+
+        // Returns the future
+        render_ctx.render::<COMP, BASE>()
     })
 }
 
@@ -532,7 +547,8 @@ pub fn render_with_props<COMP, BASE>(route: &str, props: COMP::Properties, head:
 
         let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
         let render_ctx = RenderContext::new(ctx, head, render_layout);
-        let fut = render_ctx.render_with_props::<COMP, BASE>(props);
-        async { fut.await }
+
+        // Returns the future
+        render_ctx.render_with_props::<COMP, BASE>(props)
     })
 }

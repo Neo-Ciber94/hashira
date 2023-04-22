@@ -7,6 +7,7 @@ mod render_context;
 mod request_context;
 mod route;
 mod app_data;
+mod default_headers;
 
 pub use app::*;
 pub use app_nested::*;
@@ -16,6 +17,7 @@ pub use render_context::*;
 pub use request_context::*;
 pub use route::*;
 pub use app_data::*;
+pub use default_headers::*;
 
 //
 pub mod error_router;

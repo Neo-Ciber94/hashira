@@ -132,7 +132,7 @@ where
     .chain(page_html)
     .chain(stream::once(async move {
         // After content
-        render_after_content_markers::<COMP>(after_content_html, after_content, page_data)
+        render_after_content_markers(after_content_html, after_content, page_data)
             .map_err(|e| e.into())
     }))
     .map_ok(Bytes::from);
@@ -184,19 +184,15 @@ fn render_before_content_markers(
     Ok(html)
 }
 
-fn render_after_content_markers<COMP>(
+fn render_after_content_markers(
     mut html: String,
     elements: AfterContentElements,
     page_data: PageData,
-) -> Result<String, RenderError>
-where
-    COMP: BaseComponent,
-    COMP::Properties: Serialize,
-{
+) -> Result<String, RenderError> {
     let AfterContentElements { scripts } = elements;
 
     // Insert the <script> elements from `struct PageScripts`
-    insert_scripts::<COMP>(&mut html, scripts, page_data)?;
+    insert_scripts(&mut html, scripts, page_data)?;
 
     Ok(html)
 }
@@ -218,15 +214,11 @@ fn insert_links(html: &mut String, links: PageLinks) {
     *html = html.replace(HASHIRA_LINKS_MARKER, &links);
 }
 
-fn insert_scripts<COMP>(
+fn insert_scripts(
     html: &mut String,
     scripts: PageScripts,
     page_data: PageData,
-) -> Result<(), RenderError>
-where
-    COMP: BaseComponent,
-    COMP::Properties: Serialize,
-{
+) -> Result<(), RenderError> {
     let mut tags_html = vec![scripts.to_string()];
 
     // Adds the page data
@@ -258,6 +250,22 @@ pub async fn render_to_static_html<F>(f: F) -> String
 where
     F: FnOnce() -> Html + Send + Sync + 'static,
 {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        __render_to_static_html(f).await
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        __render_to_static_html_wasm(f).await
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn __render_to_static_html<F>(f: F) -> String
+where
+    F: FnOnce() -> Html + Send + Sync + 'static,
+{
     #[function_component]
     fn Dummy(props: &ChildrenProps) -> Html {
         yew::html! {
@@ -267,8 +275,34 @@ where
 
     let (tx, rx) = tokio::sync::oneshot::channel::<String>();
 
-    // FIXME: Not sure if may be a downgrade to block the thread.
+    // FIXME: We block to keep this `Send` but is not the optimal solution
     futures::executor::block_on(async move {
+        let renderer = ServerRenderer::<Dummy>::with_props(move || ChildrenProps {
+            children: ChildrenRenderer::new(vec![f()]),
+        });
+        let html = renderer.hydratable(false).render().await;
+        tx.send(html).expect("failed to send rendered html")
+    });
+
+    // Returns the html
+    rx.await.expect("failed to receive rendered html")
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn __render_to_static_html_wasm<F>(f: F) -> String
+where
+    F: FnOnce() -> Html + Send + Sync + 'static,
+{
+    #[function_component]
+    fn Dummy(props: &ChildrenProps) -> Html {
+        yew::html! {
+            <>{for props.children.iter()}</>
+        }
+    }
+
+    let (tx, rx) = tokio::sync::oneshot::channel::<String>();
+
+    prokio::spawn_local(async move {
         let renderer = ServerRenderer::<Dummy>::with_props(move || ChildrenProps {
             children: ChildrenRenderer::new(vec![f()]),
         });

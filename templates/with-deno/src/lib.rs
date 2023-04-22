@@ -1,11 +1,9 @@
 mod components;
-
-use std::time::Instant;
+mod server;
 
 use crate::components::{root_layout, Counter};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    events::{Hooks, Next},
     page_component,
     server::Metadata,
 };
@@ -34,8 +32,8 @@ pub fn HomePage() -> yew::Html {
             <div class="logo-container">
             <span class="hashira" title="Hashira">{"Hashira"}</span>
             <span class="divider">{'\u{00D7}'}</span>
-            <a href="https://crates.io/crates/axum" target="_blank" rel="noopener">
-                <img title="Axum" alt="Axum" src="https://raw.githubusercontent.com/tokio-rs/website/master/public/img/icons/tokio.svg"/>
+            <a href="https://deno.land/" target="_blank" rel="noopener">
+                <img title="Deno" alt="Deno" src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Deno.svg/1280px-Deno.svg.png"/>
             </a>
         </div>
         </div>
@@ -79,20 +77,12 @@ where
             let res = ctx.render_with_props::<CounterPage, BASE>(props).await;
             Ok(res)
         })
-        .hooks(Hooks::new().on_handle(|req, next: Next| async move {
-            let start = Instant::now();
-            let res = next(req).await;
-            let elapsed = Instant::now() - start;
-            log::info!("Elapsed: {}ms", elapsed.as_millis());
-            res
-        }))
         .build()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "client")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
-    wasm_logger::init(wasm_logger::Config::default());
     log::debug!("Hydrating app...");
     let service = hashira::<App>();
     hashira::client::mount::<App>(service);

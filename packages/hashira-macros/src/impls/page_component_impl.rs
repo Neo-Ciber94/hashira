@@ -2,6 +2,7 @@ use proc_macro2::TokenStream;
 use syn::ItemFn;
 
 /// Implementation of `#[page_component]`
+#[allow(clippy::redundant_clone)]
 pub fn page_component_impl(item_fn: ItemFn) -> TokenStream {
     let component = item_fn.sig.ident.clone();
     let name = component.to_string();

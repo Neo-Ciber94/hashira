@@ -11,7 +11,7 @@ pub mod web;
 // Allow public?
 pub(crate) mod context;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "client")]
 pub mod client;
 
 #[cfg(feature = "hooks")]
@@ -31,10 +31,10 @@ pub use reexports::*;
 /// Constants.
 pub mod consts {
     /// A constants indicating whether if the application is running on the server.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "client"))]
     pub const IS_SERVER: bool = true;
 
     /// A constants indicating whether if the application is running on the server.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(feature = "client")]
     pub const IS_SERVER: bool = false;
 }

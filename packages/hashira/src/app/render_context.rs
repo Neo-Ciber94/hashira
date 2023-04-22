@@ -112,18 +112,12 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
-        #[cfg(target_arch = "wasm32")]
-        server_only!();
+        use crate::web::Html;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use crate::web::Html;
-
-            // Return a text/html response
-            match self.render_html::<COMP, BASE>().await {
-                Ok(html) => PageResponse::new(Html(html)),
-                Err(err) => PageResponse::new(ResponseError::from_error(err)),
-            }
+        // Return a text/html response
+        match self.render_html::<COMP, BASE>().await {
+            Ok(html) => PageResponse::new(Html(html)),
+            Err(err) => PageResponse::new(ResponseError::from_error(err)),
         }
     }
 
@@ -138,33 +132,26 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
-        #[cfg(target_arch = "wasm32")]
-        server_only!();
+        use crate::web::Html;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use crate::web::Html;
-
-            // Return a text/html response
-            match self.render_html_with_props::<COMP, BASE>(props).await {
-                Ok(html) => PageResponse::new(Html(html)),
-                Err(err) => PageResponse::new(ResponseError::from_error(err)),
-            }
+        // Return a text/html response
+        match self.render_html_with_props::<COMP, BASE>(props).await {
+            Ok(html) => PageResponse::new(Html(html)),
+            Err(err) => PageResponse::new(ResponseError::from_error(err)),
         }
     }
 
     /// Render the page and returns the `text/html` response stream.
-    #[cfg(not(target_arch = "wasm32"))]
     pub async fn render_stream<COMP, BASE>(self) -> PageResponse<COMP, BASE>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(feature = "client")]
         server_only!();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             use crate::web::StreamResponse;
 
@@ -187,10 +174,10 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(feature = "client")]
         server_only!();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             use crate::web::StreamResponse;
 
@@ -212,16 +199,16 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(feature = "client")]
         server_only!();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         self.render_html_with_props::<COMP, BASE>(COMP::Properties::default())
             .await
     }
 
     /// Renders the given component with the specified props to html.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(feature = "client", allow(unused_variables))]
     pub async fn render_html_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
@@ -231,25 +218,17 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
-        use crate::server::render_page_to_html;
-
-        let options = self.get_render_options::<COMP>().await;
-        let result_html = render_page_to_html::<COMP, BASE>(props, options).await?;
-        Ok(result_html)
-    }
-
-    /// Renders the given component with the specified props to html.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render_html_with_props<COMP, BASE>(
-        self,
-        _: COMP::Properties,
-    ) -> Result<String, Error>
-    where
-        BASE: BaseComponent<Properties = ChildrenProps>,
-        COMP: PageComponent,
-        COMP::Properties: Serialize + Send + Clone,
-    {
+        #[cfg(feature = "client")]
         server_only!();
+
+        #[cfg(not(feature = "client"))]
+        {
+            use crate::server::render_page_to_html;
+
+            let options = self.get_render_options().await;
+            let result_html = render_page_to_html::<COMP, BASE>(props, options).await?;
+            Ok(result_html)
+        }
     }
 
     /// Renders the given component to html.
@@ -261,16 +240,16 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(feature="client")]
         server_only!();
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature="client"))]
         self.render_html_stream_with_props::<COMP, BASE>(COMP::Properties::default())
             .await
     }
 
     /// Renders the given component with the specified props to html.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(feature = "client", allow(unused_variables))]
     pub async fn render_html_stream_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
@@ -280,32 +259,21 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Serialize + Send + Clone,
     {
-        use crate::server::render_page_to_stream;
-
-        let options = self.get_render_options::<COMP>().await;
-        let result_html = render_page_to_stream::<COMP, BASE>(props, options).await?;
-        Ok(result_html)
-    }
-
-    /// Renders the given component with the specified props to html.
-    #[cfg(target_arch = "wasm32")]
-    pub async fn render_html_stream_with_props<COMP, BASE>(
-        self,
-        _: COMP::Properties,
-    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
-    where
-        BASE: BaseComponent<Properties = ChildrenProps>,
-        COMP: PageComponent,
-        COMP::Properties: Serialize + Send + Clone,
-    {
+        #[cfg(feature = "client")]
         server_only!();
+
+        #[cfg(not(feature = "client"))]
+        {
+            use crate::server::render_page_to_stream;
+
+            let options = self.get_render_options().await;
+            let result_html = render_page_to_stream::<COMP, BASE>(props, options).await?;
+            Ok(result_html)
+        }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    async fn get_render_options<COMP>(&self) -> crate::server::RenderPageOptions
-    where
-        COMP: PageComponent,
-    {
+    #[cfg(not(feature = "client"))]
+    async fn get_render_options(&self) -> crate::server::RenderPageOptions {
         use crate::{
             app::LayoutContext,
             server::{render_to_static_html, RenderPageOptions},
@@ -318,20 +286,49 @@ impl RenderContext {
         let error = request_context.inner.error.clone();
 
         let layout_head = PageHead::new();
+        let index_html: String;
 
         // Render the html template where the content will be rendered
-        let index_html = render_to_static_html({
-            let render_layout = self.render_layout.clone();
-            let request_context = request_context.clone();
-            let head = layout_head.clone();
-            let layout_ctx = LayoutContext::new(request_context, head);
-
-            move || {
-                // We need to block to pass the node to the function because the returned type is no `Send`
-                futures::executor::block_on(render_layout(layout_ctx))
+        {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                index_html = render_to_static_html({
+                    let render_layout = self.render_layout.clone();
+                    let request_context = request_context.clone();
+                    let head = layout_head.clone();
+                    let layout_ctx = LayoutContext::new(request_context, head);
+    
+                    move || {
+                        // We need to block to pass the node to the function because the returned type is no `Send`
+                        futures::executor::block_on(render_layout(layout_ctx))
+                    }
+                })
+                .await;
             }
-        })
-        .await;
+    
+            // On wasm targets we cannot block the thread,
+            // we use `Fragile` to safely send the `VNode` which is no `Send` to the render function,
+            // this is safe because wasm is single threaded
+            #[cfg(target_arch = "wasm32")]
+            {
+                index_html = render_to_static_html({
+                    let render_layout = self.render_layout.clone();
+                    let request_context = request_context.clone();
+                    let head = layout_head.clone();
+                    let layout_ctx = LayoutContext::new(request_context, head);
+    
+                    //let node = render_layout(layout_ctx).await;
+                    let node = render_layout(layout_ctx).await;
+                    let fragile = fragile::Fragile::new(node);
+    
+                    move || {
+                        // SAFETY: This is safe because wasm only run one thread
+                        fragile.into_inner()
+                    }
+                })
+                .await;
+            }
+        }
 
         // Merge the layout head with the current component head
         let head = layout_head.merge(head);

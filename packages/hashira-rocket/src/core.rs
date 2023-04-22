@@ -38,8 +38,8 @@ impl DefaultRequestHandler {
     }
 }
 
-impl Into<Vec<rocket::Route>> for DefaultRequestHandler {
-    fn into(self) -> Vec<rocket::Route> {
+impl From<DefaultRequestHandler> for Vec<rocket::Route> {
+    fn from(_: DefaultRequestHandler) -> Vec<rocket::Route> {
         DefaultRequestHandler::routes(Some(100))
     }
 }
