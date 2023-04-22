@@ -64,8 +64,9 @@ impl<BASE> AppNested<BASE> {
                 let head = PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
-                let fut = handler(render_ctx);
-                async { fut.await }
+
+                // Returns the handler future
+                handler(render_ctx)
             }))
         }
 

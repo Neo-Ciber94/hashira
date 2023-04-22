@@ -94,22 +94,12 @@ impl AppService {
 
             let this = self.clone();
             let next = Box::new(move |req| {
-                Box::pin(async move {
-                    let fut = this.handle_request(req);
-                    let res = fut.await;
-                    res
-                }) as BoxFuture<Response>
+                Box::pin(async move { this.handle_request(req).await }) as BoxFuture<Response>
             }) as Next;
 
             let handler = hooks.iter().fold(next, move |cur, next_handler| {
                 let next_handler = next_handler.clone_handler();
-                Box::new(move |req| {
-                    Box::pin(async move {
-                        let fut = next_handler.on_handle(req, cur);
-                        let res = fut.await;
-                        res
-                    })
-                })
+                Box::new(move |req| Box::pin(async move { next_handler.on_handle(req, cur).await }))
             }) as Next;
 
             // Handle the request

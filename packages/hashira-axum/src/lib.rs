@@ -3,6 +3,7 @@ use hashira::{adapter::Adapter, app::AppService};
 use std::net::SocketAddr;
 
 /// An adapter for `axum`.
+#[derive(Default)]
 pub struct HashiraAxum(Option<axum::Router>);
 
 #[hashira::async_trait]

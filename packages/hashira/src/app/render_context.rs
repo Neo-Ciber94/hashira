@@ -225,7 +225,7 @@ impl RenderContext {
         {
             use crate::server::render_page_to_html;
 
-            let options = self.get_render_options::<COMP>().await;
+            let options = self.get_render_options().await;
             let result_html = render_page_to_html::<COMP, BASE>(props, options).await?;
             Ok(result_html)
         }
@@ -266,17 +266,14 @@ impl RenderContext {
         {
             use crate::server::render_page_to_stream;
 
-            let options = self.get_render_options::<COMP>().await;
+            let options = self.get_render_options().await;
             let result_html = render_page_to_stream::<COMP, BASE>(props, options).await?;
             Ok(result_html)
         }
     }
 
     #[cfg(not(feature = "client"))]
-    async fn get_render_options<COMP>(&self) -> crate::server::RenderPageOptions
-    where
-        COMP: PageComponent,
-    {
+    async fn get_render_options(&self) -> crate::server::RenderPageOptions {
         use crate::{
             app::LayoutContext,
             server::{render_to_static_html, RenderPageOptions},

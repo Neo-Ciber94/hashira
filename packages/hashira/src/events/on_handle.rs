@@ -37,8 +37,6 @@ where
     Fut: Future<Output = Response> + Send + 'static,
 {
     async fn on_handle(&self, req: Arc<Request>, next: Next) -> Response {
-        let fut = (self)(req, next);
-        let res = fut.await;
-        res
+        (self)(req, next).await
     }
 }

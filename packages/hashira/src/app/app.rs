@@ -205,8 +205,9 @@ where
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
-                let fut = handler(render_ctx);
-                async { fut.await }
+                
+                // Returns the future
+                handler(render_ctx)
             }))
         }
 
@@ -234,8 +235,9 @@ where
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
-                    let fut = handler(render_ctx, status).map_ok(|x| x.into_response());
-                    async { fut.await }
+
+                    // Returns the future
+                    handler(render_ctx, status).map_ok(|x| x.into_response())
                 }),
             );
         }
@@ -512,8 +514,9 @@ pub fn render<COMP, BASE>(route: &str, head: PageHead) -> Route
         let head = head.clone();
         let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
         let render_ctx = RenderContext::new(ctx, head, render_layout);
-        let fut = render_ctx.render::<COMP, BASE>();
-        async { fut.await }
+
+        // Returns the future
+        render_ctx.render::<COMP, BASE>()
     })
 }
 
@@ -529,7 +532,8 @@ pub fn render_with_props<COMP, BASE>(route: &str, props: COMP::Properties, head:
 
         let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
         let render_ctx = RenderContext::new(ctx, head, render_layout);
-        let fut = render_ctx.render_with_props::<COMP, BASE>(props);
-        async { fut.await }
+
+        // Returns the future
+        render_ctx.render_with_props::<COMP, BASE>(props)
     })
 }

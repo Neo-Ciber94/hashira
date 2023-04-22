@@ -6,7 +6,7 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::App;
 
-static HASHIRA: Lazy<AppService> = Lazy::new(|| crate::hashira::<App>());
+static HASHIRA: Lazy<AppService> = Lazy::new(crate::hashira::<App>);
 
 // Entry point of the library
 #[wasm_bindgen(start, skip_typescript)]

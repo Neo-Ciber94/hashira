@@ -15,15 +15,22 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::{console, ResponseInit};
 
 /// Handle a request.
+#[allow(clippy::let_and_return)]
 pub async fn handle_request(service: AppService, web_req: web_sys::Request) -> web_sys::Response {
+    // Map the request to a `hashira`
     let req = crate::core::map_request(web_req)
         .await
         .expect("failed to map request");
+    
+    // Get the `hashira` response
     let res = service.handle(req).await;
+    
+    // Map the response to `wasm`
     let web_res = crate::core::map_response(res)
         .await
         .expect("failed to map response");
 
+    // Return the response
     web_res
 }
 

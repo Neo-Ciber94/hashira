@@ -57,12 +57,10 @@ pub(crate) fn parse_body_to_bytes(req: &Request, opts: ParseBodyOptions) -> Resu
 
             Ok(bytes)
         }
-        Err(err) => {
-            return Err(ResponseError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                format!("invalid body: {err}"),
-            )
-            .into())
-        }
+        Err(err) => Err(ResponseError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            format!("invalid body: {err}"),
+        )
+        .into()),
     }
 }

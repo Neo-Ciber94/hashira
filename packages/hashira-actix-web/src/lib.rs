@@ -16,6 +16,12 @@ impl HashiraActixWeb<()> {
     }
 }
 
+impl Default for HashiraActixWeb<()> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[hashira::async_trait]
 impl<F> Adapter for HashiraActixWeb<F>
 where

@@ -19,8 +19,11 @@ impl From<Rocket<Build>> for HashiraRocket {
     }
 }
 
-#[derive(Clone)]
-struct HelloHandler;
+impl Default for HashiraRocket {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[hashira::async_trait]
 impl Adapter for HashiraRocket {
