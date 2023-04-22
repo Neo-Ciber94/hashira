@@ -3,21 +3,24 @@ import { contentType } from "https://deno.land/std@0.184.0/media_types/mod.ts";
 import { handler, set_envs } from "../build/with_deno.js";
 import * as denoPath from "https://deno.land/std@0.183.0/path/mod.ts";
 import * as denoFs from "https://deno.land/std@0.183.0/fs/mod.ts";
+import {
+  Status,
+  STATUS_TEXT,
+} from "https://deno.land/std@0.184.0/http/http_status.ts";
 
-// FIXME: Theses values should come from environment variables
-const PORT = 5000;
-const HOST = "127.0.0.1";
-const STATIC_PATH = "/static";
+const PORT = Deno.env.get("HASHIRA_PORT") || 5000;
+const HOST = Deno.env.get("HASHIRA_HOST") || "127.0.0.1";
+const STATIC_PATH = Deno.env.get("HASHIRA_STATIC_DIR") || "/static";
 const PUBLIC_DIR = denoPath.join(Deno.cwd(), "public");
 
-// Set envs
+// TODO: We are currently setting the rust wasm this way,
+// due `std::env` had no access to the variables
 const envs = Deno.env.toObject();
 set_envs(envs);
 
 async function handleRequest(request: Request): Promise<Response> {
   try {
     const { pathname } = new URL(request.url);
-
     if (pathname.startsWith(STATIC_PATH)) {
       return await serveStaticFile(request);
     }
@@ -62,33 +65,38 @@ async function serveStaticFile(request: Request): Promise<Response> {
 
 // deno-lint-ignore no-explicit-any
 function handleError(error: any): Response {
-  console.log(`📛  Something went wrong: ${error}`)
+  console.log(`📛  Something went wrong: ${error}`);
   // prettier-ignore
   const errorMessage = error.message || error.description || "Something went wrong";
   const status = Number(error.statusCode || error.status || error.code || 500);
+  const statusText = STATUS_TEXT[status as Status] ?? "Error";
 
   const html = `
-      <html>
-        <head>
-          <title>Error</title>
-          <style>
-            body {
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-            }
-            h1 {
-              font-size: 3rem;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${errorMessage}</h1>
-        </body>
-      </html>
-    `;
+  <html>
+    <head>
+      <title>${status} | ${statusText}</title>
+      <style>
+        body {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          overflow: hidden;
+        }
+        h1 {
+          font-size: 3rem;
+          text-align: center;
+          font-family: monospace;
+          overflow-wrap: break-word;
+          max-width: 90vw;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>${errorMessage} | ${status}</h1>
+    </body>
+  </html>
+`;
 
   return new Response(html, {
     status: Number.isNaN(status) ? 500 : status,
@@ -99,7 +107,7 @@ function handleError(error: any): Response {
 }
 
 await serve(handleRequest, {
-  port: PORT,
+  port: Number(PORT),
   hostname: HOST,
   onError: handleError,
   onListen: ({ hostname, port }) => {

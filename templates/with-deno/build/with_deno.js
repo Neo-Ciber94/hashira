@@ -223,6 +223,12 @@ function __wbg_adapter_41(arg0, arg1, arg2) {
 }
 
 /**
+*/
+export function entry() {
+    wasm.entry();
+}
+
+/**
 * Handle the given request and returns a response.
 * @param {Request} web_req
 * @returns {Promise<Response>}
@@ -270,7 +276,7 @@ function getArrayJsValueFromWasm0(ptr, len) {
 function getArrayU8FromWasm0(ptr, len) {
     return getUint8Memory0().subarray(ptr / 1, ptr / 1 + len);
 }
-function __wbg_adapter_264(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_265(arg0, arg1, arg2, arg3) {
     wasm.wasm_bindgen__convert__closures__invoke2_mut__he4762d4d16f224ab(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
@@ -1037,7 +1043,7 @@ const imports = {
                     const a = state0.a;
                     state0.a = 0;
                     try {
-                        return __wbg_adapter_264(a, state0.b, arg0, arg1);
+                        return __wbg_adapter_265(a, state0.b, arg0, arg1);
                     } finally {
                         state0.a = a;
                     }
@@ -1138,12 +1144,12 @@ const imports = {
             const ret = wasm.memory;
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper12580: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1426, __wbg_adapter_38);
+        __wbindgen_closure_wrapper13315: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1507, __wbg_adapter_38);
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper12776: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1442, __wbg_adapter_41);
+        __wbindgen_closure_wrapper13511: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1523, __wbg_adapter_41);
             return addHeapObject(ret);
         },
     },
@@ -1166,4 +1172,6 @@ switch (wasm_url.protocol) {
 
 const wasmInstance = (await WebAssembly.instantiate(wasmCode, imports)).instance;
 const wasm = wasmInstance.exports;
+
+wasm.__wbindgen_start();
 

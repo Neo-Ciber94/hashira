@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Mutex};
-
 /// Name of the environment variable with the host where the app is running.
 pub(crate) const HASHIRA_HOST: &str = "HASHIRA_HOST";
 
@@ -19,13 +17,10 @@ pub(crate) const HASHIRA_LIVE_RELOAD_HOST: &str = "HASHIRA_LIVE_RELOAD_HOST";
 pub(crate) const HASHIRA_LIVE_RELOAD_PORT: &str = "HASHIRA_LIVE_RELOAD_PORT";
 
 /// Name of the environment variable with the name of the wasm library.
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) const HASHIRA_WASM_LIB: &str = "HASHIRA_WASM_LIB";
 
 /// Returns the name of the wasm client library.
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) fn get_wasm_name() -> Option<String> {
-    return Some("with_deno".into());
     if let Some(name) = get_env(HASHIRA_WASM_LIB) {
         return Some(name);
     }
@@ -65,43 +60,48 @@ pub fn is_live_reload() -> bool {
     }
 }
 
-//#[cfg(target_arch="wasm32-unknown-unknown")]
-static WASM_ENVS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
-
-/// Sets the environment variables of the wasm module.
-//#[cfg(target_arch="wasm32-unknown-unknown")]
-pub fn set_wasm_envs<I, K, V>(envs: I)
-where
-    I: IntoIterator<Item = (K, V)>,
-    K: Into<String>,
-    V: Into<String>,
-{
-    log::debug!("Setting wasm environment variables");
-
-    let mut wasm_envs = WASM_ENVS.lock().unwrap();
-    
-    if wasm_envs.is_some() {
-        panic!("wasm environment variables can only be set once");
-    }
-
-    let map = wasm_envs.get_or_insert_with(|| Default::default());
-
-    for (key, value) in envs.into_iter() {
-        map.insert(key.into(), value.into());
-    }
-}
-
 fn get_env(name: impl AsRef<str>) -> Option<String> {
-    #[cfg(not(target_arch = "wasm32-unknown-unknown"))]
+    #[cfg(not(target_arch = "wasm32"))]
     {
         std::env::var(name.as_ref()).ok()
     }
 
-    #[cfg(target_arch = "wasm32-unknown-unknown")]
+    #[cfg(target_arch = "wasm32")]
     {
-        WASM_ENVS
-            .get()
-            .and_then(|envs| envs.get(name.as_ref()))
-            .cloned()
+        let Some(envs) = &*wasm::WASM_ENVS.lock().unwrap() else {
+            panic!("wasm environment variables were not set");
+        };
+
+        envs.get(name.as_ref()).cloned()
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[doc(hidden)]
+pub mod wasm {
+    use std::{collections::HashMap, sync::Mutex};
+
+    pub(crate) static WASM_ENVS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
+
+    /// Sets the environment variables of the wasm module.
+    pub fn set_envs<I, K, V>(envs: I)
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        log::debug!("Setting wasm environment variables");
+
+        let mut wasm_envs = WASM_ENVS.lock().unwrap();
+
+        if wasm_envs.is_some() {
+            panic!("wasm environment variables can only be set once");
+        }
+
+        let map = wasm_envs.get_or_insert_with(|| Default::default());
+
+        for (key, value) in envs.into_iter() {
+            map.insert(key.into(), value.into());
+        }
     }
 }

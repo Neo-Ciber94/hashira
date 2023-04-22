@@ -1,6 +1,6 @@
+mod components;
 mod deno_sys;
 mod server;
-mod components;
 
 use crate::components::{root_layout, Counter};
 use hashira::{
@@ -88,4 +88,3 @@ pub fn hydrate() {
     let service = hashira::<App>();
     hashira::client::mount::<App>(service);
 }
-

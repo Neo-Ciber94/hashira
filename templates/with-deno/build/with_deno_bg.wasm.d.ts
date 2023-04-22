@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export function entry(): void;
 export function handler(a: number): number;
 export function set_envs(a: number): void;
 export function __wbg_intounderlyingsource_free(a: number): void;
@@ -34,3 +35,4 @@ export function __wbindgen_add_to_stack_pointer(a: number): number;
 export function __wbindgen_free(a: number, b: number): void;
 export function __wbindgen_exn_store(a: number): void;
 export function wasm_bindgen__convert__closures__invoke2_mut__he4762d4d16f224ab(a: number, b: number, c: number, d: number): void;
+export function __wbindgen_start(): void;
