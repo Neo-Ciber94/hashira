@@ -4,6 +4,9 @@ import { handler, set_envs } from "../build/with_deno.js";
 import * as denoPath from "https://deno.land/std@0.183.0/path/mod.ts";
 import * as denoFs from "https://deno.land/std@0.183.0/fs/mod.ts";
 
+// FIXME: Theses values should come from environment variables
+const PORT = 5000;
+const HOST = "127.0.0.1";
 const STATIC_PATH = "/static";
 const PUBLIC_DIR = denoPath.join(Deno.cwd(), "public");
 
@@ -96,8 +99,8 @@ function handleError(error: any): Response {
 }
 
 await serve(handleRequest, {
-  port: 5000,
-  hostname: "127.0.0.1",
+  port: PORT,
+  hostname: HOST,
   onError: handleError,
   onListen: ({ hostname, port }) => {
     console.log(`⚡ Server started at: \`http://${hostname}:${port}\``);
