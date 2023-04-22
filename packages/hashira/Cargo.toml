@@ -28,6 +28,8 @@ tokio = { version = "1.27.0", features = ["sync"] }
 mime = "0.3.17"
 serde_urlencoded = "0.7.1"
 pin-project-lite = "0.2.9"
+prokio = "0.1.0"
+fragile = "2.0.0"
 
 [features]
 hooks = []

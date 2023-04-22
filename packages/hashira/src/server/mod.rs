@@ -7,8 +7,8 @@ pub use links::*;
 pub use meta::*;
 pub use scripts::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+//#[cfg(not(target_arch = "wasm32"))]
 mod render;
 
-#[cfg(not(target_arch = "wasm32"))]
+//#[cfg(not(target_arch = "wasm32"))]
 pub use render::*;

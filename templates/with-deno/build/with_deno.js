@@ -1059,12 +1059,12 @@ const imports = {
             const ret = wasm.memory;
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper8724: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1010, __wbg_adapter_32);
+        __wbindgen_closure_wrapper11845: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1354, __wbg_adapter_32);
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper8915: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1026, __wbg_adapter_35);
+        __wbindgen_closure_wrapper12040: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1370, __wbg_adapter_35);
             return addHeapObject(ret);
         },
     },

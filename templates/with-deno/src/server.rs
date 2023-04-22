@@ -1,3 +1,5 @@
+#![cfg(not(feature="client"))]
+
 use hashira::app::AppService;
 use once_cell::sync::Lazy;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};

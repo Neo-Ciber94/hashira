@@ -16,6 +16,7 @@ use bytes::Bytes;
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 use std::sync::Arc;
+use yew::LocalServerRenderer;
 use yew::{
     function_component,
     html::{ChildrenProps, ChildrenRenderer},
@@ -258,6 +259,22 @@ pub async fn render_to_static_html<F>(f: F) -> String
 where
     F: FnOnce() -> Html + Send + Sync + 'static,
 {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        __render_to_static_html(f).await
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        __render_to_static_html_wasm(f).await
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn __render_to_static_html<F>(f: F) -> String
+where
+    F: FnOnce() -> Html + Send + Sync + 'static,
+{
     #[function_component]
     fn Dummy(props: &ChildrenProps) -> Html {
         yew::html! {
@@ -269,6 +286,32 @@ where
 
     // FIXME: Not sure if may be a downgrade to block the thread.
     futures::executor::block_on(async move {
+        let renderer = ServerRenderer::<Dummy>::with_props(move || ChildrenProps {
+            children: ChildrenRenderer::new(vec![f()]),
+        });
+        let html = renderer.hydratable(false).render().await;
+        tx.send(html).unwrap();
+    });
+
+    let html = rx.await.unwrap();
+    html
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn __render_to_static_html_wasm<F>(f: F) -> String
+where
+    F: FnOnce() -> Html + Send + Sync + 'static,
+{
+    #[function_component]
+    fn Dummy(props: &ChildrenProps) -> Html {
+        yew::html! {
+            <>{for props.children.iter()}</>
+        }
+    }
+
+    let (tx, rx) = tokio::sync::oneshot::channel::<String>();
+
+    prokio::spawn_local(async move {
         let renderer = ServerRenderer::<Dummy>::with_props(move || ChildrenProps {
             children: ChildrenRenderer::new(vec![f()]),
         });

@@ -21,8 +21,31 @@ args = [
     "build/",
 ]
 
+
 [tasks.build-wasm]
 dependencies = ["cargo-build", "wasm-bindgen"]
+
+[tasks.cargo-build-client]
+command = "cargo"
+args = ["build", "--target", "wasm32-unknown-unknown", "--features", "client"]
+
+[tasks.wasm-bindgen-client]
+env = { "HASHIRA_WASM_LIB" = "with_deno.wasm" }
+command = "wasm-bindgen"
+args = [
+    "../../target/wasm32-unknown-unknown/debug/with_deno.wasm",
+    "--target",
+    "web",
+    "--out-dir",
+    "public/",
+    "--no-typescript"
+]
+
+[tasks.build-wasm-client]
+dependencies = ["cargo-build-client", "wasm-bindgen-client"]
+
+[tasks.build]
+dependencies = ["build-wasm", "build-wasm-client"]
 
 [tasks.run-deployctl]
 command = "deployctl"

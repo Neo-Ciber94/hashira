@@ -30,7 +30,7 @@ impl PageHead {
         PageHead(inner)
     }
 
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    //#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub(crate) fn into_parts(self) -> (Option<String>, Metadata, PageLinks, PageScripts) {
         let mut inner = self.0.lock().unwrap();
         let title = inner.title.take();

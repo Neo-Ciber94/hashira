@@ -3,7 +3,7 @@ import { contentType } from "https://deno.land/std@0.184.0/media_types/mod.ts";
 import { handler } from "../build/with_deno.js";
 
 const STATIC_PATH = "/static";
-const PUBLIC_DIR = "../build/with_deno/public";
+const PUBLIC_DIR = "../public";
 
 async function handleRequest(request: Request): Promise<Response> {
   const { pathname } = new URL(request.url);

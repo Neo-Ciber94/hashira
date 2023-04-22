@@ -16,11 +16,13 @@ use crate::{
 use super::PageResponse;
 use http::status::StatusCode;
 use serde::de::DeserializeOwned;
-use std::{future::Future, marker::PhantomData, sync::Arc};
+use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
+type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
+
 /// A function that renders the base `index.html`.
-pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxFuture<Html> + Send + Sync>;
+pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxedFuture<Html> + Send + Sync>;
 
 /// A handler for a request.
 pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response> + Send + Sync>);
@@ -145,9 +147,9 @@ where
     }
 
     /// Adds a route handler.
-    #[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
+    //#[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
-         #[cfg(not(target_arch = "wasm32"))]
+        //#[cfg(not(target_arch = "wasm32"))]
         {
             let path = route.path().to_owned(); // To please the borrow checker
             self.server_router.insert(&path, route).expect("failed to add route");
@@ -160,7 +162,7 @@ where
     pub fn nest(mut self, base_path: &str, scope: AppNested<BASE>) -> Self {
         crate::routing::assert_valid_route(base_path).expect("invalid base path");
 
-        #[cfg(not(target_arch = "wasm32"))]
+        //#[cfg(not(target_arch = "wasm32"))]
         {
             for (sub, route) in scope.server_router {
                 let path = if sub == "/" {
@@ -187,7 +189,7 @@ where
     }
 
     /// Adds a page for the given route.
-    #[cfg(not(target_arch = "wasm32"))]
+    //#[cfg(not(target_arch = "wasm32"))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -206,17 +208,17 @@ where
     }
 
     /// Adds a page for the given route.
-    #[cfg(target_arch = "wasm32")]
-    pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
-    where
-        COMP: PageComponent,
-        COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
-    {
-        self.add_component::<COMP>(path);
-        self
-    }
+    //#[cfg(target_arch = "wasm32")]
+    //pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
+    //where
+    //    COMP: PageComponent,
+    //    COMP::Properties: DeserializeOwned,
+    //    H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
+    //    Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
+    //{
+    //    self.add_component::<COMP>(path);
+    //    self
+    //}
 
     /// Adds an error page for teh given status code.
     #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
@@ -227,7 +229,7 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        #[cfg(not(target_arch = "wasm32"))]
+        //#[cfg(not(target_arch = "wasm32"))]
         {
             use futures::TryFutureExt;
 
@@ -256,7 +258,7 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        #[cfg(not(target_arch = "wasm32"))]
+        //#[cfg(not(target_arch = "wasm32"))]
         {
             use futures::TryFutureExt;
 

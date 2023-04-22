@@ -33,8 +33,8 @@ pub fn HomePage() -> yew::Html {
             <div class="logo-container">
             <span class="hashira" title="Hashira">{"Hashira"}</span>
             <span class="divider">{'\u{00D7}'}</span>
-            <a href="https://crates.io/crates/axum" target="_blank" rel="noopener">
-                <img title="Axum" alt="Axum" src="https://raw.githubusercontent.com/tokio-rs/website/master/public/img/icons/tokio.svg"/>
+            <a href="https://deno.land/" target="_blank" rel="noopener">
+                <img title="Deno" alt="Deno" src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Deno.svg/1280px-Deno.svg.png"/>
             </a>
         </div>
         </div>

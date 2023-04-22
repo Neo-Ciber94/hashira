@@ -11,7 +11,7 @@ pub mod web;
 // Allow public?
 pub(crate) mod context;
 
-#[cfg(target_arch = "wasm32")]
+//#[cfg(target_arch = "wasm32")]
 pub mod client;
 
 #[cfg(feature = "hooks")]
