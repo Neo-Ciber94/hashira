@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export function handler(a: number): number;
+export function set_envs(a: number): void;
 export function __wbg_intounderlyingsource_free(a: number): void;
 export function intounderlyingsource_pull(a: number, b: number): number;
 export function intounderlyingsource_cancel(a: number): void;

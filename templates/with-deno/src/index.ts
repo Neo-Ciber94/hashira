@@ -1,11 +1,14 @@
 import { serve } from "https://deno.land/std@0.184.0/http/mod.ts";
 import { contentType } from "https://deno.land/std@0.184.0/media_types/mod.ts";
-import { handler } from "../build/with_deno.js";
+import { handler, set_envs } from "../build/with_deno.js";
 import * as denoPath from "https://deno.land/std@0.183.0/path/mod.ts";
 import * as denoFs from "https://deno.land/std@0.183.0/fs/mod.ts";
 
 const STATIC_PATH = "/static";
 const PUBLIC_DIR = denoPath.join(Deno.cwd(), "public");
+
+// Set envs
+set_envs(Deno.env.toObject());
 
 async function handleRequest(request: Request): Promise<Response> {
   const { pathname } = new URL(request.url);

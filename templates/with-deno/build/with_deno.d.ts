@@ -1,10 +1,16 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+* Handle the given request and returns a response.
 * @param {Request} web_req
 * @returns {Promise<Response>}
 */
 export function handler(web_req: Request): Promise<Response>;
+/**
+* Initializes the environment variables of the application.
+* @param {any} envs
+*/
+export function set_envs(envs: any): void;
 /**
 */
 export class IntoUnderlyingByteSource {
