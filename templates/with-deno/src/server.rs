@@ -2,8 +2,8 @@
 
 use hashira::app::AppService;
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, sync::Once};
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue, UnwrapThrowExt};
+use std::sync::Once;
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::App;
 
@@ -25,15 +25,24 @@ pub async fn handler(web_req: web_sys::Request) -> Result<web_sys::Response, JsV
 
 /// Initializes the environment variables of the application.
 #[wasm_bindgen]
-pub fn set_envs(envs: JsValue) {
+#[allow(unused_variables)]
+pub fn set_envs(envs: js_sys::Object) {
+    
     static ONCE: Once = Once::new();
+    
+    log::debug!("Setting envs: {:#?}", envs);
 
-    ONCE.call_once(|| {
-        let map = serde_wasm_bindgen::from_value::<HashMap<String, String>>(envs)
-            .expect_throw("failed to convert env to map");
+    //#[cfg(target_arch = "wasm32-unknown-unknown")]
+    {
+        use std::collections::HashMap;
+        use wasm_bindgen::UnwrapThrowExt;
 
-        for (key, value) in map {
-            std::env::set_var(key, value);
-        }
-    });
+        ONCE.call_once(|| {
+            let map =
+                serde_wasm_bindgen::from_value::<HashMap<String, String>>(envs.into())
+                    .expect_throw("failed to convert env to map");
+
+            hashira::env::set_wasm_envs(map);
+        });
+    }
 }

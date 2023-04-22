@@ -8,37 +8,58 @@ const STATIC_PATH = "/static";
 const PUBLIC_DIR = denoPath.join(Deno.cwd(), "public");
 
 // Set envs
-set_envs(Deno.env.toObject());
+const envs = Deno.env.toObject();
+set_envs(envs);
 
 async function handleRequest(request: Request): Promise<Response> {
-  const { pathname } = new URL(request.url);
+  try {
+    const { pathname } = new URL(request.url);
 
-  if (pathname.startsWith(STATIC_PATH)) {
-    const path = pathname.slice(STATIC_PATH.length);
-    const ext = denoPath.extname(pathname);
-    const filePath = `${PUBLIC_DIR}/${path}`;
-
-    if (!(await denoFs.exists(filePath))) {
-      console.warn(`File not found: ${filePath}`);
-      return new Response("Not found", {
-        status: 404,
-      });
+    if (pathname.startsWith(STATIC_PATH)) {
+      return await serveStaticFile(request);
     }
-    const file = await Deno.readFile(filePath);
-    console.log("Serving file: " + filePath);
 
-    return new Response(file, {
-      headers: {
-        "content-type": contentType(ext) ?? "application/octet-stream",
-      },
+    return handler(request);
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+async function serveStaticFile(request: Request): Promise<Response> {
+  const { pathname } = new URL(request.url);
+  const path = pathname.slice(STATIC_PATH.length);
+  const ext = denoPath.extname(pathname);
+  const filePath = `${PUBLIC_DIR}/${path}`;
+
+  if (!(await denoFs.exists(filePath))) {
+    console.warn(`⚠️  File not found: ${filePath}`);
+    return new Response("Not found", {
+      status: 404,
     });
   }
 
-  return handler(request);
+  const fileInfo = await Deno.stat(filePath);
+  const lastModified = (fileInfo.mtime ?? new Date())?.toUTCString();
+  const headers = new Headers({
+    "Content-Type": contentType(ext) ?? "application/octet-stream",
+    "Last-Modified": lastModified,
+  });
+
+  const requestHeaders = new Headers(request.headers);
+  const ifModifiedSince = requestHeaders.get("If-Modified-Since");
+
+  if (ifModifiedSince && ifModifiedSince === lastModified) {
+    return new Response(null, { status: 304, headers });
+  }
+
+  const file = await Deno.readFile(filePath);
+  console.log("📂  Serving file: " + filePath);
+  return new Response(file, { headers });
 }
 
 // deno-lint-ignore no-explicit-any
 function handleError(error: any): Response {
+  console.log(`📛  Something went wrong: ${error}`)
   // prettier-ignore
   const errorMessage = error.message || error.description || "Something went wrong";
   const status = Number(error.statusCode || error.status || error.code || 500);

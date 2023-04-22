@@ -8,9 +8,9 @@
 export function handler(web_req: Request): Promise<Response>;
 /**
 * Initializes the environment variables of the application.
-* @param {any} envs
+* @param {object} envs
 */
-export function set_envs(envs: any): void;
+export function set_envs(envs: object): void;
 /**
 */
 export class IntoUnderlyingByteSource {

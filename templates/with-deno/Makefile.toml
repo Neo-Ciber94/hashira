@@ -19,7 +19,6 @@ args = [
     "build/",
 ]
 
-
 [tasks.build-wasm]
 dependencies = ["cargo-build", "wasm-bindgen"]
 
@@ -54,16 +53,16 @@ args = [
     "target/",
 ]
 
+[tasks.deploy]
+dependencies = ["build", "install-deployctl", "run-deployctl"]
+
 [tasks.run-with-deno]
-env = { "HASHIRA_WASM_LIB" = "with_deno.wasm" }
+env = { "HASHIRA_WASM_LIB" = "with_deno" }
 command = "deno"
 args = ["run", "--allow-read", "--allow-net", "--allow-env", "src/index.ts"]
 
-[tasks.deploy]
-dependencies = ["build-wasm", "install-deployctl", "run-deployctl"]
-
 [tasks.run]
-dependencies = ["build-wasm", "run-with-deno"]
+dependencies = ["build", "run-with-deno"]
 
 [tasks.test-rust]
 command = "cargo"

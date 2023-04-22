@@ -234,7 +234,7 @@ export function handler(web_req) {
 
 /**
 * Initializes the environment variables of the application.
-* @param {any} envs
+* @param {object} envs
 */
 export function set_envs(envs) {
     wasm.set_envs(addHeapObject(envs));
@@ -1138,12 +1138,12 @@ const imports = {
             const ret = wasm.memory;
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper12558: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1423, __wbg_adapter_38);
+        __wbindgen_closure_wrapper12580: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1426, __wbg_adapter_38);
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper12754: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1439, __wbg_adapter_41);
+        __wbindgen_closure_wrapper12776: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1442, __wbg_adapter_41);
             return addHeapObject(ret);
         },
     },
