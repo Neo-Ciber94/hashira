@@ -49,7 +49,7 @@ async fn compile_css(css_files: Vec<PipelineFile>, dest_dir: PathBuf) -> anyhow:
             .await
             .context("failed to create destination file")?;
 
-        log::debug!("Copying `{}` to `{}`", file.display(), dest.display());
+        tracing::debug!("Copying `{}` to `{}`", file.display(), dest.display());
 
         let src_file = File::open(file)
             .await

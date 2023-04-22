@@ -34,42 +34,42 @@ impl BuildTask {
 
     /// Runs the build operation
     pub async fn run(self) -> anyhow::Result<()> {
-        log::info!("Build started");
+        tracing::info!("Build started");
 
         self.build_server().await?;
         self.build_wasm().await?;
 
-        log::info!("✅ Build done");
+        tracing::info!("✅ Build done");
         Ok(())
     }
 
     /// Builds the server
     pub async fn build_server(&self) -> anyhow::Result<()> {
-        log::info!("Building server...");
+        tracing::info!("Building server...");
         self.cargo_build().await?;
 
-        log::info!("✅ Build server done!");
+        tracing::info!("✅ Build server done!");
         Ok(())
     }
 
     /// Builds the wasm bundle
     pub async fn build_wasm(&self) -> anyhow::Result<()> {
-        log::info!("Building wasm...");
+        tracing::info!("Building wasm...");
         self.prepare_public_dir().await?;
 
-        log::info!("Running cargo build --target wasm32-unknown-unknown...");
+        tracing::info!("Running cargo build --target wasm32-unknown-unknown...");
         self.cargo_build_wasm().await?;
 
-        log::info!("Generating wasm bindings...");
+        tracing::info!("Generating wasm bindings...");
         self.wasm_bindgen().await?;
 
         // If the optimization flag is set or in release mode
         self.optimize_wasm().await?;
 
-        log::info!("Copying files to public directory...");
+        tracing::info!("Copying files to public directory...");
         self.include_files().await?;
 
-        log::info!("✅ Build wasm done!");
+        tracing::info!("✅ Build wasm done!");
 
         Ok(())
     }
@@ -79,7 +79,7 @@ impl BuildTask {
         let mut public_dir = opts.profile_target_dir()?;
 
         public_dir.push(&opts.public_dir);
-        log::info!("Preparing public directory: {}", public_dir.display());
+        tracing::info!("Preparing public directory: {}", public_dir.display());
 
         if public_dir.exists() {
             tokio::fs::remove_dir_all(&public_dir)
@@ -164,7 +164,7 @@ impl BuildTask {
 
         // target dir
         let target_dir = opts.resolved_target_dir()?;
-        log::debug!("target dir: {}", target_dir.display());
+        tracing::debug!("target dir: {}", target_dir.display());
 
         cmd.arg("--target-dir");
         cmd.arg(target_dir);
@@ -192,7 +192,7 @@ impl BuildTask {
 
         // target dir
         let target_dir = opts.resolved_target_dir()?;
-        log::debug!("target dir: {}", target_dir.display());
+        tracing::debug!("target dir: {}", target_dir.display());
 
         cmd.arg("--target-dir");
         cmd.arg(target_dir);
@@ -219,7 +219,7 @@ impl BuildTask {
         // out dir
         let mut out_dir = opts.profile_target_dir()?;
         out_dir.push(&opts.public_dir);
-        log::debug!("wasm-bindgen out-dir: {}", out_dir.display());
+        tracing::debug!("wasm-bindgen out-dir: {}", out_dir.display());
 
         cmd.arg("--out-dir").arg(out_dir);
 
@@ -236,7 +236,7 @@ impl BuildTask {
         let mut wasm_dir = wasm_target_dir;
         let lib_name = crate::utils::get_cargo_lib_name().context("Failed to get lib name")?;
         wasm_dir.push(format!("{lib_name}.wasm"));
-        log::debug!("wasm file dir: {}", wasm_dir.display());
+        tracing::debug!("wasm file dir: {}", wasm_dir.display());
 
         cmd.arg(wasm_dir);
 
@@ -258,7 +258,7 @@ impl BuildTask {
             return Ok(());
         };
 
-        log::info!("Optimizing wasm... {opt_level}");
+        tracing::info!("Optimizing wasm... {opt_level}");
         let lib_name = crate::utils::get_cargo_lib_name().context("Failed to get lib name")?;
         let mut wasm_dir = opts.profile_target_dir()?;
         wasm_dir.push(&opts.public_dir);
@@ -304,7 +304,7 @@ impl BuildTask {
             .await
             .context("failed to move optimized wasm")?;
 
-        log::info!("✅ Wasm optimization done");
+        tracing::info!("✅ Wasm optimization done");
         Ok(())
     }
 }
@@ -326,7 +326,7 @@ async fn process_files(
 
         if !path.exists() {
             if !include.is_default {
-                log::warn!("`{}` does not exist", path.display());
+                tracing::warn!("`{}` does not exist", path.display());
             }
             continue;
         }
@@ -341,7 +341,7 @@ async fn process_files(
 
             let file = path.canonicalize().unwrap();
             let base_dir = file.parent().unwrap().to_owned().canonicalize().unwrap();
-            log::debug!("Entry: {}", path.display());
+            tracing::debug!("Entry: {}", path.display());
             files.push(PipelineFile { base_dir, file });
         } else if path.is_dir() {
             let pattern = format!("{}/**/*", path.to_str().unwrap());
@@ -364,7 +364,7 @@ async fn process_files(
                 // SAFETY: the file exists
                 let base_dir = path.canonicalize().unwrap();
                 let entry = entry.canonicalize().unwrap();
-                log::debug!("Entry: {}", entry.display());
+                tracing::debug!("Entry: {}", entry.display());
 
                 files.push(PipelineFile {
                     base_dir,
@@ -381,7 +381,7 @@ async fn process_files(
         if files.is_empty() {
             if !pipelines.is_empty() {
                 let pipeline_names = pipelines.iter().map(|p| p.name()).collect::<Vec<_>>();
-                log::info!(
+                tracing::info!(
                     "No more files to process, the next pipelines were not run: {}",
                     pipeline_names.join(", ")
                 );
@@ -418,7 +418,7 @@ async fn process_files(
     let results = futures::future::join_all(tasks).await;
     for ret in results {
         if let Err(err) = ret {
-            log::error!("{err}");
+            tracing::error!("{err}");
         }
     }
 
@@ -432,7 +432,7 @@ fn assert_valid_include(
     allow_include_src: bool,
 ) -> anyhow::Result<()> {
     if !allow_include_external && is_outside_directory(cwd, path)? {
-        log::error!("{} is outside {}", path.display(), cwd.display());
+        tracing::error!("{} is outside {}", path.display(), cwd.display());
 
         anyhow::bail!(
             "Path to include cannot be outside the current directory, use `--allow-include-external` to include files outside the current directory"
@@ -440,7 +440,7 @@ fn assert_valid_include(
     }
 
     if !allow_include_src && is_inside_src(cwd, path)? {
-        log::error!("{} is inside `src` directory", path.display());
+        tracing::error!("{} is inside `src` directory", path.display());
 
         anyhow::bail!(
             "Path to include cannot be inside the src directory, use `--allow-include-src` to include files inside the src directory"
@@ -462,7 +462,7 @@ fn is_outside_directory(base: &Path, path: &Path) -> anyhow::Result<bool> {
 
 fn is_inside_src(base: &Path, path: &Path) -> anyhow::Result<bool> {
     if !base.join("src").exists() {
-        log::debug!("`src` directory not found");
+        tracing::debug!("`src` directory not found");
         return Ok(false);
     }
 

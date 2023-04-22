@@ -71,7 +71,7 @@ impl RunTask {
 
         if let Some(build_done_signal) = build_done_signal {
             if let Err(err) = build_done_signal.send(()) {
-                log::error!("Error sending build done signal: {err}");
+                tracing::error!("Error sending build done signal: {err}");
             }
         }
 
@@ -91,15 +91,15 @@ impl RunTask {
             .get_executable_path()
             .context("Failed to get executable path")?;
 
-        log::debug!("Executable path: {}", exec_path.display());
+        tracing::debug!("Executable path: {}", exec_path.display());
 
         let mut cmd = Command::new(exec_path);
         let wasm_lib = crate::utils::get_cargo_lib_name()?;
 
         // environment variables
-        log::debug!("host: {}", self.host);
-        log::debug!("port: {}", self.port);
-        log::debug!("static files: {}", self.static_dir);
+        tracing::debug!("host: {}", self.host);
+        tracing::debug!("port: {}", self.port);
+        tracing::debug!("static files: {}", self.static_dir);
 
         cmd.env(crate::env::HASHIRA_HOST, &self.host);
         cmd.env(crate::env::HASHIRA_PORT, self.port.to_string());

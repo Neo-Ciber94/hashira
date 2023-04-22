@@ -79,7 +79,7 @@ impl DevTask {
             tokio::spawn({
                 async move {
                     tokio::signal::ctrl_c().await.ok();
-                    log::info!("Exiting...");
+                    tracing::info!("Exiting...");
                     let _ = tx_shutdown.send(());
                     tx_notify
                         .send(())
@@ -97,12 +97,12 @@ impl DevTask {
             tokio::spawn(async move {
                 loop {
                     if let Err(err) = build_done_rx.recv().await {
-                        log::error!("{err}");
+                        tracing::error!("{err}");
                     }
-                    log::debug!("Received build done signal");
+                    tracing::debug!("Received build done signal");
 
                     if let Err(err) = tx_notify.send(()) {
-                        log::error!("Error sending change event: {err}");
+                        tracing::error!("Error sending change event: {err}");
                     }
                 }
             });
@@ -126,7 +126,7 @@ impl DevTask {
     }
 
     fn start_watcher(&self, build_done_tx: Sender<()>) -> anyhow::Result<()> {
-        log::info!("Starting application watch mode");
+        tracing::info!("Starting application watch mode");
 
         let build_options = &self.options;
         let interrupt_signal = self.interrupt_signal.clone();
@@ -149,7 +149,7 @@ impl DevTask {
         self.build_watcher(tx_watch)?;
 
         // Starts
-        log::debug!("Starting dev...");
+        tracing::debug!("Starting dev...");
         tokio::spawn(build_and_run(opts.clone(), vec![], true));
 
         // Start notifier loop
@@ -169,7 +169,7 @@ impl DevTask {
                 // Rerun
                 let opts = opts.clone();
 
-                log::info!("Restarting dev...");
+                tracing::info!("Restarting dev...");
                 tokio::spawn(build_and_run(opts, events, false));
             }
         });
@@ -183,7 +183,7 @@ impl DevTask {
             .with_context(|| "failed to start watcher")?;
 
         let watch_path = Path::new(".").canonicalize()?;
-        log::info!("Starting watcher at: {}", watch_path.display());
+        tracing::info!("Starting watcher at: {}", watch_path.display());
 
         debouncer
             .watcher()
@@ -198,12 +198,12 @@ impl DevTask {
                     Ok(event) => {
                         if let Ok(evt) = event {
                             if let Err(err) = tx_watch.send(evt) {
-                                log::error!("Failed to send debounced event: {err}");
+                                tracing::error!("Failed to send debounced event: {err}");
                             }
                         }
                     }
                     Err(err) => {
-                        log::error!("Failed to received debounce event: {err}");
+                        tracing::error!("Failed to received debounce event: {err}");
                         break;
                     }
                 }
@@ -248,7 +248,7 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
             {
                 // If the ignore path contains the affected path, we remove the path from the event list
                 if event_path.strip_prefix(ignore_path).is_ok() {
-                    log::debug!("Ignoring path: {}", event.path.display());
+                    tracing::debug!("Ignoring path: {}", event.path.display());
                     events.remove(idx);
                     break 'outer;
                 }
@@ -292,7 +292,7 @@ async fn build_and_run(
 
     let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
     if !paths.is_empty() {
-        log::info!("change detected on paths: {:?}", paths);
+        tracing::info!("change detected on paths: {:?}", paths);
     }
 
     // Build task
@@ -317,7 +317,7 @@ async fn build_and_run(
     run_task.env(crate::env::HASHIRA_LIVE_RELOAD, String::from("1"));
 
     if let Err(err) = run_task.run().await {
-        log::error!("Watch run failed: {err}");
+        tracing::error!("Watch run failed: {err}");
     }
 
     *lock = true;
@@ -347,7 +347,7 @@ async fn start_server(state: State, host: &str, port: u16) -> anyhow::Result<()>
         .parse::<SocketAddr>()
         .with_context(|| format!("invalid hot reload server address: {host}:{port}"))?;
 
-    log::info!("Starting hot reload server on: http://{addr}");
+    tracing::info!("Starting hot reload server on: http://{addr}");
 
     // Start server
     axum::Server::bind(&addr)
@@ -364,7 +364,7 @@ async fn websocket_handler(
     state: Extension<Arc<State>>,
 ) -> impl IntoResponse {
     upgrade.on_upgrade(|ws| async move {
-        log::debug!("Livereload web socket opened");
+        tracing::debug!("Livereload web socket opened");
 
         let tx_notify = state.tx_notify.clone();
         let tx_shutdown = state.tx_shutdown.clone();
@@ -379,7 +379,7 @@ async fn websocket_handler(
         loop {
             tokio::select! {
                 _ = notify_stream.next() => {
-                    log::debug!("Sending reload message...");
+                    tracing::debug!("Sending reload message...");
 
                     let json = serde_json::to_string(&LiveReloadMessage::Reload{ reload: true })
                         .expect("Failed to serialize message");
@@ -389,7 +389,7 @@ async fn websocket_handler(
                     }
                 },
                 _ = watch.recv() => {
-                    log::debug!("Sending loading message...");
+                    tracing::debug!("Sending loading message...");
                     let json = serde_json::to_string(&LiveReloadMessage::Loading { loading: true })
                         .expect("Failed to serialize message");
 
@@ -398,12 +398,12 @@ async fn websocket_handler(
                     }
                 },
                 _ = shutdown.recv() => {
-                    log::debug!("Shuting down livereload web socket");
+                    tracing::debug!("Shuting down livereload web socket");
                     return;
                 }
             }
         }
 
-        log::debug!("Livereload web socket closed");
+        tracing::debug!("Livereload web socket closed");
     })
 }

@@ -51,7 +51,7 @@ pub fn get_cargo_lib_name() -> anyhow::Result<String> {
         }
     }
 
-    log::warn!("Cargo.toml does not contains a [lib]");
+    tracing::warn!("Cargo.toml does not contains a [lib]");
 
     let package = cargo_toml
         .package
@@ -81,7 +81,7 @@ pub async fn wait_interruptible(
                     Ok(())
                 },
                 Err(err) => {
-                    log::error!("Process failed: {err}");
+                    tracing::error!("Process failed: {err}");
                     Err(err.into())
                 }
             }
@@ -90,7 +90,7 @@ pub async fn wait_interruptible(
             spawn.kill().await?;
 
             if let Err(err) = ret {
-                log::error!("{err}");
+                tracing::error!("{err}");
                 return Err(err.into());
             }
 

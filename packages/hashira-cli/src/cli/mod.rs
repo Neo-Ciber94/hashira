@@ -1,10 +1,12 @@
 mod build_options;
 mod dev_options;
+mod log_level;
 mod run_options;
 mod wasm_opt_level;
 
 pub use build_options::*;
 pub use dev_options::*;
+pub use log_level::*;
 pub use run_options::*;
 pub use wasm_opt_level::*;
 
@@ -19,21 +21,8 @@ pub struct Cli {
     pub command: Commands,
 
     #[clap(global = true)]
-    #[arg(long, default_value = "info", value_parser = valid_log_level)]
-    pub log_level: String,
-}
-
-fn valid_log_level(s: &str) -> Result<String, String> {
-    const LOG_LEVELS: &[&str] = &["debug", "info", "warn", "error"];
-
-    if LOG_LEVELS.contains(&s) {
-        Ok(s.to_owned())
-    } else {
-        Err(format!(
-            "Invalid log level: {s}, expected one of {}",
-            LOG_LEVELS.join(", ")
-        ))
-    }
+    #[arg(long, default_value = "info")]
+    pub log_level: LogLevel,
 }
 
 #[derive(Subcommand, Debug)]
