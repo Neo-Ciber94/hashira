@@ -16,19 +16,22 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::{console, ResponseInit};
 
 // Returns a router for a `Deno` application.
-pub fn router(app_service: AppService) {
-    let static_dir = hashira::env::get_static_dir();
-    let serve_dir = get_current_dir().join("public");
+// pub fn router(app_service: AppService) -> Box<dyn Fn(web_sys::Request) -> web_sys::Response> {
+//     // Use Deno bindings
+//     // let static_dir = hashira::env::get_static_dir();
+//     // let serve_dir = get_current_dir().join("public");
 
-    todo!()
-}
+//     Box::new(move |web_req| {
+
+//     })
+// }
 
 /// Handle a request.
-pub async fn handle_request(web_req: web_sys::Request) -> web_sys::Response {
-    todo!()
-}
+// pub async fn handle_request(web_req: web_sys::Request) -> web_sys::Response {
+//     todo!()
+// }
 
-async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::error::Error> {
+pub async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::error::Error> {
     let method = Method::from_str(&web_req.method()).expect("invalid method");
     let uri = Uri::from_str(&web_req.url()).expect("invalid uri");
 
@@ -85,7 +88,7 @@ async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::erro
     Ok(req)
 }
 
-async fn map_response(mut res: Response) -> Result<web_sys::Response, Error> {
+pub async fn map_response(mut res: Response) -> Result<web_sys::Response, Error> {
     let (parts, body) = res.into_parts();
     let body = body.into_bytes().await.unwrap();
     let mut bytes = body.to_vec();

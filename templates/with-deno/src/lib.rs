@@ -1,7 +1,5 @@
 mod deno_sys;
-
-use wasm_bindgen::prelude::*;
-use web_sys::{Request, Response};
+mod server;
 mod components;
 
 use crate::components::{root_layout, Counter};
@@ -83,7 +81,7 @@ where
         .build()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "client")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
     wasm_logger::init(wasm_logger::Config::default());
@@ -92,8 +90,3 @@ pub fn hydrate() {
     hashira::client::mount::<App>(service);
 }
 
-#[wasm_bindgen]
-pub async fn handler(_request: Request) -> Result<Response, JsValue> {
-    console_error_panic_hook::set_once();
-    Response::new_with_opt_str(Some("hello world!"))
-}

@@ -28,9 +28,13 @@ web-sys = { version = "0.3", features = [
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"
 js-sys = "0.3.58"
+once_cell = "1.17.1"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 
 [profile.release]
 opt-level = "s"
+
+[features]
+client = []
