@@ -3,7 +3,6 @@ use std::{collections::HashMap, str::FromStr};
 use futures::StreamExt;
 use hashira::{
     app::AppService,
-    error::Error,
     web::{
         header::{HeaderName, HeaderValue},
         method::Method,
@@ -11,52 +10,54 @@ use hashira::{
         Body, Request, Response,
     },
 };
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
-use web_sys::{console, ResponseInit};
+use wasm_bindgen::{JsCast, JsError, JsValue, UnwrapThrowExt};
+use web_sys::ResponseInit;
 
 /// Handle a request.
 #[allow(clippy::let_and_return)]
-pub async fn handle_request(service: AppService, web_req: web_sys::Request) -> web_sys::Response {
+pub async fn handle_request(
+    service: AppService,
+    web_req: web_sys::Request,
+) -> Result<web_sys::Response, JsError> {
     // Map the request to a `hashira`
-    let req = crate::core::map_request(web_req)
-        .await
-        .expect("failed to map request");
-    
+    let req = crate::core::map_request(web_req).await?;
+
     // Get the `hashira` response
     let res = service.handle(req).await;
-    
+
     // Map the response to `wasm`
-    let web_res = crate::core::map_response(res)
-        .await
-        .expect("failed to map response");
+    let web_res = crate::core::map_response(res).await?;
 
     // Return the response
-    web_res
+    Ok(web_res)
 }
 
-async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::error::Error> {
+async fn map_request(web_req: web_sys::Request) -> Result<Request, JsError> {
     let method = Method::from_str(&web_req.method()).expect("invalid method");
     let uri = Uri::from_str(&web_req.url()).expect("invalid uri");
 
     let mut builder = Request::builder().method(method).uri(uri);
+    let req_headers = web_req
+        .headers()
+        .unchecked_into::<super::bindings::headers::Headers>();
+
+    // Headers::entries()
+    let header_entries = req_headers.entries();
 
     // SAFETY: headers is iterable
-    let iterator = js_sys::try_iter(web_req.headers().as_ref()).unwrap();
+    let iterator = js_sys::try_iter(header_entries.as_ref())
+        .map_err(map_js_error("failed to get headers iterator"))?;
 
     if let Some(iterator) = iterator {
         for array in iterator {
-            let array = array
-                .map_err(|js| js.as_string())
-                .map_err(|js| {
-                    js.unwrap_or_else(|| {
-                        String::from("Something went wrong extracting the header values")
-                    })
-                })
-                .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))?;
+            let array: JsValue =
+                array.map_err(map_js_error("failed to convert headers to array"))?;
 
             let array = array
                 .dyn_into::<js_sys::Array>()
                 .expect("failed to cast header to array");
+
+            // SAFETY: Header array will always had 2 values
             let key_str = array.at(0).as_string().unwrap();
             let value_str = array.at(1).as_string().unwrap();
 
@@ -68,17 +69,16 @@ async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::erro
 
     let bytes = match web_req.body() {
         Some(s) => {
-            let readable = s.dyn_into().unwrap();
+            let readable = s.dyn_into().unwrap(); // SAFETY: Is already a stream
             let mut stream = wasm_streams::ReadableStream::from_raw(readable).into_stream();
 
             let mut bytes = vec![];
             while let Some(js) = stream.next().await {
-                let chunk = js.expect_throw("invalid chunk returned");
+                let chunk = js.map_err(map_js_error("invalid chunk"))?;
                 let chunk_str = chunk
                     .as_string()
-                    .expect("failed to convert chunk to string");
+                    .expect_throw("failed to convert chunk to string");
 
-                console::log_1(&chunk);
                 bytes.extend(chunk_str.as_bytes());
             }
 
@@ -91,11 +91,14 @@ async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::erro
     Ok(req)
 }
 
-async fn map_response(res: Response) -> Result<web_sys::Response, Error> {
+async fn map_response(res: Response) -> Result<web_sys::Response, JsError> {
     let (parts, body) = res.into_parts();
-    let body = body.into_bytes().await.unwrap();
-    let mut bytes = body.to_vec();
+    let body = body
+        .into_bytes()
+        .await
+        .map_err(|err| JsError::new(&err.to_string()))?;
 
+    let mut bytes = body.to_vec();
     let mut init = ResponseInit::new();
     init.status(parts.status.as_u16());
 
@@ -113,26 +116,30 @@ async fn map_response(res: Response) -> Result<web_sys::Response, Error> {
         map.insert(name, values);
     }
 
-    let headers = serde_wasm_bindgen::to_value(&map)
-        .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
+    let headers = serde_wasm_bindgen::to_value(&map)?;
     init.headers(&headers);
 
-    let res =
-        web_sys::Response::new_with_opt_u8_array(Some(&mut bytes)).map_err(js_value_to_error)?;
+    let res = web_sys::Response::new_with_opt_u8_array_and_init(Some(&mut bytes), &init)
+        .map_err(map_js_error("failed to create response"))?;
 
     Ok(res)
 }
 
-// fn get_current_dir() -> std::path::PathBuf {
-//     let mut current_dir = std::env::current_exe().expect("failed to get current directory");
-//     current_dir.pop();
-//     current_dir
-// }
+fn map_js_error(details: impl Into<String>) -> impl FnOnce(JsValue) -> JsError {
+    fn js_error(details: &str, js_error: JsValue) -> JsError {
+        if js_error.is_string() {
+            return JsError::new(&js_error.as_string().unwrap());
+        }
 
-fn js_value_to_error(js_value: JsValue) -> Error {
-    let Some(str) = js_value.as_string() else {
-        return std::io::Error::new(std::io::ErrorKind::Other, "wasm error").into();
-    };
+        let error = serde_wasm_bindgen::from_value::<String>(js_error)
+            .expect("failed to convert js to string");
+        let message = format!("{details}, {error}");
+        JsError::new(&message)
+    }
 
-    std::io::Error::new(std::io::ErrorKind::Other, str).into()
+    let details = details.into();
+    move |err| {
+        let s = details.as_str();
+        js_error(s, err)
+    }
 }
