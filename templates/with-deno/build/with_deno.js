@@ -516,6 +516,14 @@ const imports = {
             getInt32Memory0()[arg0 / 4 + 1] = len0;
             getInt32Memory0()[arg0 / 4 + 0] = ptr0;
         },
+        __wbindgen_is_string: function(arg0) {
+            const ret = typeof(getObject(arg0)) === 'string';
+            return ret;
+        },
+        __wbg_entries_907d97034b6bdd85: function(arg0) {
+            const ret = getObject(arg0).entries();
+            return addHeapObject(ret);
+        },
         __wbg_String_88810dfeb4021902: function(arg0, arg1) {
             const ret = String(getObject(arg1));
             const ptr0 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
@@ -679,10 +687,6 @@ const imports = {
                 return true;
             }
             const ret = false;
-            return ret;
-        },
-        __wbindgen_is_string: function(arg0) {
-            const ret = typeof(getObject(arg0)) === 'string';
             return ret;
         },
         __wbg_error_71d6845bf00a930f: function(arg0, arg1) {
@@ -867,9 +871,6 @@ const imports = {
         __wbg_info_5566be377f5b52ae: function(arg0, arg1, arg2, arg3) {
             console.info(getObject(arg0), getObject(arg1), getObject(arg2), getObject(arg3));
         },
-        __wbg_log_7bb108d119bafbc1: function(arg0) {
-            console.log(getObject(arg0));
-        },
         __wbg_log_7b690f184ae4519b: function(arg0, arg1, arg2, arg3) {
             console.log(getObject(arg0), getObject(arg1), getObject(arg2), getObject(arg3));
         },
@@ -880,8 +881,8 @@ const imports = {
             const ret = getObject(arg0).length;
             return ret;
         },
-        __wbg_newwithoptu8array_feefc1fb34eca018: function() { return handleError(function (arg0, arg1) {
-            const ret = new Response(arg0 === 0 ? undefined : getArrayU8FromWasm0(arg0, arg1));
+        __wbg_newwithoptu8arrayandinit_a2ac6fcf33b4f23f: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = new Response(arg0 === 0 ? undefined : getArrayU8FromWasm0(arg0, arg1), getObject(arg2));
             return addHeapObject(ret);
         }, arguments) },
         __wbg_addEventListener_cf5b03cd29763277: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
@@ -1144,12 +1145,12 @@ const imports = {
             const ret = wasm.memory;
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper13311: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1507, __wbg_adapter_38);
+        __wbindgen_closure_wrapper13343: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1478, __wbg_adapter_38);
             return addHeapObject(ret);
         },
-        __wbindgen_closure_wrapper13507: function(arg0, arg1, arg2) {
-            const ret = makeMutClosure(arg0, arg1, 1523, __wbg_adapter_41);
+        __wbindgen_closure_wrapper13539: function(arg0, arg1, arg2) {
+            const ret = makeMutClosure(arg0, arg1, 1494, __wbg_adapter_41);
             return addHeapObject(ret);
         },
     },

@@ -19,7 +19,7 @@ pub fn entry() {
 #[wasm_bindgen]
 pub async fn handler(web_req: web_sys::Request) -> Result<web_sys::Response, JsValue> {
     let service = HASHIRA.clone();
-    let web_res = hashira_wasm::core::handle_request(service, web_req).await;
+    let web_res = hashira_wasm::core::handle_request(service, web_req).await?;
     Ok(web_res)
 }
 
