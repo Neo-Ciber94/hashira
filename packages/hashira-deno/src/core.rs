@@ -3,7 +3,7 @@ use std::{collections::HashMap, str::FromStr};
 use futures::StreamExt;
 use hashira::{
     app::AppService,
-    error::{Error, ResponseError},
+    error::Error,
     web::{
         header::{HeaderName, HeaderValue},
         method::Method,
@@ -11,7 +11,6 @@ use hashira::{
         Body, Request, Response,
     },
 };
-use js_sys::Object;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::{console, ResponseInit};
 
@@ -27,11 +26,19 @@ use web_sys::{console, ResponseInit};
 // }
 
 /// Handle a request.
-// pub async fn handle_request(web_req: web_sys::Request) -> web_sys::Response {
-//     todo!()
-// }
+pub async fn handle_request(service: AppService, web_req: web_sys::Request) -> web_sys::Response {
+    let req = crate::core::map_request(web_req)
+        .await
+        .expect("failed to map request");
+    let res = service.handle(req).await;
+    let web_res = crate::core::map_response(res)
+        .await
+        .expect("failed to map response");
 
-pub async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::error::Error> {
+    web_res
+}
+
+async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::error::Error> {
     let method = Method::from_str(&web_req.method()).expect("invalid method");
     let uri = Uri::from_str(&web_req.url()).expect("invalid uri");
 
@@ -88,7 +95,7 @@ pub async fn map_request(web_req: web_sys::Request) -> Result<Request, hashira::
     Ok(req)
 }
 
-pub async fn map_response(mut res: Response) -> Result<web_sys::Response, Error> {
+async fn map_response(res: Response) -> Result<web_sys::Response, Error> {
     let (parts, body) = res.into_parts();
     let body = body.into_bytes().await.unwrap();
     let mut bytes = body.to_vec();

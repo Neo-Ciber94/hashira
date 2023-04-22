@@ -11,13 +11,6 @@ pub async fn handler(web_req: web_sys::Request) -> Result<web_sys::Response, JsV
     console_error_panic_hook::set_once();
 
     let service = HASHIRA.clone();
-    let req = hashira_deno::core::map_request(web_req)
-        .await
-        .expect("failed to map request");
-    let res = service.handle(req).await;
-    let web_res = hashira_deno::core::map_response(res)
-        .await
-        .expect("failed to map response");
-
+    let web_res = hashira_deno::core::handle_request(service, web_req).await;
     Ok(web_res)
 }

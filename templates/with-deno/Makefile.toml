@@ -1,6 +1,3 @@
-[tasks.install-wasm-bindgen]
-install_crate = { crate_name = "wasm-bindgen-cli", binary = "wasm-bindgen", test_arg = "--help" }
-
 [tasks.install-deno]
 install_crate = { crate_name = "deno", binary = "deno", test_arg = "--help" }
 
@@ -10,18 +7,14 @@ deno install --allow-read --allow-write --allow-env --allow-net --allow-run --no
 '''
 ignore_errors = true
 
-[tasks.add-wasm32-target]
-command = "rustup"
-args = ["target", "add", "wasm32-unknown-unknown"]
-
 [tasks.cargo-build]
 command = "cargo"
-args = ["build", "--release", "--target", "wasm32-unknown-unknown"]
+args = ["build", "--target", "wasm32-unknown-unknown"]
 
 [tasks.wasm-bindgen]
 command = "wasm-bindgen"
 args = [
-    "target/wasm32-unknown-unknown/release/with_deno.wasm",
+    "target/wasm32-unknown-unknown/debug/with_deno.wasm",
     "--target",
     "deno",
     "--out-dir",
@@ -30,8 +23,6 @@ args = [
 
 [tasks.build-wasm]
 dependencies = [
-    "add-wasm32-target",
-    "install-wasm-bindgen",
     "install-deno",
     "install-deployctl",
     "cargo-build",

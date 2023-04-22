@@ -1,7 +1,6 @@
 pub mod core;
 mod js_bindings;
 use hashira::{adapter::Adapter, app::AppService};
-use std::net::SocketAddr;
 
 /// An adapter for `deno`.
 pub struct HashiraDeno;
@@ -11,8 +10,6 @@ impl Adapter for HashiraDeno {
     /// Starts the server.
     async fn serve(self, app: AppService) -> Result<(), hashira::error::Error> {
         todo!();
-
-        Ok(())
     }
 }
 
