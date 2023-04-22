@@ -12,11 +12,12 @@ pub use {
     on_client_init::*, on_handle::*, on_server_error::*, on_server_init::*,
 };
 
-use std::{fmt::Display, sync::Arc};
+use std::{fmt::Display};
+
 /// Represents a collection of event hooks.
 #[derive(Default)]
 pub struct Hooks {
-    pub(crate) on_handle_hooks: Vec<Arc<dyn OnHandle + Send + Sync>>,
+    pub(crate) on_handle_hooks: Vec<Box<dyn OnHandle + Send + Sync>>,
     pub(crate) on_before_render_hooks: Vec<Box<dyn OnBeforeRender + Send + Sync>>,
     pub(crate) on_after_render_hooks: Vec<Box<dyn OnAfterRender + Send + Sync>>,
     pub(crate) on_chunk_render_hooks: Vec<Box<dyn OnChunkRender + Send + Sync>>,
@@ -35,9 +36,9 @@ impl Hooks {
     /// Adds a hook to be executed before handling a request.
     pub fn on_handle<F>(mut self, f: F) -> Self
     where
-        F: OnHandle + Send + Sync + 'static,
+        F: OnHandle + Clone + Send + Sync + 'static,
     {
-        self.on_handle_hooks.push(Arc::new(f));
+        self.on_handle_hooks.push(Box::new(f));
         self
     }
 

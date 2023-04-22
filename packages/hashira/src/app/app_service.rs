@@ -102,7 +102,7 @@ impl AppService {
             }) as Next;
 
             let handler = hooks.iter().fold(next, move |cur, next_handler| {
-                let next_handler = next_handler.clone();
+                let next_handler = next_handler.clone_handler();
                 Box::new(move |req| {
                     Box::pin(async move {
                         let fut = next_handler.on_handle(req, cur);
