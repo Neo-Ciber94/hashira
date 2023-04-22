@@ -21,7 +21,7 @@ set_envs(envs);
 async function handleRequest(request: Request): Promise<Response> {
   try {
     const { pathname } = new URL(request.url);
-    if (pathname.startsWith(STATIC_PATH)) {
+    if (pathname.startsWith(STATIC_PATH) || pathname === "/favicon.ico") {
       return await serveStaticFile(request);
     }
 
@@ -33,7 +33,9 @@ async function handleRequest(request: Request): Promise<Response> {
 
 async function serveStaticFile(request: Request): Promise<Response> {
   const { pathname } = new URL(request.url);
-  const path = pathname.slice(STATIC_PATH.length);
+  const path = pathname.startsWith(STATIC_PATH)
+    ? pathname.slice(STATIC_PATH.length)
+    : pathname;
   const ext = denoPath.extname(pathname);
   const filePath = `${PUBLIC_DIR}/${path}`;
 
