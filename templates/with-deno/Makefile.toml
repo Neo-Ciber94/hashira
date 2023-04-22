@@ -1,10 +1,5 @@
-[tasks.install-deployctl]
-install_script = '''
-deno install --allow-read --allow-write --allow-env --allow-net --allow-run --no-check --force https://deno.land/x/deploy/deployctl.ts
-'''
 
-ignore_errors = true
-
+# Build wasm server
 [tasks.cargo-build]
 command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown"]
@@ -22,6 +17,7 @@ args = [
 [tasks.build-wasm]
 dependencies = ["cargo-build", "wasm-bindgen"]
 
+# Build wasm client
 [tasks.cargo-build-client]
 command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown", "--features", "client"]
@@ -43,6 +39,26 @@ dependencies = ["cargo-build-client", "wasm-bindgen-client"]
 [tasks.build]
 dependencies = ["build-wasm", "build-wasm-client"]
 
+
+# Start deno server
+[tasks.run-with-deno]
+command = "deno"
+args = ["run", "--allow-read", "--allow-net", "--allow-env", "src/index.ts"]
+
+[tasks.run-with-deno.env]
+HASHIRA_WASM_LIB = "with_deno"
+
+[tasks.run]
+dependencies = ["build", "run-with-deno"]
+
+
+# Deploy to deno deploy
+
+[tasks.install-deployctl]
+install_script = '''
+deno install --allow-read --allow-write --allow-env --allow-net --allow-run --no-check --force https://deno.land/x/deploy/deployctl.ts
+'''
+
 [tasks.run-deployctl]
 command = "deployctl"
 args = [
@@ -55,20 +71,3 @@ args = [
 
 [tasks.deploy]
 dependencies = ["build", "install-deployctl", "run-deployctl"]
-
-[tasks.run-with-deno]
-env = { "HASHIRA_WASM_LIB" = "with_deno" }
-command = "deno"
-args = ["run", "--allow-read", "--allow-net", "--allow-env", "src/index.ts"]
-
-[tasks.run]
-dependencies = ["build", "run-with-deno"]
-
-[tasks.test-rust]
-command = "cargo"
-args = ["test", "--target", "wasm32-unknown-unknown"]
-
-[tasks.test-integration]
-dependencies = ["build-wasm"]
-command = "deno"
-args = ["test", "--allow-read", "--allow-net", "tests/integration.ts"]

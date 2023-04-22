@@ -1,5 +1,4 @@
 mod components;
-mod deno_sys;
 mod server;
 
 use crate::components::{root_layout, Counter};
