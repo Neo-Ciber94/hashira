@@ -84,29 +84,6 @@ impl RenderContext {
     }
 }
 
-mod util {
-    use futures::Future;
-    use yew::virtual_dom::VNode;
-
-    pub struct RenderLayoutFuture<Fut> {
-        pub fut: Fut,
-    }
-
-    impl<Fut> Future for RenderLayoutFuture<Fut>
-    where
-        Fut: Future<Output = VNode>,
-    {
-        type Output = VNode;
-
-        fn poll(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Self::Output> {
-            todo!()
-        }
-    }
-}
-
 impl RenderContext {
     /// Returns a `404` error.
     pub fn not_found(self) -> Result<Response, Error> {
@@ -356,7 +333,7 @@ impl RenderContext {
                 let layout_ctx = LayoutContext::new(request_context, head);
 
                 //let node = render_layout(layout_ctx).await;
-                let node = util::RenderLayoutFuture { fut:  render_layout(layout_ctx) }.await;
+                let node = render_layout(layout_ctx).await;
                 let fragile = fragile::Fragile::new(node);
 
                 move || {

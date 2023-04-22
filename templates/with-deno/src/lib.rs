@@ -84,7 +84,6 @@ where
 #[cfg(feature = "client")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
-    wasm_logger::init(wasm_logger::Config::default());
     log::debug!("Hydrating app...");
     let service = hashira::<App>();
     hashira::client::mount::<App>(service);

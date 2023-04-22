@@ -370,7 +370,7 @@ where
         let layout = layout.unwrap_or_else(|| {
             // Pass the default layout
             let render_layout =
-                |ctx| Box::pin(crate::components::root_layout(ctx)) as BoxFuture<yew::Html>;
+                |ctx| Box::pin(crate::components::root_layout(ctx)) as BoxedFuture<yew::Html>;
 
             Arc::new(render_layout)
         });

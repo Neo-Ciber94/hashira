@@ -8,7 +8,7 @@ pub struct HashiraDeno;
 #[hashira::async_trait]
 impl Adapter for HashiraDeno {
     /// Starts the server.
-    async fn serve(self, app: AppService) -> Result<(), hashira::error::Error> {
+    async fn serve(self, _app: AppService) -> Result<(), hashira::error::Error> {
         todo!();
     }
 }

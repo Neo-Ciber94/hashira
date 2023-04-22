@@ -1,5 +1,3 @@
-
-
 [tasks.install-deployctl]
 install_script = '''
 deno install --allow-read --allow-write --allow-env --allow-net --allow-run --no-check --force https://deno.land/x/deploy/deployctl.ts
@@ -30,7 +28,6 @@ command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown", "--features", "client"]
 
 [tasks.wasm-bindgen-client]
-env = { "HASHIRA_WASM_LIB" = "with_deno.wasm" }
 command = "wasm-bindgen"
 args = [
     "../../target/wasm32-unknown-unknown/debug/with_deno.wasm",
@@ -38,7 +35,7 @@ args = [
     "web",
     "--out-dir",
     "public/",
-    "--no-typescript"
+    "--no-typescript",
 ]
 
 [tasks.build-wasm-client]
@@ -58,6 +55,7 @@ args = [
 ]
 
 [tasks.run-with-deno]
+env = { "HASHIRA_WASM_LIB" = "with_deno.wasm" }
 command = "deno"
 args = ["run", "--allow-read", "--allow-net", "--allow-env", "src/index.ts"]
 

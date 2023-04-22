@@ -16,7 +16,6 @@ use bytes::Bytes;
 use futures::{stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 use std::sync::Arc;
-use yew::LocalServerRenderer;
 use yew::{
     function_component,
     html::{ChildrenProps, ChildrenRenderer},
