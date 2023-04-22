@@ -147,9 +147,9 @@ where
     }
 
     /// Adds a route handler.
-    //#[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
+    #[cfg_attr(client="client", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
-        //#[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(client = "client"))]
         {
             let path = route.path().to_owned(); // To please the borrow checker
             self.server_router.insert(&path, route).expect("failed to add route");
@@ -162,7 +162,7 @@ where
     pub fn nest(mut self, base_path: &str, scope: AppNested<BASE>) -> Self {
         crate::routing::assert_valid_route(base_path).expect("invalid base path");
 
-        //#[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             for (sub, route) in scope.server_router {
                 let path = if sub == "/" {
@@ -189,7 +189,7 @@ where
     }
 
     /// Adds a page for the given route.
-    //#[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(feature = "client", allow(unused_variables))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -198,30 +198,25 @@ where
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
         self.add_component::<COMP>(path);
-        self.route(Route::get(path, move |ctx| {
-            let head = super::page_head::PageHead::new();
-            let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-            let render_ctx = RenderContext::new(ctx, head, render_layout);
-            let fut = handler(render_ctx);
-            async { fut.await }
-        }))
+
+        #[cfg(not(feature = "client"))]
+        {
+            self.route(Route::get(path, move |ctx| {
+                let head = super::page_head::PageHead::new();
+                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                let render_ctx = RenderContext::new(ctx, head, render_layout);
+                let fut = handler(render_ctx);
+                async { fut.await }
+            }))
+        }
+
+        // We don't add pages in the client
+        #[cfg(feature = "client")]
+        self
     }
 
-    /// Adds a page for the given route.
-    //#[cfg(target_arch = "wasm32")]
-    //pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
-    //where
-    //    COMP: PageComponent,
-    //    COMP::Properties: DeserializeOwned,
-    //    H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-    //    Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
-    //{
-    //    self.add_component::<COMP>(path);
-    //    self
-    //}
-
     /// Adds an error page for teh given status code.
-    #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
+    #[cfg_attr(feature="client", allow(unused_variables))]
     pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -229,7 +224,7 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        //#[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
 
@@ -250,7 +245,7 @@ where
     }
 
     /// Register a page to handle any error.
-    #[cfg_attr(target_arch="wasm32", allow(unused_variables))]
+    #[cfg_attr(feature="client", allow(unused_variables))]
     pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -258,7 +253,7 @@ where
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        //#[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
 
@@ -322,25 +317,25 @@ where
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(not(target_arch="wasm32"))]
+    #[cfg(not(feature="wasm32"))]
     pub fn server_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(target_arch="wasm32")]
+    #[cfg(feature="wasm32")]
     pub fn server_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(target_arch="wasm32")]
+    #[cfg(feature="wasm32")]
     pub fn client_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(not(target_arch="wasm32"))]
+    #[cfg(not(feature="wasm32"))]
     pub fn client_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }

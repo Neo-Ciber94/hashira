@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "client", allow(dead_code))]
+
 /// Name of the environment variable with the host where the app is running.
 pub(crate) const HASHIRA_HOST: &str = "HASHIRA_HOST";
 

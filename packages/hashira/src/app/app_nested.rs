@@ -11,7 +11,7 @@ use std::{collections::HashMap, marker::PhantomData};
 #[derive(Default)]
 pub struct AppNested<BASE> {
     // Inner server routes
-    //#[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "client"))]
     pub(crate) server_router: HashMap<String, Route>,
 
     // Inner page router
@@ -25,7 +25,7 @@ impl<BASE> AppNested<BASE> {
     /// Creates a new nested route.
     pub fn new() -> Self {
         AppNested {
-            //#[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(feature = "client"))]
             server_router: HashMap::new(),
             page_router: HashMap::new(),
             _marker: PhantomData,
@@ -33,9 +33,9 @@ impl<BASE> AppNested<BASE> {
     }
 
     /// Adds a route handler.
-    #[cfg_attr(target_arch="wasm32", allow(unused_mut, unused_variables))]
+    #[cfg_attr(feature="client", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
-        //#[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "client"))]
         {
             let path = route.path().to_owned(); // To please the borrow checker
             self.server_router.insert(path, route);
@@ -45,7 +45,7 @@ impl<BASE> AppNested<BASE> {
     }
 
     /// Adds a page for the given route.
-    //#[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(feature = "client", allow(unused_variables))]
     pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
     where
         COMP: PageComponent,
@@ -53,32 +53,26 @@ impl<BASE> AppNested<BASE> {
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
     {
-        use super::page_head::PageHead;
-        use crate::app::RenderLayout;
-
         self.add_component::<COMP>(path);
 
-        self.route(Route::get(path, move |ctx| {
-            let head = PageHead::new();
-            let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-            let render_ctx = RenderContext::new(ctx, head, render_layout);
-            let fut = handler(render_ctx);
-            async { fut.await }
-        }))
-    }
+        #[cfg(not(feature = "client"))]
+        {
+            use super::page_head::PageHead;
+            use crate::app::RenderLayout;
 
-    /// Adds a page for the given route.
-    // #[cfg(target_arch = "wasm32")]
-    // pub fn page<COMP, H, Fut>(mut self, path: &str, _: H) -> Self
-    // where
-    //     COMP: PageComponent,
-    //     COMP::Properties: DeserializeOwned,
-    //     H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-    //     Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
-    // {
-    //     self.add_component::<COMP>(path);
-    //     self
-    // }
+            self.route(Route::get(path, move |ctx| {
+                let head = PageHead::new();
+                let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
+                let render_ctx = RenderContext::new(ctx, head, render_layout);
+                let fut = handler(render_ctx);
+                async { fut.await }
+            }))
+        }
+
+        // In the client we don't add pages, just the component
+        #[cfg(feature = "client")]
+        self
+    }
 
     fn add_component<COMP>(&mut self, path: &str)
     where

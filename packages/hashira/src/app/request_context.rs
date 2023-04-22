@@ -3,7 +3,7 @@ pub use crate::error::ResponseError;
 use crate::{routing::Params, web::Request};
 use std::sync::Arc;
 
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+#[cfg_attr(feature = "client", allow(dead_code))]
 pub(crate) struct RequestContextInner {
     params: Params,
     app_data: Arc<AppData>,
@@ -14,13 +14,13 @@ pub(crate) struct RequestContextInner {
 }
 
 /// Contains information about the current request.
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+#[cfg_attr(feature = "client", allow(dead_code))]
 #[derive(Clone)]
 pub struct RequestContext {
     pub(crate) inner: Arc<RequestContextInner>,
 }
 
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+#[cfg_attr(feature = "client", allow(dead_code))]
 impl RequestContext {
     pub fn new(
         request: Arc<Request>,

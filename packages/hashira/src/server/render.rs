@@ -283,7 +283,7 @@ where
 
     let (tx, rx) = tokio::sync::oneshot::channel::<String>();
 
-    // FIXME: Not sure if may be a downgrade to block the thread.
+    // FIXME: We block to keep this `Send` but is not the optimal solution
     futures::executor::block_on(async move {
         let renderer = ServerRenderer::<Dummy>::with_props(move || ChildrenProps {
             children: ChildrenRenderer::new(vec![f()]),
