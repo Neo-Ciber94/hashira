@@ -1,7 +1,7 @@
-use axum::{routing::get_service, Router};
+use axum::Router;
 use hashira::adapter::Adapter;
 use hashira_axum::HashiraAxum;
-use tower_http::services::ServeFile;
+use tower_http::services::ServeDir;
 use with_axum_client::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
@@ -16,8 +16,8 @@ where
 }
 
 fn axum() -> Router {
-    Router::new().nest_service(
-        "/favicon.icon",
-        get_service(ServeFile::new("./public/favicon.ico")),
+    Router::new().route(
+        "/favicon.ico",
+        axum::routing::get_service(ServeDir::new("./public")),
     )
 }
