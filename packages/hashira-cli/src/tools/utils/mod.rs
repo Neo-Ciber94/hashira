@@ -187,6 +187,25 @@ mod test {
         assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`");
     }
 
+    #[tokio::test]
+    async fn test_download_and_decompress_zip() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dir_path = temp_dir.path().to_path_buf();
+
+        let downloaded = super::download_and_extract(
+            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.zip",
+            "file.txt",
+            dir_path,
+        )
+        .await
+        .unwrap();
+
+        assert!(downloaded.ends_with("file.txt"));
+
+        let contents = tokio::fs::read_to_string(&downloaded).await.unwrap();
+        assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`");
+    }
+
     async fn create_temp_file() -> tempfile::NamedTempFile {
         let path = Path::new("temp/test");
 
