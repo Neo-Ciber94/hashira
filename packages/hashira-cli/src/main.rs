@@ -32,17 +32,30 @@ fn setup_logger(log_level: LogLevel) -> anyhow::Result<()> {
         }
     };
 
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(env_filter))
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(true)
-                .with_level(true)
-                .without_time()
-                .compact(),
-        )
-        .try_init()
-        .context("error initializing logging")?;
+    if log_level == LogLevel::Debug {
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::new(env_filter))
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_target(true)
+                    .with_level(true)
+                    .compact(),
+            )
+            .try_init()
+            .context("error initializing logging")?
+    } else {
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::new(env_filter))
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_target(true)
+                    .with_level(true)
+                    .without_time()
+                    .compact(),
+            )
+            .try_init()
+            .context("error initializing logging")?
+    };
 
     Ok(())
 }

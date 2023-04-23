@@ -15,3 +15,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 fn main() {
     // Here any additional logic to run on the client
 }
+

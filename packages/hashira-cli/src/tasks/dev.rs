@@ -79,7 +79,7 @@ impl DevTask {
             tokio::spawn({
                 async move {
                     tokio::signal::ctrl_c().await.ok();
-                    tracing::info!("Exiting...");
+                    tracing::info!("👋 Exiting...");
                     let _ = tx_shutdown.send(());
                     tx_notify
                         .send(())
@@ -126,7 +126,7 @@ impl DevTask {
     }
 
     fn start_watcher(&self, build_done_tx: Sender<()>) -> anyhow::Result<()> {
-        tracing::info!("Starting application watch mode");
+        tracing::info!("👀 Starting application in watch mode");
 
         let build_options = &self.options;
         let interrupt_signal = self.interrupt_signal.clone();
@@ -169,7 +169,7 @@ impl DevTask {
                 // Rerun
                 let opts = opts.clone();
 
-                tracing::info!("Restarting dev...");
+                tracing::info!("🔃 Restarting...");
                 tokio::spawn(build_and_run(opts, events, false));
             }
         });
@@ -183,7 +183,7 @@ impl DevTask {
             .with_context(|| "failed to start watcher")?;
 
         let watch_path = Path::new(".").canonicalize()?;
-        tracing::info!("Starting watcher at: {}", watch_path.display());
+        tracing::info!("👀 Watching: {}", watch_path.display());
 
         debouncer
             .watcher()
@@ -223,10 +223,7 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
     let mut ignore_paths = opts.ignore.clone();
     ignore_paths.push(PathBuf::from(".git"));
     ignore_paths.push(PathBuf::from(".gitignore"));
-
-    if let Some(target_dir) = target_dir {
-        ignore_paths.push(target_dir);
-    }
+    ignore_paths.extend(target_dir);
 
     // Remove any path that is within the paths to ignore
     let mut idx = 0;
@@ -292,7 +289,7 @@ async fn build_and_run(
 
     let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
     if !paths.is_empty() {
-        tracing::info!("change detected on paths: {:?}", paths);
+        tracing::info!("Change detected on: {:?}", paths);
     }
 
     // Build task

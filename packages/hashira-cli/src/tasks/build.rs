@@ -34,43 +34,34 @@ impl BuildTask {
 
     /// Runs the build operation
     pub async fn run(self) -> anyhow::Result<()> {
-        tracing::info!("Build started");
-
         self.build_server().await?;
         self.build_wasm().await?;
-
-        tracing::info!("✅ Build done");
         Ok(())
     }
 
     /// Builds the server
     pub async fn build_server(&self) -> anyhow::Result<()> {
-        tracing::info!("Building server...");
+        tracing::info!("📦 Building server...");
         self.cargo_build().await?;
 
-        tracing::info!("✅ Build server done!");
+        tracing::info!("✅ Server build done!");
         Ok(())
     }
 
     /// Builds the wasm bundle
     pub async fn build_wasm(&self) -> anyhow::Result<()> {
-        tracing::info!("Building wasm...");
+        // Cleanup the public dir
         self.prepare_public_dir().await?;
 
-        tracing::info!("Running cargo build --target wasm32-unknown-unknown...");
+        // Start Wasm build
+        tracing::info!("📦 Building Wasm...");
+        
         self.cargo_build_wasm().await?;
-
-        tracing::info!("Generating wasm bindings...");
         self.wasm_bindgen().await?;
-
-        // If the optimization flag is set or in release mode
-        self.optimize_wasm().await?;
-
-        tracing::info!("Copying files to public directory...");
+        self.optimize_wasm().await?; // If the optimization flag is set or in release mode
         self.include_files().await?;
 
-        tracing::info!("✅ Build wasm done!");
-
+        tracing::info!("✅ Wasm build done!");
         Ok(())
     }
 
@@ -79,7 +70,7 @@ impl BuildTask {
         let mut public_dir = opts.profile_target_dir()?;
 
         public_dir.push(&opts.public_dir);
-        tracing::info!("Preparing public directory: {}", public_dir.display());
+        tracing::info!("🚧 Preparing public directory: {}", public_dir.display());
 
         if public_dir.exists() {
             tokio::fs::remove_dir_all(&public_dir)
@@ -95,6 +86,8 @@ impl BuildTask {
     }
 
     async fn cargo_build_wasm(&self) -> anyhow::Result<()> {
+        tracing::debug!("Running cargo build --target wasm32-unknown-unknown...");
+
         let spawn = self.spawn_cargo_build_wasm()?;
         wait_interruptible(spawn, self.interrupt_signal.clone())
             .await
@@ -103,6 +96,8 @@ impl BuildTask {
     }
 
     async fn wasm_bindgen(&self) -> anyhow::Result<()> {
+        tracing::debug!("Generating wasm bindings...");
+
         let spawn = self.spawn_wasm_bindgen()?;
         wait_interruptible(spawn, self.interrupt_signal.clone())
             .await
@@ -119,6 +114,8 @@ impl BuildTask {
     }
 
     async fn include_files(&self) -> anyhow::Result<()> {
+        tracing::info!("📂 Copying files to public directory...");
+
         let opts = &self.options;
 
         let include_files = if opts.include.is_empty() {
@@ -381,7 +378,7 @@ async fn process_files(
         if files.is_empty() {
             if !pipelines.is_empty() {
                 let pipeline_names = pipelines.iter().map(|p| p.name()).collect::<Vec<_>>();
-                tracing::info!(
+                tracing::debug!(
                     "No more files to process, the next pipelines were not run: {}",
                     pipeline_names.join(", ")
                 );

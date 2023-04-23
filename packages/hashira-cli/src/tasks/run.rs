@@ -87,6 +87,7 @@ impl RunTask {
     }
 
     fn spawn_server_exec(&self) -> anyhow::Result<Child> {
+        tracing::info!("⚡ Executing...");
         let exec_path = self
             .get_executable_path()
             .context("Failed to get executable path")?;
