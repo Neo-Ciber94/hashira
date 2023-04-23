@@ -1,6 +1,3 @@
-mod decompress;
-mod tool_cache;
-
 use anyhow::Context;
 use cap_directories::{ambient_authority, ProjectDirs};
 use cap_std::fs::Dir;
@@ -98,7 +95,7 @@ pub async fn download_and_extract(
 
     // Download and extract
     let downloaded = download_to_dir(url, &dest_dir).await?;
-    let Some(decompressor) = super::utils::decompress::Decompressor::get(&downloaded)? else {
+    let Some(decompressor) = crate::tools::decompress::Decompressor::get(&downloaded)? else {
         anyhow::bail!("unable to find decompressor for: {}", downloaded.display());
     };
 

@@ -12,6 +12,10 @@ impl Tool for WasmBindgen {
         "0.2.84"
     }
 
+    async fn test_version(&self) -> anyhow::Result<String> {
+        todo!()
+    }
+
     async fn get(opts: InstallOptions) -> anyhow::Result<Self> {
         todo!()
     }
