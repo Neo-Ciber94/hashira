@@ -1,4 +1,4 @@
-use super::{Tool, InstallOptions};
+use super::{InstallOptions, Tool};
 
 pub struct WasmBindgen;
 
@@ -6,6 +6,14 @@ pub struct WasmBindgen;
 impl Tool for WasmBindgen {
     fn name(&self) -> &'static str {
         "wasm-bingen"
+    }
+
+    fn bin_name(&self) -> &'static str {
+        if cfg!(target_os = "windows") {
+            "wasm-bingen.exe"
+        } else {
+            "wasm-bingen"
+        }
     }
 
     fn version(&self) -> &'static str {

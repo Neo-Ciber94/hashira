@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 pub(crate) mod decompress;
 pub(crate) mod utils;
+pub(crate) mod global_cache;
 
 // Tools
 mod wasm_bingen;
@@ -34,6 +35,9 @@ pub struct InstallOptions {
 pub trait Tool: Sized {
     /// Returns the name of this tool.
     fn name(&self) -> &'static str;
+
+    /// Name of the executable binary of this tool.
+    fn bin_name(&self) -> &'static str;
 
     /// Returns the version of this tool.
     fn version(&self) -> &'static str;

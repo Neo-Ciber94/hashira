@@ -95,8 +95,10 @@ pub async fn download_and_extract(
 
     // Download and extract
     let downloaded = download_to_dir(url, &dest_dir).await?;
-    let Some(decompressor) = crate::tools::decompress::Decompressor::get(&downloaded)? else {
-        anyhow::bail!("unable to find decompressor for: {}", downloaded.display());
+    let temp_path = tempfile::TempPath::from_path(downloaded); // download to a temporary file
+
+    let Some(decompressor) = crate::tools::decompress::Decompressor::get(&temp_path)? else {
+        anyhow::bail!("unable to find decompressor for: {}", temp_path.display());
     };
 
     let decompressed = decompressor.extract_file(file_name, dest_dir)?;
@@ -106,6 +108,8 @@ pub async fn download_and_extract(
 #[cfg(test)]
 mod test {
     use std::path::{Path, PathBuf};
+
+    use crate::tools::utils::cache_dir;
 
     #[tokio::test]
     async fn test_download() {
@@ -201,6 +205,41 @@ mod test {
 
         let contents = tokio::fs::read_to_string(&downloaded).await.unwrap();
         assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`");
+    }
+
+    #[tokio::test]
+    async fn test_download_to_cache_dir() {
+        let cache_dir = cache_dir().unwrap();
+        let dir = cache_dir.canonicalize(".").unwrap();
+        let temp_dir = tempfile::tempdir_in(dir).unwrap();
+
+        let downloaded = super::download_to_dir(
+            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.txt",
+            temp_dir.path(),
+        )
+        .await
+        .unwrap();
+
+        let contents = std::fs::read_to_string(&downloaded).unwrap();
+        assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`")
+    }
+
+    #[tokio::test]
+    async fn test_download_and_extract_to_cache_dir() {
+        let cache_dir = cache_dir().unwrap();
+        let dir = cache_dir.canonicalize(".").unwrap();
+        let temp_dir = tempfile::tempdir_in(dir).unwrap();
+
+        let downloaded = super::download_and_extract(
+            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.tar.gz",
+            "file.txt",
+            temp_dir.path(),
+        )
+        .await
+        .unwrap();
+
+        let contents = std::fs::read_to_string(&downloaded).unwrap();
+        assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`")
     }
 
     async fn create_temp_file() -> tempfile::NamedTempFile {

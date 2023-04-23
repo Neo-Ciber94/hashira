@@ -3,71 +3,34 @@ use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 use once_cell::sync::Lazy;
 use thiserror::Error;
 
-use crate::tools::{InstallOptions, Installation, Tool};
-
-use super::cache_dir;
+use crate::tools::{utils::cache_dir, InstallOptions, Installation, Tool};
 
 static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(|| Default::default());
 
-#[derive(Debug, Error)]
-pub enum GetToolError {
-    #[error("{0} was not found in cache")]
-    NotFound(String),
+/// Cache for the tools.
+pub struct GlobalCache;
 
-    #[error(transparent)]
-    FailedDownload(Box<dyn std::error::Error + Send + Sync>),
-}
+impl GlobalCache {
+    /// Finds the given tool in the cache and return the path to it.
+    pub fn get(bin_name: &str) -> anyhow::Result<Option<PathBuf>> {
+        let mut cache = GLOBAL_CACHE.lock().unwrap();
 
-pub struct ToolCache;
-
-
-impl ToolCache {
-    pub async fn get(
-        name: &str,
-        version: &str,
-        download_url: &str,
-        installation: Installation,
-    ) -> anyhow::Result<PathBuf> {
-        match installation {
-            Installation::IfRequired => {
-                let mut cache = GLOBAL_CACHE.lock().unwrap();
-                if let Some(file) = cache.get(name).cloned() {
-                    return Ok(file);
-                };
-
-                todo!("Download file")
-            }
-            Installation::Force => todo!(),
-            Installation::NoInstall => {
-                let mut cache = GLOBAL_CACHE.lock().unwrap();
-                if let Some(file) = cache.get(name).cloned() {
-                    return Ok(file);
-                };
-
-                let file = get_from_cache(name, version)?;
-                let file = file.ok_or_else(|| GetToolError::NotFound(name.into()))?;
-                cache.insert(name.to_owned(), file.clone());
-                Ok(file)
-            }
+        if let Some(bin_path) = cache.get(bin_name).cloned() {
+            return Ok(Some(bin_path));
         }
+
+        let cache_dir = cache_dir()?;
+        if let Ok(tool_path) = cache_dir.canonicalize(bin_name) {
+            cache.insert(bin_name.to_owned(), tool_path.clone());
+            return Ok(Some(tool_path));
+        }
+
+        Ok(None)
     }
-}
 
-fn get_from_cache(name: &str, version: &str) -> anyhow::Result<Option<PathBuf>> {
-    let cache_dir = cache_dir()?;
-    let file_path = {
-        if cfg!(target_os = "windows") {
-            PathBuf::from(name).join(format!("{name}-{version}.exe"))
-        } else {
-            PathBuf::from(name).join(format!("{name}-{version}"))
-        }
-    };
-
-    match cache_dir.canonicalize(file_path) {
-        Ok(file) => Ok(Some(file)),
-        Err(err) => {
-            tracing::error!("failed to open file: {err}");
-            Ok(None)
-        }
+    pub async fn install(bin_name: &str, url: &str) -> anyhow::Result<PathBuf> {
+        let mut cache = GLOBAL_CACHE.lock().unwrap();
+        
+        todo!()
     }
 }
