@@ -1,12 +1,13 @@
 use anyhow::Context;
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use std::{collections::HashMap, path::PathBuf};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
 use super::{utils::cache_dir_path, Tool, Version};
 use crate::tools::utils::{cache_dir, download_and_extract};
 
+// A cache for all binaries path
 static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(Default::default);
 
 #[derive(Debug, PartialEq, Eq)]
@@ -67,7 +68,7 @@ impl GlobalCache {
         let mut cache = GLOBAL_CACHE.lock().await;
         let bin_name = T::binary_name();
 
-        let Some(bin_path) = which::which(&bin_name).ok() else {
+        let Some(bin_path) = which::which(bin_name).ok() else {
             return Err(GlobalCacheError::NotFound(bin_name.to_owned()));
         };
 

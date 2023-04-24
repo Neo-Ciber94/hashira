@@ -6,8 +6,6 @@ use std::{
     str::FromStr,
 };
 
-use self::utils::cache_dir;
-
 pub(crate) mod decompress;
 pub(crate) mod global_cache;
 pub(crate) mod utils;
@@ -81,9 +79,11 @@ pub trait ToolExt: Tool {
 }
 
 /// Test the version of the given binary without any checks if the path actually matches this binary name
-pub(crate) fn unchecked_test_version<T: Tool>(binary_path: impl AsRef<Path>) -> anyhow::Result<Version> {
+pub(crate) fn unchecked_test_version<T: Tool>(
+    binary_path: impl AsRef<Path>,
+) -> anyhow::Result<Version> {
     let binary_path = binary_path.as_ref();
-    
+
     anyhow::ensure!(
         binary_path.exists(),
         "binary could not be found: {}",
@@ -91,7 +91,7 @@ pub(crate) fn unchecked_test_version<T: Tool>(binary_path: impl AsRef<Path>) -> 
     );
 
     let version_args = T::test_version_args();
-    let output = Command::new(&binary_path).args(version_args).output()?;
+    let output = Command::new(binary_path).args(version_args).output()?;
 
     let version_text = String::from_utf8_lossy(&output.stdout);
     let version = T::parse_version(&version_text)?;
@@ -112,17 +112,7 @@ impl Version {
         Version { mayor, minor, path }
     }
 
-    pub fn mayor(&self) -> u32 {
-        self.mayor
-    }
-
-    pub fn minor(&self) -> u32 {
-        self.minor
-    }
-
-    pub fn path(&self) -> Option<u32> {
-        self.path
-    }
+    // FIXME: getters?
 }
 
 impl Display for Version {
