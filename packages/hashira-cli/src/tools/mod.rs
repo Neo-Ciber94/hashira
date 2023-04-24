@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(crate) mod decompress;
-pub(crate) mod utils;
 pub(crate) mod global_cache;
+pub(crate) mod utils;
 
 // Tools
 mod wasm_bingen;
@@ -14,15 +14,10 @@ pub enum Installation {
     #[default]
     IfRequired,
 
-    /// Install even is already installed
-    Force,
-
-    /// Not install and get from cache
-    NoInstall,
-
     /// Install this tool in the given path,
     /// useful for testing
-    ToPath(PathBuf),
+    #[allow(dead_code)]
+    Target(PathBuf),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -34,13 +29,13 @@ pub struct InstallOptions {
 #[async_trait::async_trait]
 pub trait Tool: Sized {
     /// Returns the name of this tool.
-    fn name(&self) -> &'static str;
+    fn name() -> &'static str;
 
     /// Name of the executable binary of this tool.
-    fn bin_name(&self) -> &'static str;
+    fn bin_name() -> &'static str;
 
     /// Returns the version of this tool.
-    fn version(&self) -> &'static str;
+    fn version() -> &'static str;
 
     /// Executes this tool and get the version.
     async fn test_version(&self) -> anyhow::Result<String>;
@@ -48,6 +43,6 @@ pub trait Tool: Sized {
     /// Install this tool if is not already installed and return the path to the executable.
     async fn get(opts: InstallOptions) -> anyhow::Result<Self>;
 
-    /// Execute this tool with the given arguments.
-    async fn exec(&self, args: Vec<String>) -> anyhow::Result<()>;
+    /// Returns the path to the executable.
+    fn bin(&self) -> &Path;
 }

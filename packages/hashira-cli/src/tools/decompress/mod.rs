@@ -95,6 +95,9 @@ pub enum Decompressor {
 
     /// A `zip` decompressor.
     Zip(Compressed),
+
+    /// No decompression just copies the files.
+    Copy(Compressed),
 }
 
 impl Decompressor {
@@ -113,11 +116,12 @@ impl Decompressor {
 
         let compressed = Compressed(path.to_path_buf());
         match path_str {
-            _ if path_str.ends_with("tar.gz") => Ok(Some(Decompressor::TarGz(compressed))),
-            _ if path_str.ends_with("zip") => Ok(Some(Decompressor::Zip(compressed))),
-            _ => {
+            _ if path_str.ends_with(".tar.gz") => Ok(Some(Decompressor::TarGz(compressed))),
+            _ if path_str.ends_with(".zip") => Ok(Some(Decompressor::Zip(compressed))),
+            _ if path_str.contains(".") => {
                 anyhow::bail!("no decompressor for: {}", path.display())
             }
+            _ => Ok(Some(Decompressor::Copy(compressed))),
         }
     }
 
@@ -133,6 +137,16 @@ impl Decompressor {
                 let mut reader = std::fs::File::open(f)?;
                 let file = decompress_zip(&mut reader, file_name, dest)?;
                 Ok(file)
+            }
+            Decompressor::Copy(Compressed(f)) => {
+                let dest_dir = dest.as_ref();
+                std::fs::create_dir_all(dest_dir)?;
+                let file_path = dest_dir.join(file_name);
+
+                let mut reader = std::fs::File::open(f)?;
+                let mut writer = std::fs::File::create(&file_path)?;
+                std::io::copy(&mut reader, &mut writer)?;
+                Ok(file_path.clone())
             }
         }
     }

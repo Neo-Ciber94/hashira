@@ -3,7 +3,11 @@ use cap_directories::{ambient_authority, ProjectDirs};
 use cap_std::fs::Dir;
 use futures::StreamExt;
 use reqwest::Client;
-use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 
 /// Returns the cache directory.
@@ -14,6 +18,41 @@ pub fn cache_dir() -> anyhow::Result<Dir> {
         .cache_dir()?;
 
     Ok(dir)
+}
+
+/// Executes the given command and returns the process.
+pub fn exec<I, S>(bin_path: impl AsRef<Path>, args: I) -> anyhow::Result<std::process::Child>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    #[cfg(target_os = "windows")]
+    const SHELL: &str = "cmd.exe";
+
+    #[cfg(not(target_os = "windows"))]
+    const SHELL: &str = "sh";
+
+    let mut command = Command::new(SHELL);
+    command.arg("/c").arg(bin_path.as_ref());
+    command.args(args);
+
+    let process = command.spawn()?;
+    Ok(process)
+}
+
+/// Executes the given command and returns the result of stdout.
+pub fn exec_and_get_output<I, S>(bin_path: impl AsRef<Path>, args: I) -> anyhow::Result<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let child = exec(bin_path, args)?;
+    let mut stdout = child
+        .stdout
+        .expect("failed to get stdout from executed process");
+
+    let contents = std::io::read_to_string(&mut stdout)?;
+    Ok(contents)
 }
 
 /// Download a file and write the content to the destination.
@@ -107,7 +146,7 @@ pub async fn download_and_extract(
 
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     use crate::tools::utils::cache_dir;
 
@@ -255,3 +294,4 @@ mod test {
         temp_file
     }
 }
+
