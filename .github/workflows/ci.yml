@@ -34,5 +34,7 @@ jobs:
     name: Test | ${{ matrix.os}}
     steps:
       - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --verbose
       - name: Run Test (${{ matrix.os}})
         run: cargo test --verbose
