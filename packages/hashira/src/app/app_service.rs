@@ -101,7 +101,8 @@ impl AppService {
 
             let hooks = &self.0.hooks.on_handle_hooks;
 
-            if !hooks.is_empty() {
+            // Handle the request normally to avoid any extra allocations
+            if hooks.is_empty() {
                 return self.handle_request(req).await;
             }
 

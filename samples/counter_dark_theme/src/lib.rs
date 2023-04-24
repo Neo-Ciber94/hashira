@@ -1,10 +1,12 @@
 mod components;
 
+use std::time::Instant;
+
 use crate::components::{root_layout, Counter, ThemeToggle};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
     page_component,
-    server::Metadata,
+    server::Metadata, events::{Hooks, Next},
 };
 use serde::{Deserialize, Serialize};
 use yew::{html::ChildrenProps, BaseComponent, Properties, Suspense};
@@ -63,18 +65,25 @@ where
     HashiraApp::<BASE>::new()
         .use_default_error_pages()
         .layout(root_layout)
-        .page::<HomePage, _, _>("/", |mut ctx: RenderContext| async {
+        .page("/", |mut ctx: RenderContext| async {
             ctx.metadata(Metadata::new().description("A Hashira sample app"));
             let res = ctx.render::<HomePage, BASE>().await;
             Ok(res)
         })
-        .page::<CounterPage, _, _>("/counter", |mut ctx: RenderContext| async {
+        .page("/counter", |mut ctx: RenderContext| async {
             ctx.title("Hashira | Counter");
             ctx.metadata(Metadata::new().description("A Hashira sample counter"));
             let props = yew::props! { CounterPageProps {} };
             let res = ctx.render_with_props::<CounterPage, BASE>(props).await;
             Ok(res)
         })
+        .hooks(Hooks::new().on_handle(|req, next: Next| async move {
+            let start = Instant::now();
+            let res = next(req).await;
+            let elapsed = Instant::now() - start;
+            log::info!("Elapsed: {}ms", elapsed.as_millis());
+            res
+        }))
         .build()
 }
 
