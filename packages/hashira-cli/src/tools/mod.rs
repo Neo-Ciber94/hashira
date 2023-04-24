@@ -5,7 +5,7 @@ pub(crate) mod global_cache;
 pub(crate) mod utils;
 
 // Tools
-mod wasm_bingen;
+mod wasm_bindgen;
 
 /// Defines how to install an external tool
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -37,12 +37,12 @@ pub trait Tool: Sized {
     /// Returns the version of this tool.
     fn version() -> &'static str;
 
+    /// Returns the path to the executable.
+    fn bin(&self) -> &Path;
+
     /// Executes this tool and get the version.
     async fn test_version(&self) -> anyhow::Result<String>;
 
     /// Install this tool if is not already installed and return the path to the executable.
     async fn get(opts: InstallOptions) -> anyhow::Result<Self>;
-
-    /// Returns the path to the executable.
-    fn bin(&self) -> &Path;
 }

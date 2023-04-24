@@ -20,23 +20,32 @@ pub fn cache_dir() -> anyhow::Result<Dir> {
     Ok(dir)
 }
 
+pub(crate) fn cmd<I, S>(bin_path: impl AsRef<Path>, args: I) -> anyhow::Result<Command>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let path = dunce::canonicalize(bin_path.as_ref())?;
+
+    anyhow::ensure!(
+        path.exists(),
+        "executable was not found: {}",
+        path.display()
+    );
+
+    let mut command = Command::new(path);
+    command.args(args);
+    Ok(command)
+}
+
 /// Executes the given command and returns the process.
+#[allow(dead_code)]
 pub fn exec<I, S>(bin_path: impl AsRef<Path>, args: I) -> anyhow::Result<std::process::Child>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    #[cfg(target_os = "windows")]
-    const SHELL: &str = "cmd.exe";
-
-    #[cfg(not(target_os = "windows"))]
-    const SHELL: &str = "sh";
-
-    let mut command = Command::new(SHELL);
-    command.arg("/c").arg(bin_path.as_ref());
-    command.args(args);
-
-    let process = command.spawn()?;
+    let process = cmd(bin_path, args)?.spawn()?;
     Ok(process)
 }
 
@@ -46,13 +55,9 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let child = exec(bin_path, args)?;
-    let mut stdout = child
-        .stdout
-        .expect("failed to get stdout from executed process");
-
-    let contents = std::io::read_to_string(&mut stdout)?;
-    Ok(contents)
+    let output = cmd(bin_path, args)?.output()?;
+    let result = String::from_utf8_lossy(&output.stdout).into_owned();
+    Ok(result)
 }
 
 /// Download a file and write the content to the destination.
@@ -73,7 +78,7 @@ where
     while let Some(chunk) = stream.next().await {
         let bytes = chunk.context("failed to download file")?;
         writer
-            .write_all(&*bytes)
+            .write_all(&bytes)
             .await
             .context("failed to write file")?;
 
@@ -103,7 +108,7 @@ pub async fn download_to_file(url: &str, file_path: impl AsRef<Path>) -> anyhow:
 /// Downloads a file to the given directory.
 pub async fn download_to_dir(url: &str, target_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
     fn get_file_name(url: &str) -> Option<String> {
-        url.split("/").last().map(|s| s.to_owned())
+        url.split('/').last().map(|s| s.to_owned())
     }
 
     let dir = target_dir.as_ref();
@@ -294,4 +299,3 @@ mod test {
         temp_file
     }
 }
-

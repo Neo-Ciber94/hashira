@@ -118,7 +118,7 @@ impl Decompressor {
         match path_str {
             _ if path_str.ends_with(".tar.gz") => Ok(Some(Decompressor::TarGz(compressed))),
             _ if path_str.ends_with(".zip") => Ok(Some(Decompressor::Zip(compressed))),
-            _ if path_str.contains(".") => {
+            _ if path_str.contains('.') => {
                 anyhow::bail!("no decompressor for: {}", path.display())
             }
             _ => Ok(Some(Decompressor::Copy(compressed))),
@@ -146,7 +146,7 @@ impl Decompressor {
                 let mut reader = std::fs::File::open(f)?;
                 let mut writer = std::fs::File::create(&file_path)?;
                 std::io::copy(&mut reader, &mut writer)?;
-                Ok(file_path.clone())
+                Ok(file_path)
             }
         }
     }

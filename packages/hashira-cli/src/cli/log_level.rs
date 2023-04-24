@@ -30,9 +30,7 @@ impl FromStr for LogLevel {
             "info" => Ok(LogLevel::Info),
             "warn" => Ok(LogLevel::Warn),
             "error" => Ok(LogLevel::Error),
-            _ => Err(format!(
-                "Invalid log level expected: debug, info, warn, error"
-            )),
+            _ => Err("Invalid log level expected: debug, info, warn, error".to_owned()),
         }
     }
 }

@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 
 use crate::tools::utils::{cache_dir, download_and_extract};
 
-static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(|| Default::default());
+static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(Default::default);
 
 #[derive(Debug, Error)]
 pub enum GlobalCacheError {
@@ -104,16 +104,18 @@ impl GlobalCache {
         Ok(system_bin)
     }
 
-    /// Downloads and install the binary and save it with the given name.
+    /// Downloads and install the binary and save it with the given file name.
     pub async fn install(
         bin_name: &str,
         url: &str,
+        file_name: Option<&str>,
         target: Option<PathBuf>,
     ) -> anyhow::Result<PathBuf> {
         let mut cache = GLOBAL_CACHE.lock().await;
         let cache_dir = cache_dir()?;
-        let dest = target.or(Some(cache_dir.canonicalize(".")?)).unwrap();
-        let bin_path = download_and_extract(url, bin_name, dest)
+        let dest = target.unwrap_or(cache_dir.canonicalize(".")?);
+        let file_name = file_name.unwrap_or(bin_name);
+        let bin_path = download_and_extract(url, file_name, dest)
             .await
             .with_context(|| format!("failed to install: {url}"))?;
         cache.insert(bin_name.to_owned(), bin_path.clone());

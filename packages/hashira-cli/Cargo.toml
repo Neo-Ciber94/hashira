@@ -44,6 +44,7 @@ flate2 = "1.0.25"
 tar = "0.4.38"
 zip = "0.6.4"
 which = "4.4.0"
+dunce = "1.0.4"
 
 [dev-dependencies]
 tokio = { version = "1.27.0", features = ["macros", "rt"] }
