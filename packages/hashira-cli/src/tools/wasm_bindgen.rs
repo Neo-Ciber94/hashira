@@ -27,7 +27,7 @@ impl Tool for WasmBindgen {
     }
 
     async fn test_version(&self) -> anyhow::Result<String> {
-        let bin_path = GlobalCache::find(Self::bin_name()).await?;
+        let bin_path = self.0.as_path();
 
         // Parses the version from the returned string,
         // is in the format: `wasm-bindgen 0.0.00`
