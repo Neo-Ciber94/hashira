@@ -20,6 +20,12 @@ pub fn cache_dir() -> anyhow::Result<Dir> {
     Ok(dir)
 }
 
+pub fn cache_dir_path() -> anyhow::Result<PathBuf> {
+    let cache_dir = cache_dir()?;
+    let dir = cache_dir.canonicalize(".")?;
+    Ok(dir)
+}
+
 pub(crate) fn cmd<I, S>(bin_path: impl AsRef<Path>, args: I) -> anyhow::Result<Command>
 where
     I: IntoIterator<Item = S>,

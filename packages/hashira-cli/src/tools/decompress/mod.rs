@@ -28,12 +28,13 @@ where
     for file_result in entries {
         let entry = file_result.context("failed to extract tar.gz")?;
         let path = entry.path()?;
-        let name = path.to_str().unwrap();
-
-        // Find the file to extract
-        if name == file_name {
-            gz_entry = Some(entry);
-            break;
+        
+        if let Some(name) = path.components().last().map(|s| s.as_os_str()) {
+            // Find the file to extract
+            if name == file_name {
+                gz_entry = Some(entry);
+                break;
+            }
         }
     }
 

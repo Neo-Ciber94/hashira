@@ -1,8 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use super::{
-    global_cache::{GlobalCache, GlobalCacheError},
-    InstallOptions, Tool,
+    global_cache::{FindVersion, GlobalCache, GlobalCacheError},
+    Tool, Version,
 };
 
 #[derive(Clone)]
@@ -14,7 +17,7 @@ impl Tool for WasmBindgen {
         "wasm-bindgen"
     }
 
-    fn bin_name() -> &'static str {
+    fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "wasm-bindgen.exe"
         } else {
@@ -22,73 +25,53 @@ impl Tool for WasmBindgen {
         }
     }
 
-    fn version() -> &'static str {
-        "0.2.84"
+    fn default_version() -> Version {
+        Version::new(0, 2, Some(84))
     }
 
-    async fn test_version(&self) -> anyhow::Result<String> {
-        let bin_path = self.0.as_path();
+    fn test_version_args() -> &'static [&'static str] {
+        &["--version"]
+    }
 
+    fn parse_version(s: &str) -> anyhow::Result<Version> {
         // Parses the version from the returned string,
-        // is in the format: `wasm-bindgen 0.0.00`
-        let version_text = super::utils::exec_and_get_output(bin_path, ["--version"])?;
-
-        let Some(version) = version_text.split(' ').nth(1) else {
-            anyhow::bail!("unable to parse version string: `{version_text}`")
+        // is in the format: `wasm-bindgen 0.0.0`
+        let Some(text) = s.split(' ').nth(1) else {
+            anyhow::bail!("unable to parse version string: `{s}`")
         };
 
-        Ok(version.to_owned())
+        Version::from_str(text)
     }
 
-    async fn get(opts: InstallOptions) -> anyhow::Result<Self> {
-        let version = Self::version();
-        let bin_name = Self::bin_name();
-        let file_name = format!("{}/{bin_name}", get_bin_name(version)?);
+    async fn load(dir: Option<&Path>) -> anyhow::Result<Self> {
+        let version = Self::default_version().to_string();
 
-        match opts.installation {
-            // Get from cache or install
-            super::Installation::IfRequired => {
-                let expected_version = format!("{} {}", Self::name(), version);
-                let args = ["--version"];
+        match dir {
+            // Install in the given directory
+            Some(dir) => {
+                anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
+                let url = get_download_url(&version)?;
+                let bin_path = GlobalCache::install::<Self>(&url, Some(dir.to_path_buf())).await?;
+                Ok(Self(bin_path))
+            }
 
-                match GlobalCache::find_any(bin_name, args, &expected_version).await {
-                    Ok(bin_path) => {
-                        // Returns from cache
-                        Ok(Self(bin_path))
-                    }
+            // Install in the given directory
+            None => {
+                match GlobalCache::find_any::<Self>(FindVersion::Any).await {
+                    Ok(bin_path) => Ok(Self(bin_path)),
                     Err(GlobalCacheError::NotFound(_)) => {
                         // Install
-                        let url = get_download_url(version)?;
-                        let bin_path = GlobalCache::install(
-                            bin_name,
-                            &url,
-                            Some(&file_name),
-                            None,
-                        )
-                        .await?;
+                        let url = get_download_url(&version)?;
+                        let bin_path = GlobalCache::install::<Self>(&url, None).await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),
                 }
             }
-
-            // Install in the given directory
-            super::Installation::Target(dir) => {
-                anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
-                let url = get_download_url(version)?;
-                let bin_path = GlobalCache::install(
-                    bin_name,
-                    &url,
-                    Some(&file_name),
-                    Some(dir),
-                )
-                .await?;
-                Ok(Self(bin_path))
-            }
         }
     }
 
-    fn bin(&self) -> &Path {
+    fn binary_path(&self) -> &Path {
         self.0.as_path()
     }
 }
@@ -114,30 +97,9 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
     Ok(format!("https://github.com/rustwasm/wasm-bindgen/releases/download/{version}/wasm-bindgen-{version}-x86_64-{os}.tar.gz"))
 }
 
-fn get_bin_name(version: &str) -> anyhow::Result<String> {
-    let target_os = if cfg!(target_os = "windows") {
-        "windows"
-    } else if cfg!(target_os = "macos") {
-        "macos"
-    } else if cfg!(target_os = "linux") {
-        "linux"
-    } else {
-        anyhow::bail!("unsupported OS")
-    };
-
-    let os = match target_os {
-        "windows" => "pc-windows-msvc",
-        "macos" => "apple-darwin",
-        "linux" => "unknown-linux-musl",
-        _ => unreachable!(),
-    };
-
-    Ok(format!("wasm-bindgen-{version}-x86_64-{os}"))
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::tools::{wasm_bindgen::WasmBindgen, InstallOptions, Installation, Tool};
+    use crate::tools::{wasm_bindgen::WasmBindgen, Tool, ToolExt};
 
     #[tokio::test]
     async fn test_download_and_version() {
@@ -145,13 +107,22 @@ mod tests {
         let download_path = temp_dir.path().to_path_buf();
         tokio::fs::create_dir_all(&download_path).await.unwrap();
 
-        let wasm_bingen = WasmBindgen::get(InstallOptions {
-            installation: Installation::Target(download_path),
-        })
-        .await
-        .unwrap();
+        let wasm_bingen = WasmBindgen::load(Some(&download_path)).await.unwrap();
 
-        let version = wasm_bingen.test_version().await.unwrap();
-        assert_eq!(version, WasmBindgen::version())
+        let version = wasm_bingen.test_version().unwrap();
+        let default_version = WasmBindgen::default_version();
+        assert_eq!(version, default_version)
     }
+
+    // #[tokio::test]
+    // async fn test_download_and_version_2() {
+    //     let wasm_bingen = WasmBindgen::load().await.unwrap();
+
+    //     let version = wasm_bingen.test_version_args().await.unwrap();
+    //     assert_eq!(
+    //         version,
+    //         WasmBindgen::default_version(),
+    //         "actual `{version}`"
+    //     )
+    // }
 }

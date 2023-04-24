@@ -1,13 +1,19 @@
-use std::{collections::HashMap, ffi::OsStr, path::PathBuf};
-
 use anyhow::Context;
 use once_cell::sync::Lazy;
+use std::{collections::HashMap, path::PathBuf, process::Command};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
+use super::{utils::cache_dir_path, Tool, Version};
 use crate::tools::utils::{cache_dir, download_and_extract};
 
 static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(Default::default);
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum FindVersion {
+    Exact,
+    Any,
+}
 
 #[derive(Debug, Error)]
 pub enum GlobalCacheError {
@@ -36,9 +42,10 @@ impl GlobalCacheError {
 pub struct GlobalCache;
 
 impl GlobalCache {
-    /// Returns the path of the given binary, if not found search in the cache dir.
-    pub async fn find(bin_name: &str) -> Result<PathBuf, GlobalCacheError> {
+    /// Try get the given tool from cache.
+    pub async fn find<T: Tool>() -> Result<PathBuf, GlobalCacheError> {
         let mut cache = GLOBAL_CACHE.lock().await;
+        let bin_name = T::binary_name();
 
         if let Some(bin_path) = cache.get(bin_name).cloned() {
             return Ok(bin_path);
@@ -53,69 +60,56 @@ impl GlobalCache {
         Err(GlobalCacheError::NotFound(bin_name.to_owned()))
     }
 
-    /// Check and returns the given binary in the system and test if matches the given version,
-    /// if so returns it.
-    pub async fn find_in_system<I, S>(
-        bin_name: &str,
-        test_version_args: I,
-        expected_version: &str,
-    ) -> Result<PathBuf, GlobalCacheError>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
+    /// Try get the given tool from the system and save in cache if can.
+    pub async fn find_in_system<T: Tool>(
+        opts: FindVersion,
+    ) -> Result<(PathBuf, Version), GlobalCacheError> {
         let mut cache = GLOBAL_CACHE.lock().await;
-        let Some(tool_path) = which::which(bin_name).ok() else {
+        let bin_name = T::binary_name();
+
+        let Some(bin_path) = which::which(&bin_name).ok() else {
             return Err(GlobalCacheError::NotFound(bin_name.to_owned()));
         };
 
-        let result = super::utils::exec_and_get_output(&tool_path, test_version_args)
-            .map_err(GlobalCacheError::from_anyhow)?;
+        let version =
+            super::unchecked_test_version::<T>(&bin_path).map_err(GlobalCacheError::from_anyhow)?;
+        let default_version = T::default_version();
+        let match_default_version = version == default_version;
 
-        if result == expected_version {
-            cache.insert(bin_name.to_owned(), tool_path.clone());
-            return Ok(tool_path);
+        if opts == FindVersion::Any {
+            cache.insert(bin_name.to_owned(), bin_path.clone());
+            return Ok((bin_path, version));
+        }
+
+        if opts == FindVersion::Exact && match_default_version {
+            cache.insert(bin_name.to_owned(), bin_path.clone());
+            return Ok((bin_path, version));
         }
 
         Err(GlobalCacheError::InvalidVersion {
-            actual: result,
-            expected: expected_version.to_owned(),
+            expected: default_version.to_string(),
+            actual: version.to_string(),
         })
     }
 
-    /// Finds the binary in the system or in the cache directory.
-    pub async fn find_any<I, S>(
-        bin_name: &str,
-        test_version_args: I,
-        expected_version: &str,
-    ) -> Result<PathBuf, GlobalCacheError>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        match Self::find(bin_name).await {
-            Ok(x) => return Ok(x),
-            Err(GlobalCacheError::NotFound(..)) => {}
-            Err(err) => return Err(err),
-        };
-
-        let system_bin =
-            Self::find_in_system(bin_name, test_version_args, expected_version).await?;
-        Ok(system_bin)
+    /// Try find the tool in the system and in cache.
+    pub async fn find_any<T: Tool>(opts: FindVersion) -> Result<PathBuf, GlobalCacheError> {
+        match GlobalCache::find_in_system::<T>(opts).await {
+            Ok((bin_path, _)) => Ok(bin_path),
+            Err(GlobalCacheError::NotFound(_)) => {
+                let bin_path = GlobalCache::find::<T>().await?;
+                Ok(bin_path)
+            }
+            Err(err) => Err(err),
+        }
     }
 
     /// Downloads and install the binary and save it with the given file name.
-    pub async fn install(
-        bin_name: &str,
-        url: &str,
-        file_name: Option<&str>,
-        target: Option<PathBuf>,
-    ) -> anyhow::Result<PathBuf> {
+    pub async fn install<T: Tool>(url: &str, target: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+        let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
-        let cache_dir = cache_dir()?;
-        let dest = target.unwrap_or(cache_dir.canonicalize(".")?);
-        let file_name = file_name.unwrap_or(bin_name);
-        let bin_path = download_and_extract(url, file_name, dest)
+        let dest = target.unwrap_or(cache_dir_path()?);
+        let bin_path = download_and_extract(url, bin_name, dest)
             .await
             .with_context(|| format!("failed to install: {url}"))?;
         cache.insert(bin_name.to_owned(), bin_path.clone());
