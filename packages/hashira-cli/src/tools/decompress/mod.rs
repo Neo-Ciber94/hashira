@@ -1,3 +1,4 @@
+use anyhow::Context;
 use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
@@ -19,11 +20,13 @@ where
     let gz_decoder = GzDecoder::new(reader);
     let mut tar_archive = TarArchive::new(gz_decoder);
 
-    let entries: tar::Entries<GzDecoder<&mut R>> = tar_archive.entries()?;
+    let entries: tar::Entries<GzDecoder<&mut R>> = tar_archive
+        .entries()
+        .context("failed to read tar.gz entries")?;
     let mut gz_entry = None;
 
     for file_result in entries {
-        let entry = file_result?;
+        let entry = file_result.context("failed to extract tar.gz")?;
         let path = entry.path()?;
         let name = path.to_str().unwrap();
 
@@ -72,7 +75,9 @@ where
 {
     let dest_dir = dest.as_ref();
     let mut zip_archive = ZipArchive::new(reader)?;
-    let mut zip_file = zip_archive.by_name(file_name)?;
+    let mut zip_file = zip_archive
+        .by_name(file_name)
+        .context("failed to find zip entry")?;
 
     // Create the target directory
     let zip_path = zip_file.enclosed_name().unwrap();
