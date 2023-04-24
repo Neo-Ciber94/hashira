@@ -103,7 +103,7 @@ pub async fn download_and_extract(
     let downloaded = download_to_dir(url, &dest_dir).await?;
     let temp_path = tempfile::TempPath::from_path(downloaded); // download to a temporary file
 
-    let Some(decompressor) = crate::tools::decompress::Decompressor::get(&temp_path)? else {
+    let Some(decompressor) = crate::tools::archive::Decompressor::get(&temp_path)? else {
         anyhow::bail!("unable to find decompressor for: {}", temp_path.display());
     };
 
@@ -246,6 +246,62 @@ mod test {
 
         let contents = std::fs::read_to_string(&downloaded).unwrap();
         assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`")
+    }
+
+    #[tokio::test]
+    async fn test_download_and_tar_gz_archive() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let downloaded = super::download_to_dir(
+            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.tar.gz",
+            temp_dir.path(),
+        )
+        .await
+        .unwrap();
+
+        let mut tar_gz = crate::tools::archive::Archive::new(downloaded).unwrap();
+        let file_path = tar_gz.extract_file("file.txt", temp_dir.path()).unwrap();
+
+        let mut file = std::fs::File::open(file_path).unwrap();
+        let contents = std::io::read_to_string(&mut file).unwrap();
+        assert_eq!(contents, "Hello World!\n", "actual `{contents}`");
+    }
+
+    #[tokio::test]
+    async fn test_download_and_zip_archive() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let downloaded = super::download_to_dir(
+            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.zip",
+            temp_dir.path(),
+        )
+        .await
+        .unwrap();
+
+        let downloaded_file = std::fs::File::open(downloaded).unwrap();
+        let mut tar_gz = crate::tools::archive::ArchiveTarGz::new(downloaded_file);
+        let file_path = tar_gz.extract_file("file.txt", temp_dir.path()).unwrap();
+
+        let mut file = std::fs::File::open(file_path).unwrap();
+        let contents = std::io::read_to_string(&mut file).unwrap();
+        assert_eq!(contents, "Hello World!\n", "actual `{contents}`");
+    }
+
+    #[tokio::test]
+    async fn test_download_and_none_archive() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let downloaded = super::download_to_dir(
+            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.txt",
+            temp_dir.path(),
+        )
+        .await
+        .unwrap();
+
+        let downloaded_file = std::fs::File::open(downloaded).unwrap();
+        let mut tar_gz = crate::tools::archive::ArchiveZip::new(downloaded_file).unwrap();
+        let file_path = tar_gz.extract_file("file2.txt", temp_dir.path()).unwrap();
+
+        let mut file = std::fs::File::open(file_path).unwrap();
+        let contents = std::io::read_to_string(&mut file).unwrap();
+        assert_eq!(contents, "Hello World!\n", "actual `{contents}`");
     }
 
     async fn create_temp_file() -> tempfile::NamedTempFile {

@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-pub(crate) mod decompress;
+pub(crate) mod archive;
 pub(crate) mod global_cache;
 pub(crate) mod utils;
 
