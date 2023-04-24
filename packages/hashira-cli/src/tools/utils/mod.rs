@@ -277,8 +277,8 @@ mod test {
         .unwrap();
 
         let downloaded_file = std::fs::File::open(downloaded).unwrap();
-        let mut tar_gz = crate::tools::archive::ArchiveTarGz::new(downloaded_file);
-        let file_path = tar_gz.extract_file("file.txt", temp_dir.path()).unwrap();
+        let mut zip = crate::tools::archive::ArchiveZip::new(downloaded_file).unwrap();
+        let file_path = zip.extract_file("file.txt", temp_dir.path()).unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
         let contents = std::io::read_to_string(&mut file).unwrap();
@@ -295,8 +295,7 @@ mod test {
         .await
         .unwrap();
 
-        let downloaded_file = std::fs::File::open(downloaded).unwrap();
-        let mut tar_gz = crate::tools::archive::ArchiveZip::new(downloaded_file).unwrap();
+        let mut tar_gz = crate::tools::archive::Archive::new(downloaded).unwrap();
         let file_path = tar_gz.extract_file("file2.txt", temp_dir.path()).unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
