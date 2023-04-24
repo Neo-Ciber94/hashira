@@ -1,8 +1,8 @@
 use flate2::read::GzDecoder;
+use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use tar::Archive as TarArchive;
-use zip::result::ZipResult;
 use zip::ZipArchive;
 
 pub fn decompress_tar_gz<R>(
@@ -19,7 +19,7 @@ where
     let gz_decoder = GzDecoder::new(reader);
     let mut tar_archive = TarArchive::new(gz_decoder);
 
-    let entries = tar_archive.entries()?;
+    let entries: tar::Entries<GzDecoder<&mut R>> = tar_archive.entries()?;
     let mut gz_entry = None;
 
     for file_result in entries {
@@ -46,11 +46,18 @@ where
     }
 
     // Extract and write the file
-    let file = std::fs::File::create(&target_file)?;
-    let mut buf_writer = BufWriter::new(file);
-    let mut buf_reader = BufReader::new(&mut entry);
-    std::io::copy(&mut buf_reader, &mut buf_writer)?;
-    buf_writer.flush()?;
+    let mut file = std::fs::File::create(&target_file)?;
+    {
+        let mut buf_writer = BufWriter::new(&mut file);
+        let mut buf_reader = BufReader::new(&mut entry);
+        std::io::copy(&mut buf_reader, &mut buf_writer)?;
+        buf_writer.flush()?;
+    }
+
+    // Set the file permissions
+    if let Ok(mode) = entry.header().mode() {
+        set_file_permissions(&mut file, mode)?;
+    }
 
     Ok(target_file)
 }
@@ -59,7 +66,7 @@ pub fn decompress_zip<R>(
     reader: &mut R,
     file_name: &str,
     dest: impl AsRef<Path>,
-) -> ZipResult<PathBuf>
+) -> anyhow::Result<PathBuf>
 where
     R: Read + Seek,
 {
@@ -75,11 +82,18 @@ where
     }
 
     // Extract and write the file
-    let file = std::fs::File::create(&target_file)?;
-    let mut buf_writer = BufWriter::new(file);
-    let mut buf_reader = BufReader::new(&mut zip_file);
-    std::io::copy(&mut buf_reader, &mut buf_writer)?;
-    buf_writer.flush()?;
+    let mut file = std::fs::File::create(&target_file)?;
+    {
+        let mut buf_writer = BufWriter::new(&mut file);
+        let mut buf_reader = BufReader::new(&mut zip_file);
+        std::io::copy(&mut buf_reader, &mut buf_writer)?;
+        buf_writer.flush()?;
+    }
+
+    // Set the file permissions
+    if let Some(mode) = zip_file.unix_mode() {
+        set_file_permissions(&mut file, mode)?;
+    }
 
     Ok(target_file)
 }
@@ -146,8 +160,24 @@ impl Decompressor {
                 let mut reader = std::fs::File::open(f)?;
                 let mut writer = std::fs::File::create(&file_path)?;
                 std::io::copy(&mut reader, &mut writer)?;
+                set_file_permissions(&mut writer, 0x755)?;
                 Ok(file_path)
             }
         }
     }
+}
+
+// Sets the file permissions (unix only)
+#[cfg_attr(not(unix), allow(unused_variables))]
+fn set_file_permissions(file: &mut File, mode: u32) -> anyhow::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
+
+        file.set_permissions(Permissions::from_mode(mode))
+            .context("failed to set file permissions")?;
+    }
+
+    Ok(())
 }
