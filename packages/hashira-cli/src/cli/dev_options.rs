@@ -1,36 +1,14 @@
 use clap::Args;
 use std::path::PathBuf;
 
-use super::wasm_opt_level::WasmOptimizationLevel;
+use super::BuildOptions;
 
 #[derive(Args, Debug, Clone)]
 pub struct DevOptions {
-    #[arg(short, long, help = "Base directory for the artifacts")]
-    pub target_dir: Option<PathBuf>,
+    #[command(flatten)]
+    pub build_opts: BuildOptions,
 
-    #[arg(
-        short,
-        long,
-        help = "Directory relative to the `target_dir` where the static files will be serve from",
-        default_value = "public"
-    )]
-    pub public_dir: PathBuf,
-
-    #[arg(
-        short,
-        long,
-        help = "Build artifacts in release mode, with optimizations",
-        default_value_t = false
-    )]
-    pub release: bool,
-
-    #[arg(
-        long,
-        default_value_t = false,
-        help = "Whether if output the commands output"
-    )]
-    pub quiet: bool,
-
+    // ## Options above come from the `BuildOptions` ##
     #[arg(
         short,
         long,
@@ -38,26 +16,6 @@ pub struct DevOptions {
         default_value = "/static"
     )]
     pub static_dir: String,
-
-    #[arg(
-        long,
-        help = "A list of files and directories to copy in the `public_dir`, by default include the `public/`, `styles/` and `favicon.ico` if found"
-    )]
-    pub include: Vec<PathBuf>,
-
-    #[arg(
-        long,
-        help = "Allow to include files outside the current directory",
-        default_value_t = false
-    )]
-    pub allow_include_external: bool,
-
-    #[arg(
-        long,
-        help = "Allow to include files inside src/ directory",
-        default_value_t = false
-    )]
-    pub allow_include_src: bool,
 
     #[arg(
         long,
@@ -85,17 +43,4 @@ pub struct DevOptions {
 
     #[arg(long, help = "Path to ignore when looking for changes")]
     pub ignore: Vec<PathBuf>,
-
-    #[arg(
-        long,
-        help = "Optimization level for the wasm, possible values: s, z, 0, 1, 2, 3, 4"
-    )]
-    pub opt_level: Option<WasmOptimizationLevel>,
-
-    #[arg(
-        long,
-        default_value = "global.css",
-        help = "Path to the css entry file, this file can be scss or sass"
-    )]
-    pub styles: PathBuf,
 }

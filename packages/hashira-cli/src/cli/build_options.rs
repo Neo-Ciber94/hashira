@@ -91,32 +91,12 @@ impl BuildOptions {
 
 impl From<&DevOptions> for BuildOptions {
     fn from(dev_opts: &DevOptions) -> Self {
-        Self {
-            target_dir: dev_opts.target_dir.clone(),
-            public_dir: dev_opts.public_dir.clone(),
-            release: dev_opts.release,
-            include: dev_opts.include.clone(),
-            allow_include_external: dev_opts.allow_include_external,
-            allow_include_src: dev_opts.allow_include_src,
-            quiet: dev_opts.quiet,
-            opt_level: dev_opts.opt_level,
-            styles: dev_opts.styles.clone(),
-        }
+        dev_opts.build_opts.clone()
     }
 }
 
 impl From<&RunOptions> for BuildOptions {
     fn from(run_opts: &RunOptions) -> Self {
-        Self {
-            target_dir: run_opts.target_dir.clone(),
-            public_dir: run_opts.public_dir.clone(),
-            release: run_opts.release,
-            include: run_opts.include.clone(),
-            allow_include_external: run_opts.allow_include_external,
-            allow_include_src: run_opts.allow_include_src,
-            quiet: run_opts.quiet,
-            opt_level: run_opts.opt_level,
-            styles: run_opts.styles.clone(),
-        }
+        run_opts.build_opts.clone()
     }
 }
