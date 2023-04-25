@@ -165,16 +165,16 @@ fn base_path(version: &str) -> anyhow::Result<String> {
 
         Ok(match (os, target_arch) {
             ("macos", "x86_64") => {
-                format!("node-v{version}-darwin-x64.tar.gz")
+                format!("node-v{version}-darwin-x64")
             }
             ("macos", "aarch64") => {
-                format!("node-v{version}-darwin-arm64.tar.gz")
+                format!("node-v{version}-darwin-arm64")
             }
             ("linux", "x86_64") => {
-                format!("node-v{version}-linux-x64.tar.gz")
+                format!("node-v{version}-linux-x64")
             }
             ("linux", "aarch64") => {
-                format!("node-v{version}-linux-arm64.tar.gz")
+                format!("node-v{version}-linux-arm64")
             }
             _ => anyhow::bail!("unsupported target architecture: {os} {target_arch}"),
         })

@@ -1,17 +1,43 @@
 use anyhow::Context;
 
-use super::{node_js::NodeJs, Tool, Version};
-use std::{path::PathBuf, str::FromStr};
+use super::{node_js::NodeJs, CommandArgs, Tool, ToolExt, Version};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+    str::FromStr,
+};
 
 #[derive(Clone)]
 pub struct Npx(PathBuf);
 
+#[allow(dead_code)]
 impl Npx {
     pub fn from_node(node: &NodeJs) -> anyhow::Result<Self> {
         let path = node.binary_path();
         let node_dir = path.parent().context("failed to get node directory")?;
         let npx_path = node_dir.join(Self::binary_name());
         Ok(Self(npx_path))
+    }
+
+    /// Returns a command used to run the specified package globally
+    pub fn exec_global(&self, package: String) -> Command {
+        // npx {package}
+        let mut args = CommandArgs::new();
+        args.arg("install").arg(package);
+
+        self.cmd(args)
+    }
+
+    /// Returns a command used to run the specified package in the given directory
+    pub fn exec_cmd(&self, package: String, dir: impl AsRef<Path>) -> Command {
+        // npx {package} --prefix {dir}
+        let mut args = CommandArgs::new();
+        args.arg("install")
+            .arg(package)
+            .arg("--prefix")
+            .arg(dir.as_ref());
+
+        self.cmd(args)
     }
 }
 
