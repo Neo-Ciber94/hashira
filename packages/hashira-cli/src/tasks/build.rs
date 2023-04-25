@@ -140,6 +140,7 @@ impl BuildTask {
                 .collect::<Vec<_>>()
         };
 
+        // We process each file and include then in the public directory
         let dest_dir = opts.profile_target_dir()?.join(&opts.public_dir);
 
         process_files(include_files, dest_dir.as_path(), opts)
@@ -308,6 +309,7 @@ impl BuildTask {
     }
 }
 
+#[tracing::instrument(level = "debug", skip(opts))]
 async fn process_files(
     include_files: Vec<IncludeFiles>,
     dest_dir: &Path,
@@ -317,63 +319,13 @@ async fn process_files(
         return Ok(());
     }
 
-    let cwd = std::env::current_dir().context("failed to get current working directory")?;
-    let mut files = Vec::new();
+    // Get all the files to process
+    let mut files = get_files_to_process(&include_files, opts)?;
 
-    for include in include_files {
-        let path = include.path;
+    // Get the pipelines to process all the files
+    let mut pipelines = pipelines();
 
-        if !path.exists() {
-            if !include.is_default {
-                tracing::warn!("`{}` does not exist", path.display());
-            }
-            continue;
-        }
-
-        if path.is_file() {
-            assert_valid_include(
-                &cwd,
-                &path,
-                opts.allow_include_external,
-                opts.allow_include_src,
-            )?;
-
-            let file = path.canonicalize().unwrap();
-            let base_dir = file.parent().unwrap().to_owned().canonicalize().unwrap();
-            tracing::debug!("Entry: {}", path.display());
-            files.push(PipelineFile { base_dir, file });
-        } else if path.is_dir() {
-            let pattern = format!("{}/**/*", path.to_str().unwrap());
-            for entry in glob::glob(&pattern)? {
-                let Ok(entry) = entry else {
-                    continue;
-                };
-
-                if entry.is_dir() {
-                    continue;
-                }
-
-                assert_valid_include(
-                    &cwd,
-                    &path,
-                    opts.allow_include_external,
-                    opts.allow_include_src,
-                )?;
-
-                // SAFETY: the file exists
-                let base_dir = path.canonicalize().unwrap();
-                let entry = entry.canonicalize().unwrap();
-                tracing::debug!("Entry: {}", entry.display());
-
-                files.push(PipelineFile {
-                    base_dir,
-                    file: entry,
-                });
-            }
-        }
-    }
-
-    let mut pipelines = get_pipelines();
+    // The futures to await
     let mut tasks = Vec::new();
 
     loop {
@@ -414,6 +366,7 @@ async fn process_files(
         });
     }
 
+    // We await all in parallel
     let results = futures::future::join_all(tasks).await;
     for ret in results {
         if let Err(err) = ret {
@@ -424,22 +377,103 @@ async fn process_files(
     Ok(())
 }
 
-fn assert_valid_include(
+fn get_files_to_process(
+    include_files: &[IncludeFiles],
+    opts: &BuildOptions,
+) -> anyhow::Result<Vec<PipelineFile>> {
+    let cwd = std::env::current_dir().context("failed to get current working directory")?;
+    let mut files = Vec::new();
+
+    // We iterate over each path and check if can be include in the public directory
+    for include in include_files {
+        let path = &include.path;
+
+        if !path.exists() {
+            if !include.is_default {
+                tracing::warn!("`{}` does not exist", path.display());
+            }
+            continue;
+        }
+
+        // If is a file and is valid we push it to the pipeline files
+        if path.is_file() {
+            check_can_include(
+                &cwd,
+                &path,
+                opts.allow_include_external,
+                opts.allow_include_src,
+            )?;
+
+            // SAFETY: We already check the path
+            let file = dunce::canonicalize(&path).unwrap();
+            let base_dir = file
+                .parent()
+                .unwrap()
+                .to_owned()
+                .canonicalize()
+                .with_context(|| format!("failed to get base dir of file: {}", file.display()))?;
+
+            tracing::debug!("Entry: {}", path.display());
+
+            files.push(PipelineFile { base_dir, file });
+        }
+        // If is a directory, we include all subdirectories files
+        else if path.is_dir() {
+            // We use a glob to get all the files
+            let pattern = format!("{}/**/*", path.to_str().unwrap());
+            for entry in glob::glob(&pattern)? {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(err) => {
+                        tracing::debug!("{err}");
+                        continue;
+                    }
+                };
+
+                // We ignore subdirectories
+                if entry.is_dir() {
+                    continue;
+                }
+
+                check_can_include(
+                    &cwd,
+                    &path,
+                    opts.allow_include_external,
+                    opts.allow_include_src,
+                )?;
+
+                // SAFETY: the file exists
+                let base_dir = dunce::canonicalize(&path).unwrap();
+                let entry = dunce::canonicalize(entry).unwrap();
+                tracing::debug!("Entry: {}", entry.display());
+
+                files.push(PipelineFile {
+                    base_dir,
+                    file: entry,
+                });
+            }
+        }
+    }
+
+    Ok(files)
+}
+
+fn check_can_include(
     cwd: &Path,
-    path: &Path,
+    file_path: &Path,
     allow_include_external: bool,
     allow_include_src: bool,
 ) -> anyhow::Result<()> {
-    if !allow_include_external && is_outside_directory(cwd, path)? {
-        tracing::error!("{} is outside {}", path.display(), cwd.display());
+    if !allow_include_external && is_outside_directory(cwd, file_path)? {
+        tracing::error!("{} is outside {}", file_path.display(), cwd.display());
 
         anyhow::bail!(
             "Path to include cannot be outside the current directory, use `--allow-include-external` to include files outside the current directory"
         );
     }
 
-    if !allow_include_src && is_inside_src(cwd, path)? {
-        tracing::error!("{} is inside `src` directory", path.display());
+    if !allow_include_src && is_inside_src(cwd, file_path)? {
+        tracing::error!("{} is inside `src` directory", file_path.display());
 
         anyhow::bail!(
             "Path to include cannot be inside the src directory, use `--allow-include-src` to include files inside the src directory"
@@ -481,7 +515,7 @@ fn is_inside_src(base: &Path, path: &Path) -> anyhow::Result<bool> {
 }
 
 // TODO: Should we just process the pipeline in order and forget about using a Box<dyn Pipeline>?
-fn get_pipelines() -> Vec<Box<dyn Pipeline + Send>> {
+fn pipelines() -> Vec<Box<dyn Pipeline + Send>> {
     vec![
         Box::new(CssPipeline),
         // The last pipeline should always be the copy files
