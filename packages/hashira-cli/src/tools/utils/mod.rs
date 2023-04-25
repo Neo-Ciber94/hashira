@@ -82,44 +82,18 @@ pub async fn download_to_dir(url: &str, target_dir: impl AsRef<Path>) -> anyhow:
     download_to_file(url, file_path).await
 }
 
-/// Downloads and extract the given file.
-pub async fn download_and_extract(
-    url: &str,
-    file_name: &str,
-    dest: impl AsRef<Path>,
-) -> anyhow::Result<PathBuf> {
-    let dest_dir = dest.as_ref();
-
-    anyhow::ensure!(
-        dest_dir.is_dir(),
-        "`{}` is not a directory",
-        dest_dir.display()
-    );
-
-    // Create the directory
-    tokio::fs::create_dir_all(dest_dir).await?;
-
-    // Download and extract
-    let downloaded = download_to_dir(url, &dest_dir).await?;
-    let temp_path = tempfile::TempPath::from_path(downloaded); // download to a temporary file
-
-    let Some(decompressor) = crate::tools::archive::Decompressor::get(&temp_path)? else {
-        anyhow::bail!("unable to find decompressor for: {}", temp_path.display());
-    };
-
-    let decompressed = decompressor.extract_file(file_name, dest_dir)?;
-    Ok(decompressed)
-}
-
 #[cfg(test)]
 mod test {
     use std::path::Path;
 
-    use crate::tools::utils::cache_dir;
+    use crate::tools::{archive::ExtractBehavior, utils::cache_dir};
 
     #[tokio::test]
     async fn test_download() {
-        let named_temp = create_temp_file().await;
+        let temp_dir = Path::new("temp/test");
+        tokio::fs::create_dir_all(temp_dir).await.unwrap();
+        let named_temp = tempfile::NamedTempFile::new_in(temp_dir).unwrap();
+
         let temp_file = named_temp.path().to_path_buf();
         let mut file = tokio::fs::File::create(&temp_file).await.unwrap();
         super::download(
@@ -176,44 +150,6 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_download_and_decompress_tar_gz() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let dir_path = temp_dir.path().to_path_buf();
-
-        let downloaded = super::download_and_extract(
-            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.tar.gz",
-            "file.txt",
-            dir_path,
-        )
-        .await
-        .unwrap();
-
-        assert!(downloaded.ends_with("file.txt"));
-
-        let contents = tokio::fs::read_to_string(&downloaded).await.unwrap();
-        assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`");
-    }
-
-    #[tokio::test]
-    async fn test_download_and_decompress_zip() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let dir_path = temp_dir.path().to_path_buf();
-
-        let downloaded = super::download_and_extract(
-            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.zip",
-            "file.txt",
-            dir_path,
-        )
-        .await
-        .unwrap();
-
-        assert!(downloaded.ends_with("file.txt"));
-
-        let contents = tokio::fs::read_to_string(&downloaded).await.unwrap();
-        assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`");
-    }
-
-    #[tokio::test]
     async fn test_download_to_cache_dir() {
         let cache_dir = cache_dir().unwrap();
         let dir = cache_dir.canonicalize(".").unwrap();
@@ -221,24 +157,6 @@ mod test {
 
         let downloaded = super::download_to_dir(
             "https://github.com/Neo-Ciber94/sample_files/raw/main/file.txt",
-            temp_dir.path(),
-        )
-        .await
-        .unwrap();
-
-        let contents = std::fs::read_to_string(&downloaded).unwrap();
-        assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`")
-    }
-
-    #[tokio::test]
-    async fn test_download_and_extract_to_cache_dir() {
-        let cache_dir = cache_dir().unwrap();
-        let dir = cache_dir.canonicalize(".").unwrap();
-        let temp_dir = tempfile::tempdir_in(dir).unwrap();
-
-        let downloaded = super::download_and_extract(
-            "https://github.com/Neo-Ciber94/sample_files/raw/main/file.tar.gz",
-            "file.txt",
             temp_dir.path(),
         )
         .await
@@ -259,7 +177,9 @@ mod test {
         .unwrap();
 
         let mut tar_gz = crate::tools::archive::Archive::new(downloaded).unwrap();
-        let file_path = tar_gz.extract_file("file.txt", temp_dir.path()).unwrap();
+        let file_path = tar_gz
+            .extract_file("file.txt", temp_dir.path(), ExtractBehavior::None)
+            .unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
         let contents = std::io::read_to_string(&mut file).unwrap();
@@ -278,7 +198,9 @@ mod test {
 
         let downloaded_file = std::fs::File::open(downloaded).unwrap();
         let mut zip = crate::tools::archive::ArchiveZip::new(downloaded_file).unwrap();
-        let file_path = zip.extract_file("file.txt", temp_dir.path()).unwrap();
+        let file_path = zip
+            .extract_file("file.txt", temp_dir.path(), ExtractBehavior::None)
+            .unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
         let contents = std::io::read_to_string(&mut file).unwrap();
@@ -296,23 +218,12 @@ mod test {
         .unwrap();
 
         let mut tar_gz = crate::tools::archive::Archive::new(downloaded).unwrap();
-        let file_path = tar_gz.extract_file("file2.txt", temp_dir.path()).unwrap();
+        let file_path = tar_gz
+            .extract_file("file2.txt", temp_dir.path(), ExtractBehavior::None)
+            .unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
         let contents = std::io::read_to_string(&mut file).unwrap();
         assert_eq!(contents, "Hello World!\n", "actual `{contents}`");
-    }
-
-    async fn create_temp_file() -> tempfile::NamedTempFile {
-        let path = Path::new("temp/test");
-
-        if !path.exists() {
-            tokio::fs::create_dir_all(path)
-                .await
-                .expect("failed to create test dir");
-        }
-
-        let temp_file = tempfile::NamedTempFile::new_in(path).unwrap();
-        temp_file
     }
 }

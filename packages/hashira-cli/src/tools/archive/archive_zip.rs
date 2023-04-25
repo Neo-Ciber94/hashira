@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::Context;
 use zip::{read::ZipFile, ZipArchive};
+use super::ExtractBehavior;
 
 pub struct ArchiveZip(ZipArchive<BufReader<File>>);
 impl ArchiveZip {
@@ -13,7 +14,11 @@ impl ArchiveZip {
         Ok(Self(ZipArchive::new(BufReader::new(file))?))
     }
 
-    fn find_entry(&mut self, file: impl AsRef<Path>) -> anyhow::Result<Option<ZipFile>> {
+    fn find_entry(
+        &mut self,
+        file: impl AsRef<Path>,
+        opts: ExtractBehavior,
+    ) -> anyhow::Result<Option<ZipFile>> {
         let archive = &mut self.0;
         let mut idx = None;
 
@@ -23,7 +28,13 @@ impl ArchiveZip {
                 .context("error while getting archive entry")?;
 
             let name = entry.enclosed_name().context("invalid entry path")?;
-            if name == file.as_ref() {
+            let mut name = name.components();
+
+            if opts == ExtractBehavior::SkipBasePath {
+                name.next();
+            }
+
+            if name.as_path() == file.as_ref() {
                 idx = Some(index);
                 break;
             }
@@ -36,10 +47,15 @@ impl ArchiveZip {
         }
     }
 
-    pub fn extract_file(&mut self, file: impl AsRef<Path>, dest: &Path) -> anyhow::Result<PathBuf> {
+    pub fn extract_file(
+        &mut self,
+        file: impl AsRef<Path>,
+        dest: &Path,
+        opts: ExtractBehavior,
+    ) -> anyhow::Result<PathBuf> {
         let file = file.as_ref();
 
-        let Some(mut entry) = self.find_entry(file)? else {
+        let Some(mut entry) = self.find_entry(file, opts)? else {
             anyhow::bail!("unable to find {}", file.display())
         };
 

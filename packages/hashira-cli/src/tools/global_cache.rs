@@ -1,11 +1,17 @@
 use anyhow::Context;
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use super::{utils::cache_dir_path, Tool, Version};
-use crate::tools::utils::{cache_dir, download_and_extract};
+use super::{archive::ExtractBehavior, Tool, Version};
+use crate::tools::{
+    archive::Archive,
+    utils::{cache_dir, download_to_dir},
+};
 
 // A cache for all binaries path
 static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(Default::default);
@@ -105,15 +111,34 @@ impl GlobalCache {
         }
     }
 
-    /// Downloads and install the binary and save it with the given file name.
-    pub async fn install<T: Tool>(url: &str, target: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+    // Downloads and install the binary and save it in the given directory.
+    pub async fn install<T: Tool>(
+        url: &str,
+        dest: &Path,
+        opts: ExtractBehavior,
+    ) -> anyhow::Result<PathBuf> {
         let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
-        let dest = target.unwrap_or(cache_dir_path()?);
-        let bin_path = download_and_extract(url, bin_name, dest)
-            .await
-            .with_context(|| format!("failed to install: {url}"))?;
+
+        // Downloads an extract the binary
+        let downloaded = download_to_dir(url, dest).await?;
+        let mut archive = Archive::new(&downloaded)?;
+
+        let bin_path = archive
+            .extract_file(bin_name, dest, opts)
+            .with_context(|| format!("failed to extract binary: {bin_name}"))?;
+
         cache.insert(bin_name.to_owned(), bin_path.clone());
+
+        // Add any additional files
+        for additional_file in T::additional_files() {
+            let file = archive
+                .extract_file(additional_file, dest, opts)
+                .with_context(|| format!("failed to extract additional file: {additional_file}"))?;
+
+            cache.insert((*additional_file).to_owned(), file);
+        }
+
         Ok(bin_path)
     }
 }

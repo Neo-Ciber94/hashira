@@ -6,6 +6,8 @@ use std::{
     str::FromStr,
 };
 
+use anyhow::Context;
+
 pub(crate) mod archive;
 pub(crate) mod global_cache;
 pub(crate) mod utils;
@@ -32,7 +34,7 @@ pub trait Tool: Sized {
     fn parse_version(s: &str) -> anyhow::Result<Version>;
 
     /// Additional files to include when loading this tool.
-    fn include() -> &'static [&'static str] {
+    fn additional_files() -> &'static [&'static str] {
         &[]
     }
 
@@ -104,12 +106,16 @@ impl<T> ToolExt for T where T: Tool {}
 pub struct Version {
     mayor: u32,
     minor: u32,
-    path: Option<u32>,
+    patch: Option<u32>,
 }
 
 impl Version {
-    pub fn new(mayor: u32, minor: u32, path: Option<u32>) -> Self {
-        Version { mayor, minor, path }
+    pub fn new(mayor: u32, minor: u32, patch: Option<u32>) -> Self {
+        Version {
+            mayor,
+            minor,
+            patch,
+        }
     }
 
     // FIXME: getters?
@@ -117,10 +123,10 @@ impl Version {
 
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.path {
-            Some(path) => write!(
+        match self.patch {
+            Some(patch) => write!(
                 f,
-                "{mayor}.{minor}.{path}",
+                "{mayor}.{minor}.{patch}",
                 mayor = self.mayor,
                 minor = self.minor
             ),
@@ -136,17 +142,24 @@ impl FromStr for Version {
         let parts = s.split('.').collect::<Vec<_>>();
         anyhow::ensure!(
             parts.len() >= 2 && parts.len() <= 3,
-            "invalid string, expected at least 3 digits, but was `{s}`"
+            "invalid string, expected at least 3 digits, but was `{s:?}`"
         );
 
-        let mayor = parts[0].parse()?;
-        let minor = parts[1].parse()?;
-        let path = if parts.len() == 3 {
-            Some(parts[2].parse()?)
+        let mayor = parts[0]
+            .parse()
+            .with_context(|| format!("invalid `mayor` in version string: {s:?}"))?;
+        let minor = parts[1]
+            .parse()
+            .with_context(|| format!("invalid `minor` in version string: {s:?}"))?;
+        let patch = if parts.len() == 3 {
+            let patch = parts[2]
+                .parse()
+                .with_context(|| format!("invalid `patch` in version string: {s:?}"))?;
+            Some(patch)
         } else {
             None
         };
 
-        Ok(Version::new(mayor, minor, path))
+        Ok(Version::new(mayor, minor, patch))
     }
 }

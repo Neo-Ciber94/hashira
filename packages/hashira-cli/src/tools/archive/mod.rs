@@ -1,37 +1,33 @@
-#[allow(clippy::module_inception)]
-mod archive;
 mod archive_tar_gz;
 mod archive_zip;
-mod helpers;
 
-use std::{path::{Path, PathBuf}, fs::File};
+use std::io::{BufReader, BufWriter};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
+pub use {archive_tar_gz::*, archive_zip::*};
 
-pub use helpers::*;
-pub use {archive::*, archive_tar_gz::*, archive_zip::*};
+/// Operation to perform on extract
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExtractBehavior {
+    /// Skip the base path
+    SkipBasePath,
 
-// The compressed file.
-#[doc(hidden)]
-pub struct Compressed(PathBuf);
-
-/// A decompressor for a file.
-pub enum Decompressor {
-    /// A `tar.gz` decompressor
-    TarGz(Compressed),
-
-    /// A `zip` decompressor.
-    Zip(Compressed),
-
-    /// No decompression just copies the files.
-    Copy(Compressed),
+    // Extract normally
+    None,
 }
 
-impl Decompressor {
-    /// Gets a decompressor for the given path.
-    /// if not extension is found, will return a decompressor that just copies the contents.
-    ///
-    /// # Params
-    /// - path: The path of the file to decompress
-    pub fn get(file_path: impl AsRef<Path>) -> anyhow::Result<Option<Self>> {
+/// A file that may be compressed.
+pub enum Archive {
+    TarGz(ArchiveTarGz),
+    Zip(ArchiveZip),
+    None(File),
+}
+
+impl Archive {
+    pub fn new(file_path: impl AsRef<Path>) -> anyhow::Result<Self> {
         let path = file_path.as_ref();
         anyhow::ensure!(path.exists(), "file don't exists: {}", path.display());
 
@@ -39,40 +35,42 @@ impl Decompressor {
             anyhow::bail!("failed to get path: {}", path.display());
         };
 
-        let compressed = Compressed(path.to_path_buf());
+        let file = std::fs::File::open(path)?;
         match path_str {
-            _ if path_str.ends_with(".tar.gz") => Ok(Some(Decompressor::TarGz(compressed))),
-            _ if path_str.ends_with(".zip") => Ok(Some(Decompressor::Zip(compressed))),
-            _ if path_str.contains('.') => {
-                anyhow::bail!("no decompressor for: {}", path.display())
-            }
-            _ => Ok(Some(Decompressor::Copy(compressed))),
+            _ if path_str.ends_with(".tar.gz") => Ok(Self::TarGz(ArchiveTarGz::new(file))),
+            _ if path_str.ends_with(".zip") => Ok(Self::Zip(ArchiveZip::new(file)?)),
+            _ => Ok(Self::None(file)),
         }
     }
 
-    /// Extracts the file with the given name to the given destination path.
-    pub fn extract_file(&self, file_name: &str, dest: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
-        match self {
-            Decompressor::TarGz(Compressed(f)) => {
-                let mut reader = std::fs::File::open(f)?;
-                let file = decompress_tar_gz(&mut reader, file_name, dest)?;
-                Ok(file)
-            }
-            Decompressor::Zip(Compressed(f)) => {
-                let mut reader = std::fs::File::open(f)?;
-                let file = decompress_zip(&mut reader, file_name, dest)?;
-                Ok(file)
-            }
-            Decompressor::Copy(Compressed(f)) => {
-                let dest_dir = dest.as_ref();
-                std::fs::create_dir_all(dest_dir)?;
-                let file_path = dest_dir.join(file_name);
+    pub fn extract_file(
+        &mut self,
+        file: impl AsRef<Path>,
+        dest: &Path,
+        opts: ExtractBehavior,
+    ) -> anyhow::Result<PathBuf> {
+        anyhow::ensure!(dest.is_dir(), "destination is no a directory");
+        anyhow::ensure!(dest.exists(), "destination path don't exists");
 
-                let mut reader = std::fs::File::open(f)?;
-                let mut writer = std::fs::File::create(&file_path)?;
-                std::io::copy(&mut reader, &mut writer)?;
-                set_file_permissions(&mut writer, 0x755)?;
-                Ok(file_path)
+        match self {
+            Archive::TarGz(tar_gz) => tar_gz.extract_file(file, dest, opts),
+            Archive::Zip(zip) => zip.extract_file(file, dest, opts),
+            Archive::None(src) => {
+                let file = file.as_ref();
+                let out_path = dest.join(file);
+
+                if let Some(parent) = out_path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+
+                let mut dest_file = std::fs::File::create(&out_path)?;
+                {
+                    let mut reader = BufReader::new(src);
+                    let mut writer = BufWriter::new(&mut dest_file);
+                    std::io::copy(&mut reader, &mut writer)?;
+                }
+                set_file_permissions(&mut dest_file, 0x755)?; // `rwx` user, `rx` others
+                Ok(out_path)
             }
         }
     }

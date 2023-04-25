@@ -6,6 +6,8 @@ use anyhow::Context;
 use flate2::read::GzDecoder;
 use tar::{Archive as TarArchive, Entry as TarEntry};
 
+use super::ExtractBehavior;
+
 pub struct ArchiveTarGz(Box<TarArchive<GzDecoder<BufReader<File>>>>);
 impl ArchiveTarGz {
     pub fn new(file: File) -> Self {
@@ -17,6 +19,7 @@ impl ArchiveTarGz {
     fn find_entry(
         &mut self,
         path: impl AsRef<Path>,
+        opts: ExtractBehavior,
     ) -> anyhow::Result<Option<TarEntry<impl Read>>> {
         let archive = &mut self.0;
         let entries = archive
@@ -27,7 +30,12 @@ impl ArchiveTarGz {
             let entry = entry.context("error while getting archive entry")?;
             let name = entry.path().context("invalid entry path")?;
 
-            if name.as_os_str() == path.as_ref() {
+            let mut name = name.components();
+            if opts == ExtractBehavior::SkipBasePath {
+                name.next();
+            }
+
+            if name.as_path() == path.as_ref() {
                 return Ok(Some(entry));
             }
         }
@@ -35,10 +43,15 @@ impl ArchiveTarGz {
         Ok(None)
     }
 
-    pub fn extract_file(&mut self, file: impl AsRef<Path>, dest: &Path) -> anyhow::Result<PathBuf> {
+    pub fn extract_file(
+        &mut self,
+        file: impl AsRef<Path>,
+        dest: &Path,
+        opts: ExtractBehavior,
+    ) -> anyhow::Result<PathBuf> {
         let file = file.as_ref();
         let mut tar_file = self
-            .find_entry(file)?
+            .find_entry(file, opts)?
             .context("file not found in archive")?;
 
         let out_path = dest.join(file);
