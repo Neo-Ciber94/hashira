@@ -1,7 +1,11 @@
 use anyhow::Context;
 
-use super::{node_js::NodeJs, Tool, Version};
-use std::{path::PathBuf, str::FromStr};
+use super::{node_js::NodeJs, CommandArgs, Tool, ToolExt, Version};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+    str::FromStr,
+};
 
 #[derive(Clone)]
 pub struct Npm(PathBuf);
@@ -12,6 +16,18 @@ impl Npm {
         let node_dir = path.parent().context("failed to get node directory")?;
         let npm_path = node_dir.join(Self::binary_name());
         Ok(Self(npm_path))
+    }
+
+    /// Returns a command used to install the specified package in the given directory
+    pub fn install_cmd(&self, package: String, dir: impl AsRef<Path>) -> Command {
+        // Install using npm install {package} --prefix {dir}
+        let mut args = CommandArgs::new();
+        args.arg("install")
+            .arg(package)
+            .arg("--prefix")
+            .arg(dir.as_ref());
+
+        self.cmd(args)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::tools::{npm::Npm, CommandArgs, ToolExt};
+use crate::tools::npm::Npm;
 
 use super::{
     global_cache::{FindVersion, GlobalCache, GlobalCacheError},
@@ -7,7 +7,7 @@ use super::{
     Tool, Version,
 };
 use anyhow::Context;
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, process::Command, str::FromStr};
 
 // Checkout: https://parceljs.org/
 
@@ -51,16 +51,10 @@ impl Tool for Parcel {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
                 tokio::fs::create_dir_all(&dir).await?;
 
-                // Install using npm install parcel@version --prefix {dir}
-                let mut args = CommandArgs::new();
-                args.arg("install")
-                    .arg(format!("parcel@{version}"))
-                    .arg("--prefix")
-                    .arg(dir);
+                // Install using npm install
+                let install_cmd = npm.install_cmd(format!("parcel@{version}"), dir);
+                run_silent(install_cmd).context("failed to install parcel")?;
 
-                // install
-                let status = npm.cmd(args).spawn()?.wait()?;
-                anyhow::ensure!(status.success(), "failed to install parcel");
                 // The binary is located in {dir}/node_modules/.bin/parcel
                 let bin = dir
                     .join("node_modules")
@@ -74,15 +68,9 @@ impl Tool for Parcel {
                     Err(GlobalCacheError::NotFound(_)) => {
                         let dir = cache_dir_path()?;
 
-                        // Install using npm install parcel@version --prefix {dir}
-                        let mut args = CommandArgs::new();
-                        args.arg("install")
-                            .arg(format!("parcel@{version}"))
-                            .arg("--prefix")
-                            .arg(&dir);
-
-                        // install
-                        let _ = npm.spawn(args)?;
+                        // Install using npm install
+                        let install_cmd = npm.install_cmd(format!("parcel@{version}"), &dir);
+                        run_silent(install_cmd).context("failed to install parcel")?;
 
                         // The binary is located in {dir}/node_modules/.bin/parcel
                         let bin = dir
@@ -95,6 +83,31 @@ impl Tool for Parcel {
                 }
             }
         }
+    }
+}
+
+// Run a command silently and capture the error from its stderr
+fn run_silent(mut cmd: Command) -> anyhow::Result<()> {
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+
+    let mut child = cmd.spawn()?;
+    let status = child.wait()?;
+    let err = {
+        child
+            .stderr
+            .take()
+            .and_then(|mut e| std::io::read_to_string(&mut e).ok())
+    };
+
+    if status.success() {
+        return Ok(());
+    }
+
+    if let Some(err) = err {
+        anyhow::bail!("{err}")
+    } else {
+        anyhow::bail!("command failed")
     }
 }
 
