@@ -2,6 +2,9 @@
 pub mod node_js;
 pub mod tailwindcss;
 pub mod wasm_bindgen;
+pub mod parcel;
+pub mod npm;
+pub mod npx;
 
 //
 use std::{

@@ -8,7 +8,7 @@ use super::{
     LoadOptions, Tool, Version,
 };
 
-struct NodeJs(PathBuf);
+pub struct NodeJs(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for NodeJs {
