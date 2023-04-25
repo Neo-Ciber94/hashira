@@ -1,7 +1,7 @@
 // Tools
-pub mod wasm_bindgen;
 pub mod node_js;
 pub mod tailwindcss;
+pub mod wasm_bindgen;
 
 //
 use std::{
@@ -17,6 +17,12 @@ use anyhow::Context;
 pub(crate) mod archive;
 pub(crate) mod global_cache;
 pub(crate) mod utils;
+
+#[derive(Default, Debug, Clone)]
+pub struct LoadOptions<'a> {
+    pub version: Option<Version>,
+    pub install_dir: Option<&'a Path>,
+}
 
 /// An external tool.
 #[async_trait::async_trait]
@@ -41,12 +47,13 @@ pub trait Tool: Sized {
     /// Returns the path to the executable.
     fn binary_path(&self) -> &Path;
 
-    /// Loads the tool from cache or install it,
-    ///
-    /// # Params
-    /// - `install_dir` the path to install or load the tool,
-    /// it not set will use the cache directory.
-    async fn load(install_dir: Option<&Path>) -> anyhow::Result<Self>;
+    /// Loads the tool from cache or install it.
+    async fn load() -> anyhow::Result<Self> {
+        Self::load_with_options(Default::default()).await
+    }
+
+    /// Loads the tool from cache or install it using the given options.
+    async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self>;
 }
 
 pub trait ToolExt: Tool {

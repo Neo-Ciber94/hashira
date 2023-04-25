@@ -7,7 +7,7 @@ use super::{
     archive::ExtractBehavior,
     global_cache::{FindVersion, GlobalCache, GlobalCacheError},
     utils::cache_dir_path,
-    Tool, Version,
+    LoadOptions, Tool, Version,
 };
 
 #[derive(Clone)]
@@ -41,10 +41,10 @@ impl Tool for WasmBindgen {
         Version::from_str(text)
     }
 
-    async fn load(dir: Option<&Path>) -> anyhow::Result<Self> {
-        let version = Self::default_version().to_string();
+    async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
+        let version = opts.version.unwrap_or(Self::default_version()).to_string();
 
-        match dir {
+        match opts.install_dir {
             // Install in the given directory
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
@@ -59,7 +59,7 @@ impl Tool for WasmBindgen {
                 match GlobalCache::find_any::<Self>(FindVersion::Any).await {
                     Ok(bin_path) => Ok(Self(bin_path)),
                     Err(GlobalCacheError::NotFound(_)) => {
-                         // Download and install
+                        // Download and install
                         let url = get_download_url(&version)?;
                         let cache_path = cache_dir_path()?;
                         let bin_path = GlobalCache::install::<Self>(
@@ -104,7 +104,7 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tools::{wasm_bindgen::WasmBindgen, Tool, ToolExt};
+    use crate::tools::{wasm_bindgen::WasmBindgen, LoadOptions, Tool, ToolExt};
 
     #[tokio::test]
     async fn test_download_and_version() {
@@ -112,7 +112,12 @@ mod tests {
         let download_path = temp_dir.path().to_path_buf();
         tokio::fs::create_dir_all(&download_path).await.unwrap();
 
-        let wasm_bingen = WasmBindgen::load(Some(&download_path)).await.unwrap();
+        let wasm_bingen = WasmBindgen::load_with_options(LoadOptions {
+            install_dir: Some(temp_dir.path()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
         let version = wasm_bingen.test_version().unwrap();
         let default_version = WasmBindgen::default_version();
@@ -121,7 +126,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_and_version_2() {
-        let wasm_bingen = WasmBindgen::load(None).await.unwrap();
+        let wasm_bingen = WasmBindgen::load().await.unwrap();
 
         let version = wasm_bingen.test_version().unwrap();
         let default_version = WasmBindgen::default_version();

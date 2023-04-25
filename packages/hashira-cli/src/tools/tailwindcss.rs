@@ -1,7 +1,7 @@
 use super::{
     global_cache::{FindVersion, GlobalCacheError},
     utils::cache_dir_path,
-    Tool, Version,
+    LoadOptions, Tool, Version,
 };
 use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
 use anyhow::Context;
@@ -54,10 +54,10 @@ impl Tool for TailwindCss {
         &self.0
     }
 
-    async fn load(install_dir: Option<&std::path::Path>) -> anyhow::Result<Self> {
-        let version = Self::default_version().to_string();
+    async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
+        let version = opts.version.unwrap_or(Self::default_version()).to_string();
 
-        match install_dir {
+        match opts.install_dir {
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
                 let url = get_download_url(&version)?;
@@ -113,7 +113,7 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tools::{tailwindcss::TailwindCss, Tool, ToolExt};
+    use crate::tools::{tailwindcss::TailwindCss, LoadOptions, Tool, ToolExt};
 
     #[tokio::test]
     async fn test_download_and_version() {
@@ -121,7 +121,12 @@ mod tests {
         let download_path = temp_dir.path().to_path_buf();
         tokio::fs::create_dir_all(&download_path).await.unwrap();
 
-        let wasm_bingen = TailwindCss::load(Some(&download_path)).await.unwrap();
+        let wasm_bingen = TailwindCss::load_with_options(LoadOptions {
+            install_dir: Some(temp_dir.path()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
         let version = wasm_bingen.test_version().unwrap();
         let default_version = TailwindCss::default_version();

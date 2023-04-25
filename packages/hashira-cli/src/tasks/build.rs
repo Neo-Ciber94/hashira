@@ -239,7 +239,7 @@ impl BuildTask {
         cmd_args.arg(wasm_dir);
 
         // Run
-        let wasm_bindgen = WasmBindgen::load(None).await?;
+        let wasm_bindgen = WasmBindgen::load().await?;
         let child = wasm_bindgen.async_cmd(cmd_args).spawn()?;
         Ok(child)
     }

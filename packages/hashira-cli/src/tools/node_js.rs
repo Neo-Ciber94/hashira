@@ -1,14 +1,11 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{path::PathBuf, str::FromStr};
 
 use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
 
 use super::{
     global_cache::{FindVersion, GlobalCacheError},
     utils::cache_dir_path,
-    Tool, Version,
+    LoadOptions, Tool, Version,
 };
 
 struct NodeJs(PathBuf);
@@ -50,20 +47,21 @@ impl Tool for NodeJs {
         }
     }
 
-    async fn load(install_dir: Option<&Path>) -> anyhow::Result<Self> {
-        let version = Self::default_version().to_string();
+    async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
+        let version = opts.version.unwrap_or(Self::default_version());
 
-        let opts = if cfg!(target_os = "windows") {
+        let extract_opts = if cfg!(target_os = "windows") {
             ExtractBehavior::SkipBasePath
         } else {
             ExtractBehavior::Dir(PathBuf::from("bin"))
         };
 
-        match install_dir {
+        match opts.install_dir {
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
-                let url = get_download_url(&version)?;
-                let bin_path = GlobalCache::install::<Self>(&url, dir, opts).await?;
+                let version_str = version.to_string();
+                let url = get_download_url(&version_str)?;
+                let bin_path = GlobalCache::install::<Self>(&url, dir, extract_opts).await?;
                 Ok(Self(bin_path))
             }
             None => {
@@ -80,10 +78,11 @@ impl Tool for NodeJs {
                     Ok(bin_path) => Ok(Self(bin_path)),
                     Err(GlobalCacheError::NotFound(_)) => {
                         // Download and install
-                        let url = get_download_url(&version)?;
+                        let version_str = version.to_string();
+                        let url = get_download_url(&version_str)?;
                         let cache_path = cache_dir_path()?;
                         let bin_path =
-                            GlobalCache::install::<Self>(&url, &cache_path, opts).await?;
+                            GlobalCache::install::<Self>(&url, &cache_path, extract_opts).await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),
@@ -142,12 +141,17 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
 mod tests {
     use std::process::Command;
 
-    use crate::tools::{node_js::NodeJs, Tool, ToolExt};
+    use crate::tools::{node_js::NodeJs, LoadOptions, Tool, ToolExt, Version};
 
     #[tokio::test]
     async fn test_load_and_version() {
         let temp_dir = tempfile::tempdir().unwrap();
-        let node = NodeJs::load(Some(temp_dir.path())).await.unwrap();
+        let node = NodeJs::load_with_options(LoadOptions {
+            install_dir: Some(temp_dir.path()),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
         let version = node.test_version().unwrap();
         let default_version = NodeJs::default_version();
 
@@ -156,13 +160,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_load() {
-        let node = NodeJs::load(None).await.unwrap();
+        let node = NodeJs::load().await.unwrap();
         assert!(node.test_version().is_ok());
     }
 
     #[tokio::test]
     async fn test_additional_files() {
-        let node = NodeJs::load(None).await.unwrap();
+        let node = NodeJs::load().await.unwrap();
 
         #[cfg(target_os = "windows")]
         const NPM: &str = "npm.cmd";
@@ -192,5 +196,63 @@ mod tests {
             .unwrap();
         let npx_version = String::from_utf8_lossy(&npx_output.stdout);
         assert!(npx_version.trim().len() > 4); // We just test is no empty
+    }
+
+    // Download other versions
+
+    #[tokio::test]
+    async fn test_load_and_version_20_0_0() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let node = NodeJs::load_with_options(LoadOptions {
+            version: Some(Version::new(20, 0, Some(0))),
+            install_dir: Some(temp_dir.path()),
+        })
+        .await
+        .unwrap();
+
+        let version = node.test_version().unwrap();
+        assert_eq!(version, Version::new(20, 0, Some(0)));
+    }
+
+    #[tokio::test]
+    async fn test_load_and_version_19_9_0() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let node = NodeJs::load_with_options(LoadOptions {
+            version: Some(Version::new(19, 9, Some(0))),
+            install_dir: Some(temp_dir.path()),
+        })
+        .await
+        .unwrap();
+
+        let version = node.test_version().unwrap();
+        assert_eq!(version, Version::new(19, 9, Some(0)));
+    }
+
+    #[tokio::test]
+    async fn test_load_and_version_18_16_0() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let node = NodeJs::load_with_options(LoadOptions {
+            version: Some(Version::new(18, 16, Some(0))),
+            install_dir: Some(temp_dir.path()),
+        })
+        .await
+        .unwrap();
+
+        let version = node.test_version().unwrap();
+        assert_eq!(version, Version::new(18, 16, Some(0)));
+    }
+
+    #[tokio::test]
+    async fn test_load_and_version_17_9_1() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let node = NodeJs::load_with_options(LoadOptions {
+            version: Some(Version::new(17, 9, Some(1))),
+            install_dir: Some(temp_dir.path()),
+        })
+        .await
+        .unwrap();
+
+        let version = node.test_version().unwrap();
+        assert_eq!(version, Version::new(17, 9, Some(1)));
     }
 }
