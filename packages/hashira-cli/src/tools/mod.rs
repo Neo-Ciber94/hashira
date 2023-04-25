@@ -1,6 +1,7 @@
 // Tools
 pub mod wasm_bindgen;
 pub mod node_js;
+pub mod tailwindcss;
 
 //
 use std::{
