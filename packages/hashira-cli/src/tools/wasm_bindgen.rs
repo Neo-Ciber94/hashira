@@ -59,7 +59,7 @@ impl Tool for WasmBindgen {
                 match GlobalCache::find_any::<Self>(FindVersion::Any).await {
                     Ok(bin_path) => Ok(Self(bin_path)),
                     Err(GlobalCacheError::NotFound(_)) => {
-                        // Install
+                         // Download and install
                         let url = get_download_url(&version)?;
                         let cache_path = cache_dir_path()?;
                         let bin_path = GlobalCache::install::<Self>(

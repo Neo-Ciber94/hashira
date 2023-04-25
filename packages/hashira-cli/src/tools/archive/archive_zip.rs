@@ -4,9 +4,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use super::ExtractBehavior;
 use anyhow::Context;
 use zip::{read::ZipFile, ZipArchive};
-use super::ExtractBehavior;
 
 pub struct ArchiveZip(ZipArchive<BufReader<File>>);
 impl ArchiveZip {
@@ -17,9 +17,10 @@ impl ArchiveZip {
     fn find_entry(
         &mut self,
         file: impl AsRef<Path>,
-        opts: ExtractBehavior,
+        opts: &ExtractBehavior,
     ) -> anyhow::Result<Option<ZipFile>> {
         let archive = &mut self.0;
+        let path = file.as_ref();
         let mut idx = None;
 
         for index in 0..archive.len() {
@@ -30,13 +31,27 @@ impl ArchiveZip {
             let name = entry.enclosed_name().context("invalid entry path")?;
             let mut name = name.components();
 
-            if opts == ExtractBehavior::SkipBasePath {
-                name.next();
-            }
-
-            if name.as_path() == file.as_ref() {
-                idx = Some(index);
-                break;
+            match &opts {
+                ExtractBehavior::SkipBasePath => {
+                    name.next();
+                    if name.as_path() == path {
+                        idx = Some(index);
+                        break;
+                    }
+                }
+                ExtractBehavior::Dir(dir) => {
+                    let actual_path = dir.join(path);
+                    if name.as_path() == actual_path {
+                        idx = Some(index);
+                        break;
+                    }
+                }
+                ExtractBehavior::None => {
+                    if name.as_path() == path {
+                        idx = Some(index);
+                        break;
+                    }
+                }
             }
         }
 
@@ -51,7 +66,7 @@ impl ArchiveZip {
         &mut self,
         file: impl AsRef<Path>,
         dest: &Path,
-        opts: ExtractBehavior,
+        opts: &ExtractBehavior,
     ) -> anyhow::Result<PathBuf> {
         let file = file.as_ref();
 

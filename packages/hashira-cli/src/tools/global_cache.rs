@@ -130,7 +130,7 @@ impl GlobalCache {
         let mut archive = Archive::new(&downloaded)?;
 
         let bin_path = archive
-            .extract_file(bin_name, dest, opts)
+            .extract_file(bin_name, dest, opts.clone())
             .with_context(|| format!("failed to extract binary: {bin_name}"))?;
 
         cache.insert(bin_name.to_owned(), bin_path.clone());
@@ -138,7 +138,7 @@ impl GlobalCache {
         // Add any additional files
         for additional_file in T::additional_files() {
             let file = archive
-                .extract_file(additional_file, dest, opts)
+                .extract_file(additional_file, dest, opts.clone())
                 .with_context(|| format!("failed to extract additional file: {additional_file}"))?;
 
             cache.insert((*additional_file).to_owned(), file);

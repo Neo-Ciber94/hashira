@@ -18,25 +18,39 @@ impl ArchiveTarGz {
 
     fn find_entry(
         &mut self,
-        path: impl AsRef<Path>,
-        opts: ExtractBehavior,
+        file: impl AsRef<Path>,
+        opts: &ExtractBehavior,
     ) -> anyhow::Result<Option<TarEntry<impl Read>>> {
         let archive = &mut self.0;
         let entries = archive
             .entries()
             .context("failed getting archive entries")?;
 
+        let path = file.as_ref();
+
         for entry in entries {
             let entry = entry.context("error while getting archive entry")?;
             let name = entry.path().context("invalid entry path")?;
-
             let mut name = name.components();
-            if opts == ExtractBehavior::SkipBasePath {
-                name.next();
-            }
 
-            if name.as_path() == path.as_ref() {
-                return Ok(Some(entry));
+            match &opts {
+                ExtractBehavior::SkipBasePath => {
+                    name.next();
+                    if name.as_path() == path {
+                        return Ok(Some(entry));
+                    }
+                }
+                ExtractBehavior::Dir(dir) => {
+                    let actual_path = dir.join(path);
+                    if name.as_path() == actual_path {
+                        return Ok(Some(entry));
+                    }
+                }
+                ExtractBehavior::None => {
+                    if name.as_path() == path {
+                        return Ok(Some(entry));
+                    }
+                }
             }
         }
 
@@ -47,7 +61,7 @@ impl ArchiveTarGz {
         &mut self,
         file: impl AsRef<Path>,
         dest: &Path,
-        opts: ExtractBehavior,
+        opts: &ExtractBehavior,
     ) -> anyhow::Result<PathBuf> {
         let file = file.as_ref();
         let mut tar_file = self

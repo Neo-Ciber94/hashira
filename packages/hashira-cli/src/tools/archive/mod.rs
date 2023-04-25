@@ -10,10 +10,13 @@ pub use {archive_tar_gz::*, archive_zip::*};
 
 /// Operation to perform on extract
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExtractBehavior {
     /// Skip the base path
     SkipBasePath,
+
+    /// Path of the directory to search the files to extract
+    Dir(PathBuf),
 
     // Extract normally
     None,
@@ -53,8 +56,8 @@ impl Archive {
         anyhow::ensure!(dest.exists(), "destination path don't exists");
 
         match self {
-            Archive::TarGz(tar_gz) => tar_gz.extract_file(file, dest, opts),
-            Archive::Zip(zip) => zip.extract_file(file, dest, opts),
+            Archive::TarGz(tar_gz) => tar_gz.extract_file(file, dest, &opts),
+            Archive::Zip(zip) => zip.extract_file(file, dest, &opts),
             Archive::None(src) => {
                 let file = file.as_ref();
                 let out_path = dest.join(file);

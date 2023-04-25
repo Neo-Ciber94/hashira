@@ -1,5 +1,6 @@
 // Tools
 pub mod wasm_bindgen;
+pub mod node_js;
 
 //
 use std::{
