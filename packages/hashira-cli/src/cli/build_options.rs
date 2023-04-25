@@ -53,12 +53,19 @@ pub struct BuildOptions {
     )]
     pub quiet: bool,
 
-    // TODO: Allow not value and default tto `s`
+    // TODO: Allow not value and default to `s`
     #[arg(
         long,
-        help = "Optimization level for the wasm, possible values: s, z, 0, 1, 2, 3, 4",
+        help = "Optimization level for the wasm, possible values: 0, 1, 2, 3, 4, s, z"
     )]
-    pub optimize: Option<WasmOptimizationLevel>,
+    pub opt_level: Option<WasmOptimizationLevel>,
+
+    #[arg(
+        long,
+        default_value = "global.css",
+        help = "Path to the css entry file, this file can be scss or sass"
+    )]
+    pub styles: PathBuf,
 }
 
 impl BuildOptions {
@@ -92,22 +99,24 @@ impl From<&DevOptions> for BuildOptions {
             allow_include_external: dev_opts.allow_include_external,
             allow_include_src: dev_opts.allow_include_src,
             quiet: dev_opts.quiet,
-            optimize: dev_opts.optimize,
+            opt_level: dev_opts.opt_level,
+            styles: dev_opts.styles.clone(),
         }
     }
 }
 
 impl From<&RunOptions> for BuildOptions {
-    fn from(dev_opts: &RunOptions) -> Self {
+    fn from(run_opts: &RunOptions) -> Self {
         Self {
-            target_dir: dev_opts.target_dir.clone(),
-            public_dir: dev_opts.public_dir.clone(),
-            release: dev_opts.release,
-            include: dev_opts.include.clone(),
-            allow_include_external: dev_opts.allow_include_external,
-            allow_include_src: dev_opts.allow_include_src,
-            quiet: dev_opts.quiet,
-            optimize: dev_opts.optimize,
+            target_dir: run_opts.target_dir.clone(),
+            public_dir: run_opts.public_dir.clone(),
+            release: run_opts.release,
+            include: run_opts.include.clone(),
+            allow_include_external: run_opts.allow_include_external,
+            allow_include_src: run_opts.allow_include_src,
+            quiet: run_opts.quiet,
+            opt_level: run_opts.opt_level,
+            styles: run_opts.styles.clone(),
         }
     }
 }

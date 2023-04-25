@@ -247,7 +247,7 @@ impl BuildTask {
 
     async fn optimize_wasm(&self) -> anyhow::Result<()> {
         let opts = &self.options;
-        let mut optimize = opts.optimize;
+        let mut optimize = opts.opt_level;
 
         // If not set we default to the max level on release.
         if opts.release && optimize.is_none() {

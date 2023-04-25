@@ -72,7 +72,14 @@ pub struct RunOptions {
         long,
         help = "Optimization level for the wasm, possible values: s, z, 0, 1, 2, 3, 4"
     )]
-    pub optimize: Option<WasmOptimizationLevel>,
+    pub opt_level: Option<WasmOptimizationLevel>,
+
+    #[arg(
+        long,
+        default_value = "global.css",
+        help = "Path to the css entry file, this file can be scss or sass"
+    )]
+    pub styles: PathBuf,
 }
 
 impl From<&DevOptions> for RunOptions {
@@ -88,7 +95,8 @@ impl From<&DevOptions> for RunOptions {
             static_dir: dev_opts.static_dir.clone(),
             host: dev_opts.host.clone(),
             port: dev_opts.port,
-            optimize: dev_opts.optimize,
+            opt_level: dev_opts.opt_level,
+            styles: dev_opts.styles.clone(),
         }
     }
 }
