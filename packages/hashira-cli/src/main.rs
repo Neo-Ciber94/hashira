@@ -2,8 +2,8 @@ mod cli;
 mod env;
 mod pipelines;
 mod tasks;
-mod utils;
 mod tools;
+mod utils;
 
 use anyhow::Context;
 use clap::Parser;
