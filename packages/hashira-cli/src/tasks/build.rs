@@ -2,6 +2,8 @@ use crate::cli::{BuildOptions, WasmOptimizationLevel, DEFAULT_INCLUDES};
 use crate::pipelines::css::CssPipeline;
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
+use crate::tools::wasm_bindgen::WasmBindgen;
+use crate::tools::{CommandArgs, Tool, ToolExt};
 use crate::utils::wait_interruptible;
 use anyhow::Context;
 use std::path::{Path, PathBuf};
@@ -55,7 +57,7 @@ impl BuildTask {
 
         // Start Wasm build
         tracing::info!("📦 Building Wasm...");
-        
+
         self.cargo_build_wasm().await?;
         self.wasm_bindgen().await?;
         self.optimize_wasm().await?; // If the optimization flag is set or in release mode
@@ -98,7 +100,7 @@ impl BuildTask {
     async fn wasm_bindgen(&self) -> anyhow::Result<()> {
         tracing::debug!("Generating wasm bindings...");
 
-        let spawn = self.spawn_wasm_bindgen()?;
+        let spawn = self.spawn_wasm_bindgen().await?;
         wait_interruptible(spawn, self.interrupt_signal.clone())
             .await
             .context("failed to run wasm-bindgen")?;
@@ -204,21 +206,20 @@ impl BuildTask {
         Ok(child)
     }
 
-    fn spawn_wasm_bindgen(&self) -> anyhow::Result<Child> {
+    async fn spawn_wasm_bindgen(&self) -> anyhow::Result<Child> {
         let opts = &self.options;
 
-        // TODO: Download wasm-bindgen if doesn't exists on the machine
-        let mut cmd = Command::new("wasm-bindgen");
+        let mut cmd_args = CommandArgs::new();
 
         // args
-        cmd.args(["--target", "web"]).arg("--no-typescript");
+        cmd_args.args(["--target", "web"]).arg("--no-typescript");
 
         // out dir
         let mut out_dir = opts.profile_target_dir()?;
         out_dir.push(&opts.public_dir);
         tracing::debug!("wasm-bindgen out-dir: {}", out_dir.display());
 
-        cmd.arg("--out-dir").arg(out_dir);
+        cmd_args.arg("--out-dir").arg(out_dir);
 
         // wasm to bundle
         // The wasm is located in ${target_dir}/wasm32-unknown-unknown/{profile}/{project_name}.wasm
@@ -235,10 +236,11 @@ impl BuildTask {
         wasm_dir.push(format!("{lib_name}.wasm"));
         tracing::debug!("wasm file dir: {}", wasm_dir.display());
 
-        cmd.arg(wasm_dir);
+        cmd_args.arg(wasm_dir);
 
         // Run
-        let child = cmd.spawn()?;
+        let wasm_bindgen = WasmBindgen::load(None).await?;
+        let child = wasm_bindgen.async_cmd(cmd_args).spawn()?;
         Ok(child)
     }
 

@@ -55,6 +55,7 @@ impl GlobalCache {
         let bin_name = T::binary_name();
 
         if let Some(bin_path) = cache.get(bin_name).cloned() {
+            tracing::debug!("loaded tool: `{bin_name}`");
             return Ok(bin_path);
         }
 
@@ -83,6 +84,7 @@ impl GlobalCache {
         let default_version = T::default_version();
         let match_default_version = version == default_version;
 
+        tracing::debug!("tool loaded from system: `{bin_name} {version}`");
         if opts == FindVersion::Any {
             cache.insert(bin_name.to_owned(), bin_path.clone());
             return Ok((bin_path, version));
@@ -112,6 +114,7 @@ impl GlobalCache {
     }
 
     // Downloads and install the binary and save it in the given directory.
+    #[tracing::instrument(level = "debug", skip(opts, dest))]
     pub async fn install<T: Tool>(
         url: &str,
         dest: &Path,
@@ -119,6 +122,8 @@ impl GlobalCache {
     ) -> anyhow::Result<PathBuf> {
         let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
+
+        tracing::info!("⏬ Downloading `{bin_name}`...");
 
         // Downloads an extract the binary
         let downloaded = download_to_dir(url, dest).await?;

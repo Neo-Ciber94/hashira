@@ -15,10 +15,6 @@ pub struct WasmBindgen(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for WasmBindgen {
-    fn name() -> &'static str {
-        "wasm-bindgen"
-    }
-
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "wasm-bindgen.exe"

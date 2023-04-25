@@ -1,5 +1,9 @@
+// Tools
+pub mod wasm_bindgen;
+
+//
 use std::{
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     fmt::Display,
     path::Path,
     process::{Child, Command},
@@ -12,15 +16,9 @@ pub(crate) mod archive;
 pub(crate) mod global_cache;
 pub(crate) mod utils;
 
-// Tools
-mod wasm_bindgen;
-
 /// An external tool.
 #[async_trait::async_trait]
 pub trait Tool: Sized {
-    /// Returns the name of this tool.
-    fn name() -> &'static str;
-
     /// Name of the executable binary of this tool.
     fn binary_name() -> &'static str;
 
@@ -75,6 +73,17 @@ pub trait ToolExt: Tool {
         S: AsRef<OsStr>,
     {
         let mut cmd = Command::new(self.binary_path());
+        cmd.args(args);
+        cmd
+    }
+
+    /// Returns a asynchronous command to execute this tool
+    fn async_cmd<I, S>(&self, args: I) -> tokio::process::Command
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let mut cmd = tokio::process::Command::new(self.binary_path());
         cmd.args(args);
         cmd
     }
@@ -161,5 +170,40 @@ impl FromStr for Version {
         };
 
         Ok(Version::new(mayor, minor, patch))
+    }
+}
+
+/// Represents a collection of command arguments.
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct CommandArgs(Vec<OsString>);
+impl CommandArgs {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
+        self.0.push(arg.as_ref().to_os_string());
+        self
+    }
+
+    pub fn args<I, S>(&mut self, args: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        for arg in args {
+            self.arg(arg);
+        }
+        self
+    }
+}
+
+impl IntoIterator for CommandArgs {
+    type Item = OsString;
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
