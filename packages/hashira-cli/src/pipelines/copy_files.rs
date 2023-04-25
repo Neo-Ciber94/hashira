@@ -31,22 +31,13 @@ impl Pipeline for CopyFilesPipeline {
 async fn copy_files(files: Vec<PipelineFile>, dest_dir: PathBuf) -> anyhow::Result<()> {
     for target in files {
         let PipelineFile { base_dir, file } = target;
-        let file_name = file.file_name().unwrap();
+        let dest_path = super::get_file_dest(&base_dir, &file, &dest_dir)?;
 
-        let dest = match file.strip_prefix(&base_dir) {
-            Ok(relative) => {
-                let dir = dest_dir.join(relative.parent().unwrap());
-                tokio::fs::create_dir_all(&dir).await?;
-                dir.join(file_name)
-            }
-            Err(_) => dest_dir.join(file_name),
-        };
-
-        let dest_file = File::create(&dest)
+        let dest_file = File::create(&dest_path)
             .await
             .context("failed to create destination file")?;
 
-        tracing::debug!("Copying `{}` to `{}`", file.display(), dest.display());
+        tracing::debug!("Copying `{}` to `{}`", file.display(), dest_path.display());
 
         let src_file = File::open(file)
             .await
@@ -64,3 +55,4 @@ async fn copy_files(files: Vec<PipelineFile>, dest_dir: PathBuf) -> anyhow::Resu
 
     Ok(())
 }
+

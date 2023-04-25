@@ -29,3 +29,28 @@ pub trait Pipeline {
         dest_dir: &Path,
     ) -> JoinHandle<anyhow::Result<()>>;
 }
+
+
+/// Computes the file destination within the `dest_dir` base on his base directory.
+///
+/// # Remarks
+/// All the input should be canonized before computing the paths.
+///
+/// # Example
+/// - If the destination path is: `public/`
+/// - The file is `products.json`
+/// - And the file_dir is `assets/json`
+///
+/// The destination will be: `public/assets/json`
+pub fn get_file_dest(file_dir: &Path, file: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
+    let file_name = file.file_name().unwrap();
+
+    match file.strip_prefix(&file_dir) {
+        Ok(relative) => {
+            let dir = dest_dir.join(relative.parent().unwrap());
+            std::fs::create_dir_all(&dir)?;
+            Ok(dir.join(file_name))
+        }
+        Err(_) => Ok(dest_dir.join(file_name)),
+    }
+}
