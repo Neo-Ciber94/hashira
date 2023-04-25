@@ -7,6 +7,9 @@ use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
 use anyhow::Context;
 use std::{path::PathBuf, str::FromStr};
 
+// Checkout: https://tailwindcss.com/
+
+#[derive(Clone)]
 pub struct TailwindCss(PathBuf);
 
 #[async_trait::async_trait]

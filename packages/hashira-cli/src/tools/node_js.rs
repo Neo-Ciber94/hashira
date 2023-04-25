@@ -8,6 +8,7 @@ use super::{
     LoadOptions, Tool, Version,
 };
 
+#[derive(Clone)]
 pub struct NodeJs(PathBuf);
 
 #[async_trait::async_trait]

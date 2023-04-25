@@ -3,7 +3,9 @@ use anyhow::Context;
 use super::{node_js::NodeJs, Tool, Version};
 use std::{path::PathBuf, str::FromStr};
 
+#[derive(Clone)]
 pub struct Npm(PathBuf);
+
 impl Npm {
     pub fn from_node(node: &NodeJs) -> anyhow::Result<Self> {
         let path = node.binary_path();
