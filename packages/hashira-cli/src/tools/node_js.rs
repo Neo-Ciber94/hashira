@@ -306,47 +306,67 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_linux_bin() {
-        let url = "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-linux-x64.tar.gz";
-        let temp_dir = tempfile::tempdir().unwrap();
-        let downloaded = crate::tools::utils::download_to_dir(url, temp_dir.path())
-            .await
-            .unwrap();
-
-        let mut archive = Archive::new(&downloaded).unwrap();
-        let extracted = archive
-            .extract_file(
-                "node",
-                temp_dir.path(),
-                ExtractBehavior::Dir(Path::new("node-v16.20.0-linux-x64").join("bin")),
-            )
-            .unwrap();
-
-        assert!(
-            extracted.exists(),
-            "contents: `{:#?}`",
-            debug_contents(&downloaded)
-        );
+        test_download_bin(
+            "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-linux-x64.tar.gz",
+            "node-v16.20.0-linux-x64",
+        )
+        .await;
     }
 
     #[tokio::test]
     async fn test_download_macos_bin() {
-        let url = "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-darwin-x64.tar.gz";
+        test_download_bin(
+            "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-darwin-x64.tar.gz",
+            "node-v16.20.0-darwin-x64",
+        )
+        .await;
+    }
+
+    async fn test_download_bin(url: &str, base_path: &str) {
         let temp_dir = tempfile::tempdir().unwrap();
         let downloaded = crate::tools::utils::download_to_dir(url, temp_dir.path())
             .await
             .unwrap();
 
         let mut archive = Archive::new(&downloaded).unwrap();
-        let extracted = archive
+        let node_js = archive
             .extract_file(
                 "node",
                 temp_dir.path(),
-                ExtractBehavior::Dir(Path::new("node-v16.20.0-darwin-x64").join("bin")),
+                ExtractBehavior::Dir(Path::new(base_path).join("bin")),
+            )
+            .unwrap();
+
+        let npx = archive
+            .extract_file(
+                "npx",
+                temp_dir.path(),
+                ExtractBehavior::Dir(Path::new(base_path).join("bin")),
+            )
+            .unwrap();
+
+        let npm = archive
+            .extract_file(
+                "npm",
+                temp_dir.path(),
+                ExtractBehavior::Dir(Path::new(base_path).join("bin")),
             )
             .unwrap();
 
         assert!(
-            extracted.exists(),
+            node_js.exists(),
+            "contents: `{:#?}`",
+            debug_contents(&downloaded)
+        );
+
+        assert!(
+            npx.exists(),
+            "contents: `{:#?}`",
+            debug_contents(&downloaded)
+        );
+
+        assert!(
+            npm.exists(),
             "contents: `{:#?}`",
             debug_contents(&downloaded)
         );

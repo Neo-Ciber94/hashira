@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Seek};
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
@@ -8,12 +8,34 @@ use tar::{Archive as TarArchive, Entry as TarEntry};
 
 use super::ExtractBehavior;
 
-pub struct ArchiveTarGz(Box<TarArchive<GzDecoder<BufReader<File>>>>);
+pub struct ArchiveTarGz {
+    tar: Option<Box<TarArchive<GzDecoder<BufReader<File>>>>>,
+    should_rewind: bool,
+}
+
 impl ArchiveTarGz {
     pub fn new(file: File) -> Self {
-        Self(Box::new(TarArchive::new(GzDecoder::new(BufReader::new(
-            file,
-        )))))
+        let tar = Box::new(TarArchive::new(GzDecoder::new(BufReader::new(file))));
+        ArchiveTarGz {
+            tar: Some(tar),
+            should_rewind: false,
+        }
+    }
+
+    fn try_rewind(&mut self) -> anyhow::Result<()> {
+        if !self.should_rewind {
+            return Ok(());
+        };
+
+        let mut archive_file = self.tar.take().unwrap().into_inner().into_inner();
+
+        archive_file
+            .rewind()
+            .context("error seeking to beginning of archive")?;
+
+        self.tar = Some(Box::new(TarArchive::new(GzDecoder::new(archive_file))));
+        self.should_rewind = false;
+        Ok(())
     }
 
     fn find_entry(
@@ -21,7 +43,10 @@ impl ArchiveTarGz {
         file: impl AsRef<Path>,
         opts: &ExtractBehavior,
     ) -> anyhow::Result<Option<TarEntry<impl Read>>> {
-        let archive = &mut self.0;
+        self.try_rewind()?;
+        let archive = self.tar.as_mut().unwrap();
+        self.should_rewind = true;
+
         let entries = archive
             .entries()
             .context("failed getting archive entries")?;
@@ -66,7 +91,7 @@ impl ArchiveTarGz {
         let file = file.as_ref();
         let mut tar_file = self
             .find_entry(file, opts)?
-            .context("file not found in archive")?;
+            .with_context(|| format!("`{}` was not found in archive", file.display()))?;
 
         let out_path = dest.join(file);
 
