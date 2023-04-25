@@ -40,7 +40,7 @@ impl Tool for TailwindCss {
             .split(' ')
             .nth(1)
             .with_context(|| format!("failed to parse tailwindcss version: {s:?}"))?;
-        
+
         let version_text = text
             .strip_prefix('v')
             .context("failed to strip tailwindcss version `v`")?
@@ -103,12 +103,12 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
         anyhow::bail!("unsupported target architecture")
     };
 
-    match (target_os, target_arch) {
-        ("windows", "x86_64") => Ok(format!("https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-windows-x64.exe")),
-        ("macos" | "linux", "x86_64") => Ok(format!("https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-{target_os}-x64")),
-        ("macos" | "linux", "aarch64") =>Ok(format!("https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-{target_os}-arm64")),
+    Ok(match (target_os, target_arch) {
+        ("windows", "x86_64") => format!("https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-windows-x64.exe"),
+        ("macos" | "linux", "x86_64") => format!("https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-{target_os}-x64"),
+        ("macos" | "linux", "aarch64") =>format!("https://github.com/tailwindlabs/tailwindcss/releases/download/v{version}/tailwindcss-{target_os}-arm64"),
         _ => anyhow::bail!("Unable to download tailwindcss for {target_os} {target_arch}")
-    }
+    })
 }
 
 #[cfg(test)]

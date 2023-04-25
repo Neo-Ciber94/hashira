@@ -94,27 +94,48 @@ impl Tool for NodeJs {
 }
 
 fn get_download_url(version: &str) -> anyhow::Result<String> {
-    // FIXME: Use target arch? https://doc.rust-lang.org/reference/conditional-compilation.html#target_arch
-
     let os = if cfg!(target_os = "windows") {
-        "win-x86"
+        "windows"
     } else if cfg!(target_os = "macos") {
-        "darwin-x64"
+        "macos"
     } else if cfg!(target_os = "linux") {
-        "linux-x64"
+        "linux"
     } else {
         anyhow::bail!("unsupported OS")
     };
 
-    let ext = if cfg!(target_os = "windows") {
-        "zip"
+    let target_arch = if cfg!(target_arch = "x86_64") {
+        "x86_64"
+    } else if cfg!(target_arch = "aarch64") {
+        "aarch64"
     } else {
-        "tar.gz"
+        anyhow::bail!("unsupported architecture: {os}")
     };
 
-    Ok(format!(
-        "https://nodejs.org/download/release/v{version}/node-v{version}-{os}.{ext}"
-    ))
+    Ok(match (os, target_arch) {
+        ("windows", "x86_64") => {
+            format!("https://nodejs.org/download/release/v{version}/node-v{version}-win-x86.zip")
+        }
+        ("macos", "x86_64") => {
+            format!(
+                "https://nodejs.org/download/release/v{version}/node-v{version}-darwin-x64.tar.gz"
+            )
+        }
+        ("macos", "aarch64") => {
+            format!("https://nodejs.org/download/release/v{version}/node-v{version}-darwin-arm64.tar.gz")
+        }
+        ("linux", "x86_64") => {
+            format!(
+                "https://nodejs.org/download/release/v{version}/node-v{version}-linux-x64.tar.gz"
+            )
+        }
+        ("linux", "aarch64") => {
+            format!(
+                "https://nodejs.org/download/release/v{version}/node-v{version}-linux-arm64.tar.gz"
+            )
+        }
+        _ => anyhow::bail!("unsupported target architecture: {os} {target_arch}"),
+    })
 }
 
 #[cfg(test)]

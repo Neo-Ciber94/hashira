@@ -86,6 +86,7 @@ pub(crate) fn set_file_permissions(file: &mut File, mode: u32) -> anyhow::Result
     {
         use std::fs::Permissions;
         use std::os::unix::fs::PermissionsExt;
+        use anyhow::Context;
 
         file.set_permissions(Permissions::from_mode(mode))
             .context("failed to set file permissions")?;
