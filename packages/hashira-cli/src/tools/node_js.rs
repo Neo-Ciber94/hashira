@@ -50,17 +50,19 @@ impl Tool for NodeJs {
 
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
         let version = opts.version.unwrap_or(Self::default_version());
+        let version_str = version.to_string();
 
         let extract_opts = if cfg!(target_os = "windows") {
             ExtractBehavior::SkipBasePath
         } else {
-            ExtractBehavior::Dir(PathBuf::from("bin"))
+            let base_path = base_path(&version_str)?;
+            ExtractBehavior::Dir(PathBuf::from(base_path).join("bin"))
         };
 
         match opts.install_dir {
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
-                let version_str = version.to_string();
+
                 let url = get_download_url(&version_str)?;
                 let bin_path = GlobalCache::install::<Self>(&url, dir, extract_opts).await?;
                 Ok(Self(bin_path))
@@ -138,11 +140,56 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
     })
 }
 
+#[allow(unused_variables)]
+fn base_path(version: &str) -> anyhow::Result<String> {
+    #[cfg(not(unix))]
+    unreachable!();
+
+    #[cfg(unix)]
+    {
+        let os = if cfg!(target_os = "macos") {
+            "macos"
+        } else if cfg!(target_os = "linux") {
+            "linux"
+        } else {
+            anyhow::bail!("unsupported OS")
+        };
+
+        let target_arch = if cfg!(target_arch = "x86_64") {
+            "x86_64"
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64"
+        } else {
+            anyhow::bail!("unsupported architecture: {os}")
+        };
+
+        Ok(match (os, target_arch) {
+            ("macos", "x86_64") => {
+                format!("node-v{version}-darwin-x64.tar.gz")
+            }
+            ("macos", "aarch64") => {
+                format!("node-v{version}-darwin-arm64.tar.gz")
+            }
+            ("linux", "x86_64") => {
+                format!("node-v{version}-linux-x64.tar.gz")
+            }
+            ("linux", "aarch64") => {
+                format!("node-v{version}-linux-arm64.tar.gz")
+            }
+            _ => anyhow::bail!("unsupported target architecture: {os} {target_arch}"),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::process::Command;
+    use std::{path::Path, process::Command};
 
-    use crate::tools::{node_js::NodeJs, LoadOptions, Tool, ToolExt, Version};
+    use crate::tools::{
+        archive::{Archive, ExtractBehavior},
+        node_js::NodeJs,
+        LoadOptions, Tool, ToolExt, Version,
+    };
 
     #[tokio::test]
     async fn test_load_and_version() {
@@ -255,5 +302,65 @@ mod tests {
 
         let version = node.test_version().unwrap();
         assert_eq!(version, Version::new(17, 9, Some(1)));
+    }
+
+    #[tokio::test]
+    async fn test_download_linux_bin() {
+        let url = "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-linux-x64.tar.gz";
+        let temp_dir = tempfile::tempdir().unwrap();
+        let downloaded = crate::tools::utils::download_to_dir(url, temp_dir.path())
+            .await
+            .unwrap();
+
+        let mut archive = Archive::new(&downloaded).unwrap();
+        let extracted = archive
+            .extract_file(
+                "node",
+                temp_dir.path(),
+                ExtractBehavior::Dir(Path::new("node-v16.20.0-linux-x64").join("bin")),
+            )
+            .unwrap();
+
+        assert!(
+            extracted.exists(),
+            "contents: `{:#?}`",
+            debug_contents(&downloaded)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_download_macos_bin() {
+        let url = "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-darwin-x64.tar.gz";
+        let temp_dir = tempfile::tempdir().unwrap();
+        let downloaded = crate::tools::utils::download_to_dir(url, temp_dir.path())
+            .await
+            .unwrap();
+
+        let mut archive = Archive::new(&downloaded).unwrap();
+        let extracted = archive
+            .extract_file(
+                "node",
+                temp_dir.path(),
+                ExtractBehavior::Dir(Path::new("node-v16.20.0-darwin-x64").join("bin")),
+            )
+            .unwrap();
+
+        assert!(
+            extracted.exists(),
+            "contents: `{:#?}`",
+            debug_contents(&downloaded)
+        );
+    }
+
+    fn debug_contents(path: &Path) -> Vec<String> {
+        let mut files = vec![];
+
+        for entry in path.read_dir().expect("read_dir call failed") {
+            if let Ok(entry) = entry {
+                files.push(entry.path().display().to_string());
+            }
+        }
+
+        files
     }
 }

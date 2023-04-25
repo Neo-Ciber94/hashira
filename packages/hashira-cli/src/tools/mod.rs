@@ -1,10 +1,10 @@
 // Tools
 pub mod node_js;
-pub mod tailwindcss;
-pub mod wasm_bindgen;
-pub mod parcel;
 pub mod npm;
 pub mod npx;
+pub mod parcel;
+pub mod tailwindcss;
+pub mod wasm_bindgen;
 
 //
 use std::{
@@ -63,7 +63,11 @@ pub trait ToolExt: Tool {
     /// Test the version of this tool.
     fn test_version(&self) -> anyhow::Result<Version> {
         let args = Self::test_version_args();
-        let output = self.cmd(args).output()?;
+        let output = self
+            .cmd(args)
+            .output()
+            .with_context(|| format!("failed to run: {}", self.binary_path().display()))?;
+
         let result = String::from_utf8_lossy(&output.stdout);
         Self::parse_version(&result)
     }
@@ -74,7 +78,10 @@ pub trait ToolExt: Tool {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        let child = self.cmd(args).spawn()?;
+        let child = self
+            .cmd(args)
+            .spawn()
+            .with_context(|| format!("failed to run: {}", self.binary_path().display()))?;
         Ok(child)
     }
 
@@ -84,7 +91,8 @@ pub trait ToolExt: Tool {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        let mut cmd = Command::new(self.binary_path());
+        let bin_path = self.binary_path();
+        let mut cmd = Command::new(bin_path);
         cmd.args(args);
         cmd
     }
@@ -114,7 +122,10 @@ pub(crate) fn unchecked_test_version<T: Tool>(
     );
 
     let version_args = T::test_version_args();
-    let output = Command::new(binary_path).args(version_args).output()?;
+    let output = Command::new(binary_path)
+        .args(version_args)
+        .output()
+        .with_context(|| format!("failed to run: {}", binary_path.display()))?;
 
     let version_text = String::from_utf8_lossy(&output.stdout);
     let version = T::parse_version(&version_text)?;

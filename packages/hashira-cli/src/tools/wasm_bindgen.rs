@@ -107,7 +107,7 @@ mod tests {
     use crate::tools::{wasm_bindgen::WasmBindgen, LoadOptions, Tool, ToolExt};
 
     #[tokio::test]
-    async fn test_download_and_version() {
+    async fn test_wasm_bindgen_load_in_path() {
         let temp_dir = tempfile::tempdir().unwrap();
         let download_path = temp_dir.path().to_path_buf();
         tokio::fs::create_dir_all(&download_path).await.unwrap();
@@ -125,7 +125,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_download_and_version_2() {
+    async fn test_wasm_bindgen_load() {
         let wasm_bingen = WasmBindgen::load().await.unwrap();
 
         let version = wasm_bingen.test_version().unwrap();
