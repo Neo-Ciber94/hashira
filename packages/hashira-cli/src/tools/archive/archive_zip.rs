@@ -75,7 +75,7 @@ impl ArchiveZip {
         }
 
         let out_path = dest.join(name);
-        
+
         if let Some(parent) = out_path.parent() {
             std::fs::create_dir_all(parent).context("failed to create directory")?;
         }

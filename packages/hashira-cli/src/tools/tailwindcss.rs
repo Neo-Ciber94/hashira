@@ -119,7 +119,7 @@ mod tests {
     use crate::tools::{tailwindcss::TailwindCss, LoadOptions, Tool, ToolExt};
 
     #[tokio::test]
-    async fn test_download_and_version() {
+    async fn test_tailwind_download_and_version() {
         let temp_dir: tempfile::TempDir = tempfile::tempdir().unwrap();
         let download_path = temp_dir.path().to_path_buf();
         tokio::fs::create_dir_all(&download_path).await.unwrap();
