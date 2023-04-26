@@ -62,10 +62,9 @@ pub struct BuildOptions {
 
     #[arg(
         long,
-        default_value = "global.css",
-        help = "Path to the css entry file, this file can be scss or sass"
+        help = "Path to the css entry file, this file can be css,sass,scss or less, by default use `global.css` or any variant"
     )]
-    pub styles: PathBuf,
+    pub styles: Option<PathBuf>,
 }
 
 impl BuildOptions {

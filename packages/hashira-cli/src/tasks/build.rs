@@ -1,6 +1,7 @@
 use crate::cli::{BuildOptions, WasmOptimizationLevel, DEFAULT_INCLUDES};
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
+use crate::tools::sass::Sass;
 use crate::tools::wasm_bindgen::WasmBindgen;
 use crate::tools::{Tool, ToolExt};
 use crate::utils::wait_interruptible;
@@ -383,30 +384,84 @@ async fn process_files(
     Ok(())
 }
 
+fn detect_stylesheet_file() -> anyhow::Result<Option<PathBuf>> {
+    const STYLE_SHEET_FILES: &[&str] = &["global.css", "global.scss", "global.sass", "global.less"];
+    let cwd = std::env::current_dir().context("failed to get current working directory")?;
+
+    for file in STYLE_SHEET_FILES {
+        let path = cwd.join(file);
+
+        if path.exists() {
+            return Ok(Some(path));
+        }
+    }
+
+    Ok(None)
+}
+
 #[tracing::instrument(level = "debug", skip(opts))]
 async fn process_stylesheet(opts: &BuildOptions, dest_dir: &Path) -> anyhow::Result<()> {
-    let style_file = &opts.styles;
+    let detected_style_sheet = detect_stylesheet_file()?;
+    let Some(style_file) = opts.styles.as_ref().or(detected_style_sheet.as_ref()) else {
+        tracing::warn!("no stylesheet declared");
+        return Ok(())
+    };
 
     if !style_file.exists() {
         tracing::warn!("stylesheet file `{}` was not found", style_file.display());
         return Ok(());
     }
 
+    tracing::debug!("using stylesheet file: {}", style_file.display());
+
     let Some(ext) = style_file.extension() else {
         anyhow::bail!("couldn't get extension of style file `{}`", style_file.display());
     };
 
     match ext.to_string_lossy().as_ref() {
-        "css" => bundle_css(style_file, dest_dir, opts)
+        "css" => bundle_css(&style_file, dest_dir, opts)
             .await
             .with_context(|| format!("failed to bundle css: {}", style_file.display()))?,
-        "scss" => {
-            todo!()
+        "sass" | "scss" | "less" => {
+            bundle_sass(&style_file, dest_dir, opts)
+                .await
+                .with_context(|| {
+                    format!(
+                        "failed to bundle {}: {}",
+                        ext.to_string_lossy(),
+                        style_file.display()
+                    )
+                })?
         }
         _ => {
             anyhow::bail!("unknown stylesheet file `{}`", style_file.display());
         }
     }
+
+    Ok(())
+}
+
+#[tracing::instrument(level = "debug")]
+async fn bundle_sass(
+    style_file: &Path,
+    dest_dir: &Path,
+    opts: &BuildOptions,
+) -> anyhow::Result<()> {
+    let sass = Sass::load().await?;
+    let mut cmd = sass.async_cmd();
+
+    let dest_path = dest_dir.join(style_file);
+    cmd.arg(style_file).arg(&dest_path);
+
+    if opts.quiet {
+        cmd.arg("--quiet");
+    }
+
+    let mut child = cmd.spawn()?;
+    let status = child.wait().await?;
+
+    anyhow::ensure!(status.success(), "failed to run sass");
+    tracing::debug!("written css in {}", dest_path.display());
 
     Ok(())
 }

@@ -1,0 +1,21 @@
+/* Error: Missing argument $color.
+ *   ,--> global.scss
+ * 142|   filter: invert();
+ *   |           ^^^^^^^^ invocation
+ *   '
+ *   ,--> sass:color
+ * 1 | @function invert($color, $weight: 100%) {
+ *   |           ============================= declaration
+ *   '
+ *   global.scss 142:11  root stylesheet */
+
+body::before {
+  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
+      "Droid Sans Mono", monospace, monospace;
+  white-space: pre;
+  display: block;
+  padding: 1em;
+  margin-bottom: 1em;
+  border-bottom: 2px solid black;
+  content: "Error: Missing argument $color.\a   \250c \2500 \2500 > global.scss\a 142\2502    filter: invert();\a   \2502            ^^^^^^^^ invocation\a   \2575 \a   \250c \2500 \2500 > sass:color\a 1 \2502  @function invert($color, $weight: 100%) {\a   \2502            \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501  declaration\a   \2575 \a   global.scss 142:11  root stylesheet";
+}
