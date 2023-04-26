@@ -5,7 +5,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hashira = { path = "../hashira" }
+hashira = { path = "../../hashira" }
 web-sys = { version = "0.3", features = [
     "Headers",
     "Request",

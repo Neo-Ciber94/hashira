@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hashira = { path = "../hashira" }
+hashira = { path = "../../hashira" }
 rocket = "0.5.0-rc.3"
 tokio-util = { version = "0.7.7", features = ["io"] }

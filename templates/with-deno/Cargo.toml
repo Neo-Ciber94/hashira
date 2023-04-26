@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 hashira = { path = "../../packages/hashira" }
-hashira-wasm = { path = "../../packages/hashira-wasm" }
+hashira-wasm = { path = "../../packages/adapters/hashira-wasm" }
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }
