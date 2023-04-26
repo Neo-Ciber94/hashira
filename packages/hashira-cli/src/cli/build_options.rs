@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use super::{wasm_opt_level::WasmOptimizationLevel, DevOptions, RunOptions};
 
 // directories and files included as default in the `public_dir` if not valid is specified.
-pub const DEFAULT_INCLUDES: &[&str] = &["public/", "styles/", "favicon.ico"];
+pub const DEFAULT_INCLUDES: &[&str] = &["public/", "favicon.ico"];
 
 #[derive(Args, Debug, Clone)]
 pub struct BuildOptions {

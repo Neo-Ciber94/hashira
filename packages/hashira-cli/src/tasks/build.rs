@@ -1,17 +1,21 @@
 use crate::cli::{BuildOptions, WasmOptimizationLevel, DEFAULT_INCLUDES};
-use crate::pipelines::css::CssPipeline;
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use crate::tools::wasm_bindgen::WasmBindgen;
-use crate::tools::{CommandArgs, Tool, ToolExt};
+use crate::tools::{Tool, ToolExt};
 use crate::utils::wait_interruptible;
 use anyhow::Context;
+use lightningcss::stylesheet::PrinterOptions;
+use lightningcss::{
+    bundler::{Bundler, FileProvider},
+    stylesheet::ParserOptions,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tokio::io::BufReader;
 use tokio::process::{Child, Command};
 use tokio::sync::broadcast::Sender;
 use wasm_opt::OptimizationOptions;
-
 #[derive(Debug)]
 struct IncludeFiles {
     path: PathBuf,
@@ -143,6 +147,8 @@ impl BuildTask {
         // We process each file and include then in the public directory
         let dest_dir = opts.profile_target_dir()?.join(&opts.public_dir);
 
+        process_stylesheet(self.options.as_ref(), &dest_dir).await?;
+
         process_files(include_files, dest_dir.as_path(), opts)
             .await
             .context("Failed to copy files")?;
@@ -210,17 +216,18 @@ impl BuildTask {
     async fn spawn_wasm_bindgen(&self) -> anyhow::Result<Child> {
         let opts = &self.options;
 
-        let mut cmd_args = CommandArgs::new();
+        let wasm_bindgen = WasmBindgen::load().await?;
+        let mut cmd = wasm_bindgen.async_cmd();
 
         // args
-        cmd_args.args(["--target", "web"]).arg("--no-typescript");
+        cmd.args(["--target", "web"]).arg("--no-typescript");
 
         // out dir
         let mut out_dir = opts.profile_target_dir()?;
         out_dir.push(&opts.public_dir);
         tracing::debug!("wasm-bindgen out-dir: {}", out_dir.display());
 
-        cmd_args.arg("--out-dir").arg(out_dir);
+        cmd.arg("--out-dir").arg(out_dir);
 
         // wasm to bundle
         // The wasm is located in ${target_dir}/wasm32-unknown-unknown/{profile}/{project_name}.wasm
@@ -237,11 +244,10 @@ impl BuildTask {
         wasm_dir.push(format!("{lib_name}.wasm"));
         tracing::debug!("wasm file dir: {}", wasm_dir.display());
 
-        cmd_args.arg(wasm_dir);
+        cmd.arg(wasm_dir);
 
         // Run
-        let wasm_bindgen = WasmBindgen::load().await?;
-        let child = wasm_bindgen.async_cmd(cmd_args).spawn()?;
+        let child = cmd.spawn()?;
         Ok(child)
     }
 
@@ -373,6 +379,60 @@ async fn process_files(
             tracing::error!("{err}");
         }
     }
+
+    Ok(())
+}
+
+#[tracing::instrument(level = "debug", skip(opts))]
+async fn process_stylesheet(opts: &BuildOptions, dest_dir: &Path) -> anyhow::Result<()> {
+    let style_file = &opts.styles;
+
+    if !style_file.exists() {
+        tracing::warn!("stylesheet file `{}` was not found", style_file.display());
+        return Ok(());
+    }
+
+    let Some(ext) = style_file.extension() else {
+        anyhow::bail!("couldn't get extension of style file `{}`", style_file.display());
+    };
+
+    match ext.to_string_lossy().as_ref() {
+        "css" => bundle_css(style_file, dest_dir, opts)
+            .await
+            .with_context(|| format!("failed to bundle css: {}", style_file.display()))?,
+        "scss" => {
+            todo!()
+        }
+        _ => {
+            anyhow::bail!("unknown stylesheet file `{}`", style_file.display());
+        }
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument(level = "debug")]
+async fn bundle_css(style_file: &Path, dest_dir: &Path, opts: &BuildOptions) -> anyhow::Result<()> {
+    let fs = FileProvider::new();
+    let mut bundler = Bundler::new(&fs, None, ParserOptions::default());
+    let stylesheet = bundler.bundle(&style_file).unwrap();
+
+    let css_result = stylesheet.to_css(PrinterOptions {
+        minify: opts.release,
+        source_map: false, // This should be an option
+        ..Default::default()
+    })?;
+
+    let dest_path = dest_dir.join(style_file);
+    let mut file = tokio::fs::File::create(&dest_path).await?;
+    let code = css_result.code;
+
+    let mut reader = BufReader::new(code.as_bytes());
+    tokio::io::copy(&mut reader, &mut file)
+        .await
+        .context("failed to copy css stylesheet")?;
+
+    tracing::debug!("written css in {}", dest_path.display());
 
     Ok(())
 }
@@ -517,7 +577,6 @@ fn is_inside_src(base: &Path, path: &Path) -> anyhow::Result<bool> {
 // TODO: Should we just process the pipeline in order and forget about using a Box<dyn Pipeline>?
 fn pipelines() -> Vec<Box<dyn Pipeline + Send>> {
     vec![
-        Box::new(CssPipeline),
         // The last pipeline should always be the copy files
         Box::new(CopyFilesPipeline),
     ]

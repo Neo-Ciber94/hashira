@@ -45,6 +45,7 @@ tar = "0.4.38"
 zip = "0.6.4"
 which = "4.4.0"
 dunce = "1.0.4"
+lightningcss = "1.0.0-alpha.41"
 
 [dev-dependencies]
 tokio = { version = "1.27.0", features = ["macros", "rt"] }
