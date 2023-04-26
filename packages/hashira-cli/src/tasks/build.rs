@@ -419,11 +419,11 @@ async fn process_stylesheet(opts: &BuildOptions, dest_dir: &Path) -> anyhow::Res
     };
 
     match ext.to_string_lossy().as_ref() {
-        "css" => bundle_css(&style_file, dest_dir, opts)
+        "css" => bundle_css(style_file, dest_dir, opts)
             .await
             .with_context(|| format!("failed to bundle css: {}", style_file.display()))?,
         "sass" | "scss" | "less" => {
-            bundle_sass(&style_file, dest_dir, opts)
+            bundle_sass(style_file, dest_dir, opts)
                 .await
                 .with_context(|| {
                     format!(
@@ -470,7 +470,7 @@ async fn bundle_sass(
 async fn bundle_css(style_file: &Path, dest_dir: &Path, opts: &BuildOptions) -> anyhow::Result<()> {
     let fs = FileProvider::new();
     let mut bundler = Bundler::new(&fs, None, ParserOptions::default());
-    let stylesheet = bundler.bundle(&style_file).unwrap();
+    let stylesheet = bundler.bundle(style_file).unwrap();
 
     let css_result = stylesheet.to_css(PrinterOptions {
         minify: opts.release,
@@ -513,13 +513,13 @@ fn get_files_to_process(
         if path.is_file() {
             check_can_include(
                 &cwd,
-                &path,
+                path,
                 opts.allow_include_external,
                 opts.allow_include_src,
             )?;
 
             // SAFETY: We already check the path
-            let file = dunce::canonicalize(&path).unwrap();
+            let file = dunce::canonicalize(path).unwrap();
             let base_dir = file
                 .parent()
                 .unwrap()
@@ -551,13 +551,13 @@ fn get_files_to_process(
 
                 check_can_include(
                     &cwd,
-                    &path,
+                    path,
                     opts.allow_include_external,
                     opts.allow_include_src,
                 )?;
 
                 // SAFETY: the file exists
-                let base_dir = dunce::canonicalize(&path).unwrap();
+                let base_dir = dunce::canonicalize(path).unwrap();
                 let entry = dunce::canonicalize(entry).unwrap();
                 tracing::debug!("Entry: {}", entry.display());
 

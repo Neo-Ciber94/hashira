@@ -39,8 +39,7 @@ impl Tool for TailwindCss {
         let line = s
             .lines()
             .map(|s| s.trim())
-            .filter(|s| s.trim().len() > 0)
-            .next()
+            .find(|s| !s.trim().is_empty())
             .with_context(|| format!("failed to parse tailwindcss version: {s:?}"))?;
 
         let text = line

@@ -44,7 +44,7 @@ pub trait Pipeline {
 pub fn get_file_dest(file_dir: &Path, file: &Path, dest_dir: &Path) -> anyhow::Result<PathBuf> {
     let file_name = file.file_name().unwrap();
 
-    match file.strip_prefix(&file_dir) {
+    match file.strip_prefix(file_dir) {
         Ok(relative) => {
             let dir = dest_dir.join(relative.parent().unwrap());
             std::fs::create_dir_all(&dir)?;

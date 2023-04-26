@@ -136,15 +136,15 @@ impl GlobalCache {
         // If not include file is declared, we include the binary name
         if include_files.is_empty() {
             let bin_path = archive
-                .extract_file(bin_name, dest, opts.clone())
+                .extract_file(bin_name, dest, opts)
                 .with_context(|| format!("failed to extract binary: {bin_name}"))?;
 
-            cache.insert(bin_name.to_owned(), bin_path.clone());
+            cache.insert(bin_name.to_owned(), bin_path);
         } else {
             // Add all the required files
             for include_file in T::include() {
                 let file = archive
-                    .extract_file(include_file, dest, opts.clone())
+                    .extract_file(include_file, dest, opts)
                     .with_context(|| format!("failed to include file: {include_file}"))?;
 
                 cache.insert((*include_file).to_owned(), file);

@@ -81,15 +81,12 @@ pub trait Tool: Sized {
                 .last()
                 .with_context(|| format!("failed to read include file `{file}`"))?;
 
-            match name.as_os_str().to_str() {
-                Some(name) => {
+                if let Some(name) = name.as_os_str().to_str() {
                     if name == bin_name {
                         binary_included = true;
                         break;
                     }
                 }
-                _ => {}
-            }
         }
 
         anyhow::ensure!(
