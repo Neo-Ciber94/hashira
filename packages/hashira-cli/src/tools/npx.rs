@@ -42,6 +42,10 @@ impl Npx {
 
 #[async_trait::async_trait]
 impl Tool for Npx {
+    fn name() -> &'static str {
+        "npx"
+    }
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "npx.cmd"

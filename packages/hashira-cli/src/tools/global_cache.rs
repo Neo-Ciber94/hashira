@@ -60,12 +60,9 @@ impl GlobalCache {
         }
 
         let cache_dir = cache_dir().map_err(GlobalCacheError::from_anyhow)?;
-        if let Ok(tool_path) = cache_dir.canonicalize(bin_name) {
-            cache.insert(bin_name.to_owned(), tool_path.clone());
-            return Ok(tool_path);
-        }
-
-        Err(GlobalCacheError::NotFound(bin_name.to_owned()))
+        let bin_path = cache_dir.join(bin_name);
+        cache.insert(bin_name.to_owned(), bin_path.clone());
+        Ok(bin_path)
     }
 
     /// Try get the given tool from the system and save in cache if can.
@@ -129,7 +126,7 @@ impl GlobalCache {
         let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
 
-        tracing::info!("⏬ Downloading `{bin_name}`...");
+        tracing::info!("⏬ Downloading `{name}` from `{url}`...", name = T::name(),);
 
         // Downloads an extract the binary
         let downloaded = download_to_dir(url, dest).await?;

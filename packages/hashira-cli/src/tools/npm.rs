@@ -33,6 +33,10 @@ impl Npm {
 
 #[async_trait::async_trait]
 impl Tool for Npm {
+    fn name() -> &'static str {
+        "npm"
+    }
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "npm.cmd"

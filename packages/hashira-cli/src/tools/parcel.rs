@@ -3,7 +3,7 @@ use crate::tools::npm::Npm;
 use super::{
     global_cache::{FindVersion, GlobalCache, GlobalCacheError},
     node_js::NodeJs,
-    utils::cache_dir_path,
+    utils::cache_dir,
     Tool, Version,
 };
 use anyhow::Context;
@@ -16,6 +16,10 @@ pub struct Parcel(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for Parcel {
+    fn name() -> &'static str {
+        "parcel"
+    }
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "parcel.cmd"
@@ -66,7 +70,7 @@ impl Tool for Parcel {
                 match GlobalCache::find_any::<Self>(FindVersion::Any).await {
                     Ok(bin_path) => Ok(Self(bin_path)),
                     Err(GlobalCacheError::NotFound(_)) => {
-                        let dir = cache_dir_path()?;
+                        let dir = cache_dir()?;
 
                         // Install using npm install
                         let install_cmd = npm.install_cmd(format!("parcel@{version}"), &dir);

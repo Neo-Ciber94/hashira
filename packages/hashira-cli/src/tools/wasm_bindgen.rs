@@ -6,7 +6,7 @@ use std::{
 use super::{
     archive::ExtractBehavior,
     global_cache::{FindVersion, GlobalCache, GlobalCacheError},
-    utils::cache_dir_path,
+    utils::cache_dir,
     LoadOptions, Tool, Version,
 };
 
@@ -15,6 +15,10 @@ pub struct WasmBindgen(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for WasmBindgen {
+    fn name() -> &'static str {
+        "wasm-bindgen"
+    }
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "wasm-bindgen.exe"
@@ -61,7 +65,7 @@ impl Tool for WasmBindgen {
                     Err(GlobalCacheError::NotFound(_)) => {
                         // Download and install
                         let url = get_download_url(&version)?;
-                        let cache_path = cache_dir_path()?;
+                        let cache_path = cache_dir()?;
                         let bin_path = GlobalCache::install::<Self>(
                             &url,
                             &cache_path,

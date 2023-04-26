@@ -1,6 +1,6 @@
 use super::{
     global_cache::{FindVersion, GlobalCacheError},
-    utils::cache_dir_path,
+    utils::cache_dir,
     LoadOptions, Tool, Version,
 };
 use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
@@ -14,6 +14,10 @@ pub struct TailwindCss(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for TailwindCss {
+    fn name() -> &'static str {
+        "tailwindcss"
+    }
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "tailwindcss.exe"
@@ -74,7 +78,7 @@ impl Tool for TailwindCss {
                     Err(GlobalCacheError::NotFound(_)) => {
                         // Download and install
                         let url = get_download_url(&version)?;
-                        let cache_path = cache_dir_path()?;
+                        let cache_path = cache_dir()?;
                         let bin_path =
                             GlobalCache::install::<Self>(&url, &cache_path, ExtractBehavior::None)
                                 .await?;

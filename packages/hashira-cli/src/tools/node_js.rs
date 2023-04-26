@@ -1,6 +1,6 @@
 use super::{
     global_cache::{FindVersion, GlobalCacheError},
-    utils::cache_dir_path,
+    utils::cache_dir,
     LoadOptions, Tool, Version,
 };
 use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
@@ -11,6 +11,10 @@ pub struct NodeJs(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for NodeJs {
+    fn name() -> &'static str {
+        "node"
+    }
+    
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "node.exe"
@@ -75,7 +79,7 @@ impl Tool for NodeJs {
                         // Download and install
                         let version_str = version.to_string();
                         let url = get_download_url(&version_str)?;
-                        let cache_path = cache_dir_path()?;
+                        let cache_path = cache_dir()?;
                         let bin_path = GlobalCache::install::<Self>(
                             &url,
                             &cache_path,

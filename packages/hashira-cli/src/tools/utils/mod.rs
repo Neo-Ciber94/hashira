@@ -1,26 +1,23 @@
 use anyhow::Context;
-use cap_directories::{ambient_authority, ProjectDirs};
-use cap_std::fs::Dir;
+use directories::ProjectDirs;
 use futures::StreamExt;
 use reqwest::Client;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 
 /// Returns the cache directory.
-pub fn cache_dir() -> anyhow::Result<Dir> {
-    let authority = ambient_authority();
-    let dir = ProjectDirs::from("dev", "hashira-rs", "hashira", authority)
+pub fn cache_dir() -> anyhow::Result<PathBuf> {
+    let dir = ProjectDirs::from("dev", "hashira-rs", "hashira")
         .context("failed finding project directory")?
-        .cache_dir()?;
+        .cache_dir()
+        .to_owned();
+
+    std::fs::create_dir_all(&dir)
+        .context("failed creating cache directory")?;
 
     Ok(dir)
 }
 
-pub fn cache_dir_path() -> anyhow::Result<PathBuf> {
-    let cache_dir = cache_dir()?;
-    let dir = cache_dir.canonicalize(".")?;
-    Ok(dir)
-}
 
 /// Download a file and write the content to the destination.
 pub async fn download<W>(url: &str, dest: &mut W) -> anyhow::Result<()>
@@ -152,8 +149,7 @@ mod test {
     #[tokio::test]
     async fn test_download_to_cache_dir() {
         let cache_dir = cache_dir().unwrap();
-        let dir = cache_dir.canonicalize(".").unwrap();
-        let temp_dir = tempfile::tempdir_in(dir).unwrap();
+        let temp_dir = tempfile::tempdir_in(cache_dir).unwrap();
 
         let downloaded = super::download_to_dir(
             "https://github.com/Neo-Ciber94/sample_files/raw/main/file.txt",

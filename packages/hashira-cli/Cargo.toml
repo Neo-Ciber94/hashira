@@ -35,9 +35,7 @@ wasm-opt = "0.112.0"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 async-trait = "0.1.68"
-cap-directories = "1.0.14"
 reqwest = { version = "0.11.16", features = ["stream"]}
-cap-std = "1.0.14"
 thiserror = "1.0.40"
 tempfile = "3.5.0"
 flate2 = "1.0.25"
@@ -46,6 +44,7 @@ zip = "0.6.4"
 which = "4.4.0"
 dunce = "1.0.4"
 lightningcss = "1.0.0-alpha.41"
+directories = "5.0.0"
 
 [dev-dependencies]
 tokio = { version = "1.27.0", features = ["macros", "rt"] }

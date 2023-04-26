@@ -2,7 +2,7 @@ use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
 
 use super::{
     global_cache::{FindVersion, GlobalCacheError},
-    utils::cache_dir_path,
+    utils::cache_dir,
     Tool, Version,
 };
 use std::{path::PathBuf, str::FromStr};
@@ -11,6 +11,10 @@ pub struct Sass(PathBuf);
 
 #[async_trait::async_trait]
 impl Tool for Sass {
+    fn name() -> &'static str {
+        "sass"
+    }
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "sass.bat"
@@ -64,7 +68,7 @@ impl Tool for Sass {
                     Err(GlobalCacheError::NotFound(_)) => {
                         // Download and install
                         let url = get_download_url(&version)?;
-                        let cache_path = cache_dir_path()?;
+                        let cache_path = cache_dir()?;
                         let bin_path =
                             GlobalCache::install::<Self>(&url, &cache_path, ExtractBehavior::SkipBasePath)
                                 .await?;

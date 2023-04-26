@@ -31,6 +31,9 @@ pub struct LoadOptions<'a> {
 /// An external tool.
 #[async_trait::async_trait]
 pub trait Tool: Sized {
+    /// Name of this tool, mainly used for debugging.
+    fn name() -> &'static str;
+
     /// Name of the executable binary of this tool.
     fn binary_name() -> &'static str;
 
