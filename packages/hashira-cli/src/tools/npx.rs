@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use super::{node_js::NodeJs, CommandArgs, Tool, ToolExt, Version};
+use super::{node_js::NodeJs, Tool, ToolExt, Version};
 use std::{
     path::{Path, PathBuf},
     process::Command,
@@ -22,22 +22,21 @@ impl Npx {
     /// Returns a command used to run the specified package globally
     pub fn exec_global(&self, package: String) -> Command {
         // npx {package}
-        let mut args = CommandArgs::new();
-        args.arg("install").arg(package);
-
-        self.cmd(args)
+        let mut cmd = self.cmd();
+        cmd.arg("install").arg(package);
+        cmd
     }
 
     /// Returns a command used to run the specified package in the given directory
     pub fn exec_cmd(&self, package: String, dir: impl AsRef<Path>) -> Command {
         // npx {package} --prefix {dir}
-        let mut args = CommandArgs::new();
-        args.arg("install")
+        let mut cmd = self.cmd();
+        cmd.arg("install")
             .arg(package)
             .arg("--prefix")
             .arg(dir.as_ref());
 
-        self.cmd(args)
+        cmd
     }
 }
 

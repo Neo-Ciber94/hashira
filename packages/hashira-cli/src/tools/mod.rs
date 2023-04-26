@@ -8,7 +8,7 @@ pub mod wasm_bindgen;
 
 //
 use std::{
-    ffi::{OsStr, OsString},
+    ffi::OsStr,
     fmt::Display,
     path::Path,
     process::{Child, Command},
@@ -64,7 +64,8 @@ pub trait ToolExt: Tool {
     fn test_version(&self) -> anyhow::Result<Version> {
         let args = Self::test_version_args();
         let output = self
-            .cmd(args)
+            .cmd()
+            .args(args)
             .output()
             .with_context(|| format!("failed to run: {}", self.binary_path().display()))?;
 
@@ -79,33 +80,23 @@ pub trait ToolExt: Tool {
         S: AsRef<OsStr>,
     {
         let child = self
-            .cmd(args)
+            .cmd()
+            .args(args)
             .spawn()
             .with_context(|| format!("failed to run: {}", self.binary_path().display()))?;
         Ok(child)
     }
 
     /// Returns a command to execute this tool
-    fn cmd<I, S>(&self, args: I) -> Command
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
+    fn cmd(&self) -> Command {
         let bin_path = self.binary_path();
-        let mut cmd = Command::new(bin_path);
-        cmd.args(args);
-        cmd
+        Command::new(bin_path)
     }
 
     /// Returns a asynchronous command to execute this tool
-    fn async_cmd<I, S>(&self, args: I) -> tokio::process::Command
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        let mut cmd = tokio::process::Command::new(self.binary_path());
-        cmd.args(args);
-        cmd
+    fn async_cmd(&self) -> tokio::process::Command {
+        let bin_path = self.binary_path();
+        tokio::process::Command::new(bin_path)
     }
 }
 
@@ -193,40 +184,5 @@ impl FromStr for Version {
         };
 
         Ok(Version::new(mayor, minor, patch))
-    }
-}
-
-/// Represents a collection of command arguments.
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct CommandArgs(Vec<OsString>);
-impl CommandArgs {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Self {
-        self.0.push(arg.as_ref().to_os_string());
-        self
-    }
-
-    pub fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        for arg in args {
-            self.arg(arg);
-        }
-        self
-    }
-}
-
-impl IntoIterator for CommandArgs {
-    type Item = OsString;
-
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
     }
 }

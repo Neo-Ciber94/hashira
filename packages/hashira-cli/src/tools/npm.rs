@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use super::{node_js::NodeJs, CommandArgs, Tool, ToolExt, Version};
+use super::{node_js::NodeJs, Tool, ToolExt, Version};
 use std::{
     path::{Path, PathBuf},
     process::Command,
@@ -21,13 +21,13 @@ impl Npm {
     /// Returns a command used to install the specified package in the given directory
     pub fn install_cmd(&self, package: String, dir: impl AsRef<Path>) -> Command {
         // Install using npm install {package} --prefix {dir}
-        let mut args = CommandArgs::new();
-        args.arg("install")
+        let mut cmd = self.cmd();
+        cmd.arg("install")
             .arg(package)
             .arg("--prefix")
             .arg(dir.as_ref());
 
-        self.cmd(args)
+        cmd
     }
 }
 
