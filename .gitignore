@@ -1,4 +1,4 @@
 dist
 private
-/target
-/Cargo.lock
+target
+Cargo.lock

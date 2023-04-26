@@ -1,21 +1,156 @@
-/* Error: Missing argument $color.
- *   ,--> global.scss
- * 142|   filter: invert();
- *   |           ^^^^^^^^ invocation
- *   '
- *   ,--> sass:color
- * 1 | @function invert($color, $weight: 100%) {
- *   |           ============================= declaration
- *   '
- *   global.scss 142:11  root stylesheet */
+:root {
+  --main-color: rgb(170, 255, 0);
+  --alt-color: rgb(17, 79, 0);
+}
 
-body::before {
-  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
-      "Droid Sans Mono", monospace, monospace;
-  white-space: pre;
-  display: block;
-  padding: 1em;
-  margin-bottom: 1em;
-  border-bottom: 2px solid black;
-  content: "Error: Missing argument $color.\a   \250c \2500 \2500 > global.scss\a 142\2502    filter: invert();\a   \2502            ^^^^^^^^ invocation\a   \2575 \a   \250c \2500 \2500 > sass:color\a 1 \2502  @function invert($color, $weight: 100%) {\a   \2502            \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501 \2501  declaration\a   \2575 \a   global.scss 142:11  root stylesheet";
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  display: flex;
+  flex-direction: row;
+}
+
+header nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 10px 5px;
+  width: 100%;
+  border-bottom: 1px solid #8686867b;
+}
+
+nav a {
+  min-width: 100px;
+  font-size: calc(1rem + 0.5vw);
+  display: inline-block;
+  font-family: monospace;
+  text-decoration: none;
+  color: rgb(77, 77, 77);
+  padding: 5px 4px;
+  text-align: center;
+  border-bottom: 2px solid;
+  border-color: transparent;
+}
+
+.container {
+  width: 100%;
+  height: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 15px;
+}
+
+nav a:hover {
+  color: black;
+  box-sizing: border-box;
+  border-color: #555;
+}
+
+.counter {
+  margin: 20px;
+}
+
+.counter {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  font-family: monospace;
+}
+
+.counter button {
+  border-radius: 100%;
+  border: none;
+  background-color: var(--main-color);
+  color: black;
+  font-size: 30px;
+  min-width: 60px;
+  min-height: 60px;
+  cursor: pointer;
+}
+
+.counter button:hover {
+  box-shadow: 0 0 10px var(--main-color);
+}
+
+.counter button:focus {
+  border: 3px solid var(--alt-color);
+}
+
+.counter span {
+  font-size: 40px;
+  text-align: center;
+  width: 150px;
+}
+
+.logo-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  cursor: pointer;
+}
+
+.logo-container .hashira {
+  font-size: 50px;
+  font-family: monospace;
+  cursor: pointer;
+}
+
+.logo-container img {
+  height: 80px;
+  width: auto;
+}
+
+.logo-container .divider {
+  font-size: 40px;
+  font-weight: bold;
+}
+
+.theme-toggle {
+  margin-left: auto;
+  overflow: hidden;
+}
+
+.theme-toggle button {
+  border: none;
+  outline: none;
+  font-size: 30px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 500ms;
+}
+
+.theme-toggle button:hover {
+  transform: scale(0.9) rotate(180deg);
+  transform-origin: center center;
+}
+
+body.dark {
+  background-color: rgb(15, 15, 15);
+}
+
+body.dark .logo-container {
+  filter: invert(1);
+}
+
+body.dark .counter span,
+body.dark a {
+  color: white;
+}
+
+body.dark header nav {
+  border-bottom: 1px solid #ffffff16;
+}
+
+body.dark nav a:hover {
+  border-color: var(--main-color);
 }

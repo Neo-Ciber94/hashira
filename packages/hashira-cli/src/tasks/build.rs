@@ -441,7 +441,7 @@ async fn process_stylesheet(opts: &BuildOptions, dest_dir: &Path) -> anyhow::Res
     Ok(())
 }
 
-#[tracing::instrument(level = "debug")]
+#[tracing::instrument(level = "debug", skip(opts))]
 async fn bundle_sass(
     style_file: &Path,
     dest_dir: &Path,
@@ -450,8 +450,13 @@ async fn bundle_sass(
     let sass = Sass::load().await?;
     let mut cmd = sass.async_cmd();
 
-    let dest_path = dest_dir.join(style_file);
-    cmd.arg(style_file).arg(&dest_path);
+    // Style file may be absolute, we need only the file name and extension.
+    let out_file = {
+        let f = style_file.file_stem().map(Path::new).unwrap();
+        f.with_extension("css")
+    };
+    let dest_path = dest_dir.join(out_file);
+    cmd.arg(style_file).arg(&dest_path).arg("--stop-on-error");
 
     if opts.quiet {
         cmd.arg("--quiet");
@@ -466,7 +471,7 @@ async fn bundle_sass(
     Ok(())
 }
 
-#[tracing::instrument(level = "debug")]
+#[tracing::instrument(level = "debug", skip(opts))]
 async fn bundle_css(style_file: &Path, dest_dir: &Path, opts: &BuildOptions) -> anyhow::Result<()> {
     let fs = FileProvider::new();
     let mut bundler = Bundler::new(&fs, None, ParserOptions::default());
@@ -477,7 +482,12 @@ async fn bundle_css(style_file: &Path, dest_dir: &Path, opts: &BuildOptions) -> 
         ..Default::default()
     })?;
 
-    let dest_path = dest_dir.join(style_file);
+    // Style file may be absolute, we need only the file name and extension.
+    let out_file = {
+        let f = style_file.file_stem().map(Path::new).unwrap();
+        f.with_extension("css")
+    };
+    let dest_path = dest_dir.join(out_file);
     let mut file = tokio::fs::File::create(&dest_path).await?;
     let code = css_result.code;
 

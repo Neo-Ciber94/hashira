@@ -55,12 +55,17 @@ impl GlobalCache {
         let bin_name = T::binary_name();
 
         if let Some(bin_path) = cache.get(bin_name).cloned() {
-            tracing::debug!("loaded tool: `{bin_name}`");
             return Ok(bin_path);
         }
 
         let cache_dir = cache_dir().map_err(GlobalCacheError::from_anyhow)?;
         let bin_path = cache_dir.join(bin_name);
+
+        if !bin_path.exists() {
+            return Err(GlobalCacheError::NotFound(bin_name.to_owned()));
+        }
+
+        tracing::debug!("loaded tool from cache: {bin_name}");
         cache.insert(bin_name.to_owned(), bin_path.clone());
         Ok(bin_path)
     }

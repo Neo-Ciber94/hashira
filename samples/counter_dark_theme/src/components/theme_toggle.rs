@@ -1,5 +1,6 @@
 use hashira::{hooks::use_server_context, web::RequestExt};
-use yew::function_component;
+use yew::{function_component, html::onsubmit::Event};
+//use web_sys::window;
 
 #[function_component]
 pub fn ThemeToggle() -> yew::HtmlResult {
@@ -17,8 +18,17 @@ pub fn ThemeToggle() -> yew::HtmlResult {
     )?
     .expect("failed to get dark mode state");
 
+    let on_submit = |e: Event| {
+        // TODO: Submit form without reload
+        // e.prevent_default();
+
+        // let window = window().unwrap();
+        // let body = window.document().unwrap().body().unwrap();
+        // body.class_list().toggle("dark").unwrap();
+    };
+
     Ok(yew::html! {
-        <form class="theme-toggle">
+        <form class="theme-toggle" onsubmit={on_submit}>
             if *is_dark {
                 <button formaction="/api/change_theme">
                     {"☀️"}

@@ -1,15 +1,15 @@
 mod components;
+mod pages;
 
-use std::time::Instant;
-
-use crate::components::{root_layout, Counter, ThemeToggle};
+use crate::components::{root_layout, ThemeToggle};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    page_component,
-    server::Metadata, events::{Hooks, Next},
+    events::{Hooks, Next},
+    server::Metadata,
 };
-use serde::{Deserialize, Serialize};
-use yew::{html::ChildrenProps, BaseComponent, Properties, Suspense};
+pub use pages::{CounterPage, CounterPageProps, HomePage};
+use std::time::Instant;
+use yew::{html::ChildrenProps, BaseComponent, Suspense};
 
 #[yew::function_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
@@ -28,32 +28,6 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
         </header>
         <>{for props.children.iter()}</>
        </>
-    }
-}
-
-#[page_component]
-pub fn HomePage() -> yew::Html {
-    yew::html! {
-        <div class="container">
-            <div class="logo-container">
-            <span class="hashira" title="Hashira">{"Hashira"}</span>
-        </div>
-        </div>
-    }
-}
-
-#[derive(PartialEq, Clone, Properties, Serialize, Deserialize)]
-pub struct CounterPageProps {
-    #[prop_or_default]
-    counter_start: i32,
-}
-
-#[page_component]
-pub fn CounterPage(props: &CounterPageProps) -> yew::Html {
-    yew::html! {
-        <div class="container">
-            <Counter value={props.counter_start}/>
-        </div>
     }
 }
 
