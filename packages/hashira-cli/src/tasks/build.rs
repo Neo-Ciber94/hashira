@@ -419,7 +419,6 @@ async fn bundle_css(style_file: &Path, dest_dir: &Path, opts: &BuildOptions) -> 
 
     let css_result = stylesheet.to_css(PrinterOptions {
         minify: opts.release,
-        source_map: false, // This should be an option
         ..Default::default()
     })?;
 
