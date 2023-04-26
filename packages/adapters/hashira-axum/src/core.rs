@@ -1,7 +1,7 @@
 use axum::{response::IntoResponse, routing::get_service, Extension, Router};
 use hashira::{
     app::AppService,
-    web::{Body, Request, Response},
+    web::{Body, BodyInner, Request, Response},
 };
 use hyper::{body::to_bytes, StatusCode};
 use tower_http::services::ServeDir;
@@ -31,45 +31,20 @@ pub async fn handle_request(
     }
 }
 
-async fn map_request(mut req: Request<axum::body::Body>) -> Result<Request, axum::Error> {
-    let mut builder = Request::builder()
-        .version(req.version())
-        .method(req.method())
-        .uri(req.uri());
-
-    if let Some(headers) = builder.headers_mut() {
-        *headers = std::mem::take(req.headers_mut());
-    }
-
-    if let Some(ext) = builder.extensions_mut() {
-        *ext = std::mem::take(req.extensions_mut());
-    }
-
-    let axum_body = req.into_body();
-    let bytes = to_bytes(axum_body).await.map_err(axum::Error::new)?;
-    let ret = builder.body(Body::from(bytes)).map_err(axum::Error::new)?;
-    Ok(ret)
+async fn map_request(req: Request<axum::body::Body>) -> Result<Request, axum::Error> {
+    let (parts, body) = req.into_parts();
+    let body = Body::from(to_bytes(body).await.map_err(axum::Error::new)?);
+    Ok(Request::from_parts(parts, body))
 }
 
-fn map_response(mut res: Response) -> axum::response::Response {
-    let mut builder = axum::response::Response::builder()
-        .version(res.version())
-        .status(res.status());
-
-    if let Some(headers) = builder.headers_mut() {
-        *headers = std::mem::take(res.headers_mut());
-    }
-
-    if let Some(ext) = builder.extensions_mut() {
-        *ext = std::mem::take(res.extensions_mut());
-    }
-
-    let body = match res.into_body().into_inner() {
-        hashira::web::BodyInner::Bytes(bytes) => axum::body::Body::from(bytes),
-        hashira::web::BodyInner::Stream(stream) => axum::body::Body::wrap_stream(stream),
+fn map_response(res: Response) -> axum::response::Response {
+    let (parts, body) = res.into_parts();
+    let body = match body.into_inner() {
+        BodyInner::Bytes(bytes) => axum::body::Body::from(bytes),
+        BodyInner::Stream(stream) => axum::body::Body::wrap_stream(stream),
     };
 
-    builder.body(axum::body::boxed(body)).unwrap()
+    axum::response::Response::from_parts(parts, axum::body::boxed(body))
 }
 
 fn get_current_dir() -> std::path::PathBuf {
