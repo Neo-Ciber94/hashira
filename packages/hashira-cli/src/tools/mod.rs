@@ -5,6 +5,7 @@ pub mod npx;
 pub mod parcel;
 pub mod tailwindcss;
 pub mod wasm_bindgen;
+pub mod sass;
 
 //
 use std::{
