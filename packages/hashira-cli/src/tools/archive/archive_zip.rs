@@ -39,13 +39,6 @@ impl ArchiveZip {
                         break;
                     }
                 }
-                ExtractBehavior::Dir(dir) => {
-                    let actual_path = dir.join(path);
-                    if name.as_path() == actual_path {
-                        idx = Some(index);
-                        break;
-                    }
-                }
                 ExtractBehavior::None => {
                     if name.as_path() == path {
                         idx = Some(index);
@@ -75,8 +68,14 @@ impl ArchiveZip {
         };
 
         let zip_file = entry.enclosed_name().context("invalid entry path")?;
-        let out_path = dest.join(zip_file);
+        let mut name = zip_file.components();
 
+        if &ExtractBehavior::SkipBasePath == opts {
+            name.next();
+        }
+
+        let out_path = dest.join(name);
+        
         if let Some(parent) = out_path.parent() {
             std::fs::create_dir_all(parent).context("failed to create directory")?;
         }

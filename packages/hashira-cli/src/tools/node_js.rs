@@ -1,12 +1,10 @@
-use std::{path::PathBuf, str::FromStr};
-
-use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
-
 use super::{
     global_cache::{FindVersion, GlobalCacheError},
     utils::cache_dir_path,
     LoadOptions, Tool, Version,
 };
+use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone)]
 pub struct NodeJs(PathBuf);
@@ -39,12 +37,12 @@ impl Tool for NodeJs {
         &self.0
     }
 
-    fn additional_files() -> &'static [&'static str] {
+    fn include() -> &'static [&'static str] {
         // Node install in windows the unix and cmd, so we include all,
         if cfg!(target_os = "windows") {
-            &["npx", "npx.cmd", "npm", "npm.cmd"]
+            &["node.exe", "npx", "npx.cmd", "npm", "npm.cmd"]
         } else {
-            &["npx", "npm"]
+            &["bin/node", "bin/npx", "bin/npm"]
         }
     }
 
@@ -52,19 +50,13 @@ impl Tool for NodeJs {
         let version = opts.version.unwrap_or(Self::default_version());
         let version_str = version.to_string();
 
-        let extract_opts = if cfg!(target_os = "windows") {
-            ExtractBehavior::SkipBasePath
-        } else {
-            let base_path = base_path(&version_str)?;
-            ExtractBehavior::Dir(PathBuf::from(base_path).join("bin"))
-        };
-
         match opts.install_dir {
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
 
                 let url = get_download_url(&version_str)?;
-                let bin_path = GlobalCache::install::<Self>(&url, dir, extract_opts).await?;
+                let bin_path =
+                    GlobalCache::install::<Self>(&url, dir, ExtractBehavior::SkipBasePath).await?;
                 Ok(Self(bin_path))
             }
             None => {
@@ -84,8 +76,12 @@ impl Tool for NodeJs {
                         let version_str = version.to_string();
                         let url = get_download_url(&version_str)?;
                         let cache_path = cache_dir_path()?;
-                        let bin_path =
-                            GlobalCache::install::<Self>(&url, &cache_path, extract_opts).await?;
+                        let bin_path = GlobalCache::install::<Self>(
+                            &url,
+                            &cache_path,
+                            ExtractBehavior::SkipBasePath,
+                        )
+                        .await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),
@@ -138,47 +134,6 @@ fn get_download_url(version: &str) -> anyhow::Result<String> {
         }
         _ => anyhow::bail!("unsupported target architecture: {os} {target_arch}"),
     })
-}
-
-#[allow(unused_variables)]
-fn base_path(version: &str) -> anyhow::Result<String> {
-    #[cfg(not(unix))]
-    unreachable!();
-
-    #[cfg(unix)]
-    {
-        let os = if cfg!(target_os = "macos") {
-            "macos"
-        } else if cfg!(target_os = "linux") {
-            "linux"
-        } else {
-            anyhow::bail!("unsupported OS")
-        };
-
-        let target_arch = if cfg!(target_arch = "x86_64") {
-            "x86_64"
-        } else if cfg!(target_arch = "aarch64") {
-            "aarch64"
-        } else {
-            anyhow::bail!("unsupported architecture: {os}")
-        };
-
-        Ok(match (os, target_arch) {
-            ("macos", "x86_64") => {
-                format!("node-v{version}-darwin-x64")
-            }
-            ("macos", "aarch64") => {
-                format!("node-v{version}-darwin-arm64")
-            }
-            ("linux", "x86_64") => {
-                format!("node-v{version}-linux-x64")
-            }
-            ("linux", "aarch64") => {
-                format!("node-v{version}-linux-arm64")
-            }
-            _ => anyhow::bail!("unsupported target architecture: {os} {target_arch}"),
-        })
-    }
 }
 
 #[cfg(test)]
@@ -308,7 +263,6 @@ mod tests {
     async fn test_download_linux_bin() {
         test_download_bin(
             "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-linux-x64.tar.gz",
-            "node-v16.20.0-linux-x64",
         )
         .await;
     }
@@ -317,12 +271,11 @@ mod tests {
     async fn test_download_macos_bin() {
         test_download_bin(
             "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-darwin-x64.tar.gz",
-            "node-v16.20.0-darwin-x64",
         )
         .await;
     }
 
-    async fn test_download_bin(url: &str, base_path: &str) {
+    async fn test_download_bin(url: &str) {
         let temp_dir = tempfile::tempdir().unwrap();
         let downloaded = crate::tools::utils::download_to_dir(url, temp_dir.path())
             .await
@@ -330,27 +283,15 @@ mod tests {
 
         let mut archive = Archive::new(&downloaded).unwrap();
         let node_js = archive
-            .extract_file(
-                "node",
-                temp_dir.path(),
-                ExtractBehavior::Dir(Path::new(base_path).join("bin")),
-            )
+            .extract_file("bin/node", temp_dir.path(), ExtractBehavior::SkipBasePath)
             .unwrap();
 
         let npx = archive
-            .extract_file(
-                "npx",
-                temp_dir.path(),
-                ExtractBehavior::Dir(Path::new(base_path).join("bin")),
-            )
+            .extract_file("bin/npx", temp_dir.path(), ExtractBehavior::SkipBasePath)
             .unwrap();
 
         let npm = archive
-            .extract_file(
-                "npm",
-                temp_dir.path(),
-                ExtractBehavior::Dir(Path::new(base_path).join("bin")),
-            )
+            .extract_file("bin/npm", temp_dir.path(), ExtractBehavior::SkipBasePath)
             .unwrap();
 
         assert!(

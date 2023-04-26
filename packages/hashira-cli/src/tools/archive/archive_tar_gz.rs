@@ -65,12 +65,6 @@ impl ArchiveTarGz {
                         return Ok(Some(entry));
                     }
                 }
-                ExtractBehavior::Dir(dir) => {
-                    let actual_path = dir.join(path);
-                    if name.as_path() == actual_path {
-                        return Ok(Some(entry));
-                    }
-                }
                 ExtractBehavior::None => {
                     if name.as_path() == path {
                         return Ok(Some(entry));
@@ -99,7 +93,7 @@ impl ArchiveTarGz {
             std::fs::create_dir_all(parent).context("failed creating output directory")?;
         }
 
-        let mut out = File::create(dest.join(file)).context("failed creating output file")?;
+        let mut out = File::create(&out_path).context("failed creating output file")?;
 
         std::io::copy(&mut tar_file, &mut out)
             .context("failed copying over final output file from archive")?;

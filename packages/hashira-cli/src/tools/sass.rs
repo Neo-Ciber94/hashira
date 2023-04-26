@@ -1,5 +1,5 @@
-use std::{path::PathBuf, str::FromStr};
 use super::{Tool, Version};
+use std::{path::PathBuf, str::FromStr};
 
 pub struct Sass(PathBuf);
 
@@ -15,6 +15,16 @@ impl Tool for Sass {
 
     fn default_version() -> super::Version {
         Version::new(1, 62, Some(0))
+    }
+
+    fn include() -> &'static [&'static str] {
+        if cfg!(target_os = "windows") {
+            &["src/dart.exe", "src/sass.snapshot"]
+        } else if cfg!(target_os = "macos") {
+            &["src/dart", "src/sass.snapshot"]
+        } else {
+            &[]
+        }
     }
 
     fn test_version_args() -> &'static [&'static str] {

@@ -72,6 +72,8 @@ impl GlobalCache {
     pub async fn find_in_system<T: Tool>(
         opts: FindVersion,
     ) -> Result<(PathBuf, Version), GlobalCacheError> {
+        T::assert_include_files().map_err(GlobalCacheError::from_anyhow)?;
+
         let mut cache = GLOBAL_CACHE.lock().await;
         let bin_name = T::binary_name();
 
@@ -103,6 +105,8 @@ impl GlobalCache {
 
     /// Try find the tool in the system and in cache.
     pub async fn find_any<T: Tool>(opts: FindVersion) -> Result<PathBuf, GlobalCacheError> {
+        T::assert_include_files().map_err(GlobalCacheError::from_anyhow)?;
+
         match GlobalCache::find_in_system::<T>(opts).await {
             Ok((bin_path, _)) => Ok(bin_path),
             Err(GlobalCacheError::NotFound(_)) => {
@@ -120,6 +124,8 @@ impl GlobalCache {
         dest: &Path,
         opts: ExtractBehavior,
     ) -> anyhow::Result<PathBuf> {
+        T::assert_include_files()?;
+
         let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
 
@@ -128,22 +134,33 @@ impl GlobalCache {
         // Downloads an extract the binary
         let downloaded = download_to_dir(url, dest).await?;
         let mut archive = Archive::new(&downloaded)?;
+        let include_files = T::include();
 
-        let bin_path = archive
-            .extract_file(bin_name, dest, opts.clone())
-            .with_context(|| format!("failed to extract binary: {bin_name}"))?;
+        // If not include file is declared, we include the binary name
+        if include_files.is_empty() {
+            let bin_path = archive
+                .extract_file(bin_name, dest, opts.clone())
+                .with_context(|| format!("failed to extract binary: {bin_name}"))?;
 
-        cache.insert(bin_name.to_owned(), bin_path.clone());
+            cache.insert(bin_name.to_owned(), bin_path.clone());
+        } else {
+            // Add all the required files
+            for include_file in T::include() {
+                let file = archive
+                    .extract_file(include_file, dest, opts.clone())
+                    .with_context(|| format!("failed to include file: {include_file}"))?;
 
-        // Add any additional files
-        for additional_file in T::additional_files() {
-            let file = archive
-                .extract_file(additional_file, dest, opts.clone())
-                .with_context(|| format!("failed to extract additional file: {additional_file}"))?;
-
-            cache.insert((*additional_file).to_owned(), file);
+                cache.insert((*include_file).to_owned(), file);
+            }
         }
 
+        // The binary is within the files added
+        let bin_path = dest.join(bin_name);
+        anyhow::ensure!(
+            bin_path.exists(),
+            "failed to add binary `{}` after download",
+            bin_path.display()
+        );
         Ok(bin_path)
     }
 }

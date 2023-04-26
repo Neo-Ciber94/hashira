@@ -10,13 +10,10 @@ pub use {archive_tar_gz::*, archive_zip::*};
 
 /// Operation to perform on extract
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtractBehavior {
     /// Skip the base path
     SkipBasePath,
-
-    /// Path of the directory to search the files to extract
-    Dir(PathBuf),
 
     // Extract normally
     None,

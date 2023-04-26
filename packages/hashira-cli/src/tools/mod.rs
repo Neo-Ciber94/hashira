@@ -3,9 +3,9 @@ pub mod node_js;
 pub mod npm;
 pub mod npx;
 pub mod parcel;
+pub mod sass;
 pub mod tailwindcss;
 pub mod wasm_bindgen;
-pub mod sass;
 
 //
 use std::{
@@ -43,8 +43,10 @@ pub trait Tool: Sized {
     /// Parses the version of this tool from the given string.
     fn parse_version(s: &str) -> anyhow::Result<Version>;
 
-    /// Additional files to include when loading this tool.
-    fn additional_files() -> &'static [&'static str] {
+    /// All the files to include from the downloaded file when installing this tool.
+    /// If empty, will try to include the value specified by the `binary_name`,
+    /// otherwise all the files to include including the actual executable must be declared here.
+    fn include() -> &'static [&'static str] {
         &[]
     }
 
@@ -58,6 +60,43 @@ pub trait Tool: Sized {
 
     /// Loads the tool from cache or install it using the given options.
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self>;
+
+    // The binary name should exists if we declare the include files
+    #[doc(hidden)]
+    fn assert_include_files() -> anyhow::Result<()> {
+        let include = Self::include();
+        if include.is_empty() {
+            return Ok(());
+        }
+
+        let bin_name = Self::binary_name();
+        let mut binary_included = false;
+
+        for file in include {
+            let name = Path::new(file)
+                .components()
+                .last()
+                .with_context(|| format!("failed to read include file `{file}`"))?;
+
+            match name.as_os_str().to_str() {
+                Some(name) => {
+                    if name == bin_name {
+                        binary_included = true;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        anyhow::ensure!(
+            binary_included,
+            "binary `{}` is not declared within the included files",
+            bin_name
+        );
+
+        Ok(())
+    }
 }
 
 pub trait ToolExt: Tool {
