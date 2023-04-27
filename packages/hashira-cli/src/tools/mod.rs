@@ -64,28 +64,6 @@ pub trait Tool: Sized {
     /// Loads the tool from cache or install it using the given options.
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self>;
 
-    /// Returns the actual path of the executable to include.
-    fn binary_include_path() -> &'static str {
-        let include = Self::include();
-        if include.is_empty() {
-            Self::binary_name()
-        } else {
-            let bin_name = Self::binary_name();
-
-            for file in include {
-                let name = Path::new(file).components().last().unwrap();
-
-                if let Some(name) = name.as_os_str().to_str() {
-                    if name == bin_name {
-                        return file;
-                    }
-                }
-            }
-
-            panic!("`{bin_name}` was not found within the included files")
-        }
-    }
-
     // The binary name should exists if we declare the include files
     #[doc(hidden)]
     fn assert_include_files() -> anyhow::Result<()> {
@@ -130,6 +108,13 @@ pub trait ToolExt: Tool {
             .args(args)
             .output()
             .with_context(|| format!("failed to run: {}", self.binary_path().display()))?;
+
+        if !output.status.success() {
+            anyhow::bail!(
+                "failed to test version: `{}`",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
 
         let result = String::from_utf8_lossy(&output.stdout);
         Self::parse_version(&result)

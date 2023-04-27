@@ -7,7 +7,7 @@ use std::{
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-use super::{archive::ExtractBehavior, Tool, Version};
+use super::{archive::ExtractOptions, Tool, Version};
 use crate::tools::{
     archive::Archive,
     utils::{cache_dir, download_to_dir},
@@ -52,7 +52,7 @@ impl GlobalCache {
     /// Try get the given tool from cache.
     pub async fn find<T: Tool>() -> Result<PathBuf, GlobalCacheError> {
         let mut cache = GLOBAL_CACHE.lock().await;
-        let bin_name = T::binary_include_path();
+        let bin_name = T::binary_name();
 
         if let Some(bin_path) = cache.get(bin_name).cloned() {
             return Ok(bin_path);
@@ -77,7 +77,7 @@ impl GlobalCache {
         T::assert_include_files().map_err(GlobalCacheError::from_anyhow)?;
 
         let mut cache = GLOBAL_CACHE.lock().await;
-        let bin_name = T::binary_include_path();
+        let bin_name = T::binary_name();
 
         let Some(bin_path) = which::which(bin_name).ok() else {
             return Err(GlobalCacheError::NotFound(bin_name.to_owned()));
@@ -119,16 +119,16 @@ impl GlobalCache {
         }
     }
 
-    // Downloads and install the binary and save it in the given directory.
+    // Downloads and cache the binary and save it in the given directory.
     #[tracing::instrument(level = "debug", skip(opts, dest))]
-    pub async fn install<T: Tool>(
+    pub async fn download<T: Tool>(
         url: &str,
         dest: &Path,
-        opts: ExtractBehavior,
+        opts: ExtractOptions,
     ) -> anyhow::Result<PathBuf> {
         T::assert_include_files()?;
 
-        let bin_name = T::binary_include_path();
+        let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
 
         tracing::info!("⏬ Downloading `{name}` from `{url}`...", name = T::name(),);
@@ -164,5 +164,48 @@ impl GlobalCache {
             bin_path.display()
         );
         Ok(bin_path)
+    }
+}
+
+#[allow(dead_code)]
+pub struct InstallToolOptions;
+
+#[allow(dead_code)]
+pub async fn install_tool<T: Tool>(
+    url: &str,
+    dest: Option<&Path>,
+    extract_opts: ExtractOptions,
+    find_version: FindVersion,
+    min_version: Option<Version>,
+) -> anyhow::Result<PathBuf> {
+    match dest {
+        Some(dir) => {
+            anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
+            let bin_path = GlobalCache::download::<T>(&url, dir, extract_opts).await?;
+            Ok(bin_path)
+        }
+        None => {
+            if let Ok((system_bin, version)) = GlobalCache::find_in_system::<T>(find_version).await
+            {
+                // minimum version
+                if let Some(min_version) = min_version {
+                    if version >= min_version {
+                        return Ok(system_bin);
+                    }
+                }
+            }
+
+            match GlobalCache::find::<T>().await {
+                Ok(bin_path) => Ok(bin_path),
+                Err(GlobalCacheError::NotFound(_)) => {
+                    // Download and install
+                    let cache_path = cache_dir()?;
+                    let bin_path =
+                        GlobalCache::download::<T>(&url, &cache_path, extract_opts).await?;
+                    Ok(bin_path)
+                }
+                Err(err) => Err(anyhow::anyhow!(err)),
+            }
+        }
     }
 }

@@ -8,15 +8,14 @@ use std::{
 };
 pub use {archive_tar_gz::*, archive_zip::*};
 
-/// Operation to perform on extract
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExtractBehavior {
-    /// Skip the base path
-    SkipBasePath,
+/// Options for extracting.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ExtractOptions {
+    /// Skip the base path.
+    pub skip_base: bool,
 
-    // Extract normally
-    None,
+    /// Preserve the path of the files when extracted.
+    pub preserve_dir: bool,
 }
 
 /// A file that may be compressed.
@@ -47,7 +46,7 @@ impl Archive {
         &mut self,
         file: impl AsRef<Path>,
         dest: &Path,
-        opts: ExtractBehavior,
+        opts: ExtractOptions,
     ) -> anyhow::Result<PathBuf> {
         anyhow::ensure!(dest.is_dir(), "destination is no a directory");
         anyhow::ensure!(dest.exists(), "destination path don't exists");
@@ -81,9 +80,9 @@ impl Archive {
 pub(crate) fn set_file_permissions(file: &mut File, mode: u32) -> anyhow::Result<()> {
     #[cfg(unix)]
     {
+        use anyhow::Context;
         use std::fs::Permissions;
         use std::os::unix::fs::PermissionsExt;
-        use anyhow::Context;
 
         file.set_permissions(Permissions::from_mode(mode))
             .context("failed to set file permissions")?;

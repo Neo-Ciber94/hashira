@@ -6,7 +6,7 @@ use anyhow::Context;
 use flate2::read::GzDecoder;
 use tar::{Archive as TarArchive, Entry as TarEntry};
 
-use super::ExtractBehavior;
+use super::ExtractOptions;
 
 pub struct ArchiveTarGz {
     tar: Option<Box<TarArchive<GzDecoder<BufReader<File>>>>>,
@@ -41,7 +41,7 @@ impl ArchiveTarGz {
     fn find_entry(
         &mut self,
         file: impl AsRef<Path>,
-        opts: &ExtractBehavior,
+        opts: &ExtractOptions,
     ) -> anyhow::Result<Option<TarEntry<impl Read>>> {
         self.try_rewind()?;
         let archive = self.tar.as_mut().unwrap();
@@ -58,17 +58,14 @@ impl ArchiveTarGz {
             let name = entry.path().context("invalid entry path")?;
             let mut name = name.components();
 
-            match &opts {
-                ExtractBehavior::SkipBasePath => {
-                    name.next();
-                    if name.as_path() == path {
-                        return Ok(Some(entry));
-                    }
+            if opts.skip_base {
+                name.next();
+                if name.as_path() == path {
+                    return Ok(Some(entry));
                 }
-                ExtractBehavior::None => {
-                    if name.as_path() == path {
-                        return Ok(Some(entry));
-                    }
+            } else {
+                if name.as_path() == path {
+                    return Ok(Some(entry));
                 }
             }
         }
@@ -80,14 +77,23 @@ impl ArchiveTarGz {
         &mut self,
         file: impl AsRef<Path>,
         dest: &Path,
-        opts: &ExtractBehavior,
+        opts: &ExtractOptions,
     ) -> anyhow::Result<PathBuf> {
         let file = file.as_ref();
         let mut tar_file = self
             .find_entry(file, opts)?
             .with_context(|| format!("`{}` was not found in archive", file.display()))?;
 
-        let out_path = dest.join(file);
+        let out_path = if opts.preserve_dir {
+            dest.join(file)
+        } else {
+            let file_name = file
+                .file_name()
+                .map(Path::new)
+                .unwrap_or_else(|| panic!("failed to get file name: `{}`", file.display()));
+
+            dest.join(file_name)
+        };
 
         if let Some(parent) = out_path.parent() {
             std::fs::create_dir_all(parent).context("failed creating output directory")?;

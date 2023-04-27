@@ -12,12 +12,10 @@ pub fn cache_dir() -> anyhow::Result<PathBuf> {
         .cache_dir()
         .to_owned();
 
-    std::fs::create_dir_all(&dir)
-        .context("failed creating cache directory")?;
+    std::fs::create_dir_all(&dir).context("failed creating cache directory")?;
 
     Ok(dir)
 }
-
 
 /// Download a file and write the content to the destination.
 pub async fn download<W>(url: &str, dest: &mut W) -> anyhow::Result<()>
@@ -81,9 +79,8 @@ pub async fn download_to_dir(url: &str, target_dir: impl AsRef<Path>) -> anyhow:
 
 #[cfg(test)]
 mod test {
+    use crate::tools::utils::cache_dir;
     use std::path::Path;
-
-    use crate::tools::{archive::ExtractBehavior, utils::cache_dir};
 
     #[tokio::test]
     async fn test_download() {
@@ -175,7 +172,7 @@ mod test {
         let downloaded_file = std::fs::File::open(downloaded).unwrap();
         let mut tar_gz = crate::tools::archive::ArchiveTarGz::new(downloaded_file);
         let file_path = tar_gz
-            .extract_file("file.txt", temp_dir.path(), &ExtractBehavior::None)
+            .extract_file("file.txt", temp_dir.path(), &Default::default())
             .unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
@@ -196,7 +193,7 @@ mod test {
         let downloaded_file = std::fs::File::open(downloaded).unwrap();
         let mut zip = crate::tools::archive::ArchiveZip::new(downloaded_file).unwrap();
         let file_path = zip
-            .extract_file("file.txt", temp_dir.path(), &ExtractBehavior::None)
+            .extract_file("file.txt", temp_dir.path(), &Default::default())
             .unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();
@@ -216,7 +213,7 @@ mod test {
 
         let mut tar_gz = crate::tools::archive::Archive::new(downloaded).unwrap();
         let file_path = tar_gz
-            .extract_file("file2.txt", temp_dir.path(), ExtractBehavior::None)
+            .extract_file("file2.txt", temp_dir.path(), Default::default())
             .unwrap();
 
         let mut file = std::fs::File::open(file_path).unwrap();

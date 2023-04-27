@@ -1,10 +1,10 @@
-use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
-
 use super::{
+    archive::ExtractOptions,
     global_cache::{FindVersion, GlobalCacheError},
     utils::cache_dir,
     Tool, Version,
 };
+use crate::tools::global_cache::GlobalCache;
 use std::{path::PathBuf, str::FromStr};
 
 pub struct Sass(PathBuf);
@@ -51,13 +51,16 @@ impl Tool for Sass {
 
     async fn load_with_options(opts: super::LoadOptions<'_>) -> anyhow::Result<Self> {
         let version = opts.version.unwrap_or(Self::default_version()).to_string();
+        let extract_opts = ExtractOptions {
+            skip_base: true,
+            preserve_dir: true,
+        };
 
         match opts.install_dir {
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
                 let url = get_download_url(&version)?;
-                let bin_path =
-                    GlobalCache::install::<Self>(&url, dir, ExtractBehavior::SkipBasePath).await?;
+                let bin_path = GlobalCache::download::<Self>(&url, dir, extract_opts).await?;
                 Ok(Self(bin_path))
             }
             None => {
@@ -67,12 +70,8 @@ impl Tool for Sass {
                         // Download and install
                         let url = get_download_url(&version)?;
                         let cache_path = cache_dir()?;
-                        let bin_path = GlobalCache::install::<Self>(
-                            &url,
-                            &cache_path,
-                            ExtractBehavior::SkipBasePath,
-                        )
-                        .await?;
+                        let bin_path =
+                            GlobalCache::download::<Self>(&url, &cache_path, extract_opts).await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),
@@ -115,11 +114,11 @@ mod tests {
     #[tokio::test]
     async fn test_sass_download_and_version() {
         let temp_dir: tempfile::TempDir = tempfile::tempdir().unwrap();
-        let download_path = temp_dir.path().to_path_buf();
+        let download_path = temp_dir.into_path(); //temp_dir.path().to_path_buf();
         tokio::fs::create_dir_all(&download_path).await.unwrap();
 
         let wasm_bingen = Sass::load_with_options(LoadOptions {
-            install_dir: Some(temp_dir.path()),
+            install_dir: Some(&download_path),
             version: Some(Sass::default_version()),
         })
         .await

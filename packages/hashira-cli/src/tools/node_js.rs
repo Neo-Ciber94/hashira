@@ -1,9 +1,10 @@
 use super::{
+    archive::ExtractOptions,
     global_cache::{FindVersion, GlobalCacheError},
     utils::cache_dir,
     LoadOptions, Tool, Version,
 };
-use crate::tools::{archive::ExtractBehavior, global_cache::GlobalCache};
+use crate::tools::global_cache::GlobalCache;
 use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone)]
@@ -14,7 +15,7 @@ impl Tool for NodeJs {
     fn name() -> &'static str {
         "node"
     }
-    
+
     fn binary_name() -> &'static str {
         if cfg!(target_os = "windows") {
             "node.exe"
@@ -53,14 +54,17 @@ impl Tool for NodeJs {
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
         let version = opts.version.unwrap_or(Self::default_version());
         let version_str = version.to_string();
+        let extract_opts = ExtractOptions {
+            skip_base: true,
+            preserve_dir: false,
+        };
 
         match opts.install_dir {
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
 
                 let url = get_download_url(&version_str)?;
-                let bin_path =
-                    GlobalCache::install::<Self>(&url, dir, ExtractBehavior::SkipBasePath).await?;
+                let bin_path = GlobalCache::download::<Self>(&url, dir, extract_opts).await?;
                 Ok(Self(bin_path))
             }
             None => {
@@ -80,12 +84,8 @@ impl Tool for NodeJs {
                         let version_str = version.to_string();
                         let url = get_download_url(&version_str)?;
                         let cache_path = cache_dir()?;
-                        let bin_path = GlobalCache::install::<Self>(
-                            &url,
-                            &cache_path,
-                            ExtractBehavior::SkipBasePath,
-                        )
-                        .await?;
+                        let bin_path =
+                            GlobalCache::download::<Self>(&url, &cache_path, extract_opts).await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),
@@ -145,7 +145,7 @@ mod tests {
     use std::{path::Path, process::Command};
 
     use crate::tools::{
-        archive::{Archive, ExtractBehavior},
+        archive::{Archive, ExtractOptions},
         node_js::NodeJs,
         LoadOptions, Tool, ToolExt, Version,
     };
@@ -285,17 +285,22 @@ mod tests {
             .await
             .unwrap();
 
+        let opts = ExtractOptions {
+            skip_base: true,
+            ..Default::default()
+        };
+
         let mut archive = Archive::new(&downloaded).unwrap();
         let node_js = archive
-            .extract_file("bin/node", temp_dir.path(), ExtractBehavior::SkipBasePath)
+            .extract_file("bin/node", temp_dir.path(), opts)
             .unwrap();
 
         let npx = archive
-            .extract_file("bin/npx", temp_dir.path(), ExtractBehavior::SkipBasePath)
+            .extract_file("bin/npx", temp_dir.path(), opts)
             .unwrap();
 
         let npm = archive
-            .extract_file("bin/npm", temp_dir.path(), ExtractBehavior::SkipBasePath)
+            .extract_file("bin/npm", temp_dir.path(), opts)
             .unwrap();
 
         assert!(

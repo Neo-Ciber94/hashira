@@ -4,7 +4,7 @@ use std::{
 };
 
 use super::{
-    archive::ExtractBehavior,
+    archive::ExtractOptions,
     global_cache::{FindVersion, GlobalCache, GlobalCacheError},
     utils::cache_dir,
     LoadOptions, Tool, Version,
@@ -47,14 +47,17 @@ impl Tool for WasmBindgen {
 
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
         let version = opts.version.unwrap_or(Self::default_version()).to_string();
+        let extract_opts = ExtractOptions {
+            skip_base: true,
+            ..Default::default()
+        };
 
         match opts.install_dir {
             // Install in the given directory
             Some(dir) => {
                 anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
                 let url = get_download_url(&version)?;
-                let bin_path =
-                    GlobalCache::install::<Self>(&url, dir, ExtractBehavior::SkipBasePath).await?;
+                let bin_path = GlobalCache::download::<Self>(&url, dir, extract_opts).await?;
                 Ok(Self(bin_path))
             }
 
@@ -66,12 +69,8 @@ impl Tool for WasmBindgen {
                         // Download and install
                         let url = get_download_url(&version)?;
                         let cache_path = cache_dir()?;
-                        let bin_path = GlobalCache::install::<Self>(
-                            &url,
-                            &cache_path,
-                            ExtractBehavior::SkipBasePath,
-                        )
-                        .await?;
+                        let bin_path =
+                            GlobalCache::download::<Self>(&url, &cache_path, extract_opts).await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),

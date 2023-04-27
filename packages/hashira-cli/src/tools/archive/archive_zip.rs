@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::ExtractBehavior;
+use super::ExtractOptions;
 use anyhow::Context;
 use zip::{read::ZipFile, ZipArchive};
 
@@ -17,7 +17,7 @@ impl ArchiveZip {
     fn find_entry(
         &mut self,
         file: impl AsRef<Path>,
-        opts: &ExtractBehavior,
+        opts: &ExtractOptions,
     ) -> anyhow::Result<Option<ZipFile>> {
         let archive = &mut self.0;
         let path = file.as_ref();
@@ -31,19 +31,16 @@ impl ArchiveZip {
             let name = entry.enclosed_name().context("invalid entry path")?;
             let mut name = name.components();
 
-            match &opts {
-                ExtractBehavior::SkipBasePath => {
-                    name.next();
-                    if name.as_path() == path {
-                        idx = Some(index);
-                        break;
-                    }
+            if opts.skip_base {
+                name.next();
+                if name.as_path() == path {
+                    idx = Some(index);
+                    break;
                 }
-                ExtractBehavior::None => {
-                    if name.as_path() == path {
-                        idx = Some(index);
-                        break;
-                    }
+            } else {
+                if name.as_path() == path {
+                    idx = Some(index);
+                    break;
                 }
             }
         }
@@ -59,7 +56,7 @@ impl ArchiveZip {
         &mut self,
         file: impl AsRef<Path>,
         dest: &Path,
-        opts: &ExtractBehavior,
+        opts: &ExtractOptions,
     ) -> anyhow::Result<PathBuf> {
         let file = file.as_ref();
 
@@ -70,11 +67,20 @@ impl ArchiveZip {
         let zip_file = entry.enclosed_name().context("invalid entry path")?;
         let mut name = zip_file.components();
 
-        if &ExtractBehavior::SkipBasePath == opts {
+        if opts.skip_base {
             name.next();
         }
 
-        let out_path = dest.join(name);
+        let out_path = if opts.preserve_dir {
+            dest.join(file)
+        } else {
+            let file_name = file
+                .file_name()
+                .map(Path::new)
+                .unwrap_or_else(|| panic!("failed to get file name: `{}`", file.display()));
+
+            dest.join(file_name)
+        };
 
         if let Some(parent) = out_path.parent() {
             std::fs::create_dir_all(parent).context("failed to create directory")?;
