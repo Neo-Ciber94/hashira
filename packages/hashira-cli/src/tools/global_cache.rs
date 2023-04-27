@@ -167,17 +167,26 @@ impl GlobalCache {
     }
 }
 
-#[allow(dead_code)]
-pub struct InstallToolOptions;
 
-#[allow(dead_code)]
-pub async fn install_tool<T: Tool>(
-    url: &str,
-    dest: Option<&Path>,
-    extract_opts: ExtractOptions,
-    find_version: FindVersion,
-    min_version: Option<Version>,
-) -> anyhow::Result<PathBuf> {
+/// Options to install the tool.
+pub struct InstallToolOptions<'a> {
+    pub url: &'a str,
+    pub dest: Option<&'a Path>,
+    pub extract_opts: ExtractOptions,
+    pub find_version: FindVersion,
+    pub min_version: Option<Version>,
+}
+
+/// Install the tool and returns the path to the binary.
+pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Result<PathBuf> {
+    let InstallToolOptions {
+        dest,
+        extract_opts,
+        find_version,
+        min_version,
+        url,
+    } = opts;
+
     match dest {
         Some(dir) => {
             anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());

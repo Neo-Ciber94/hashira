@@ -5,8 +5,7 @@ use std::{
 
 use super::{
     archive::ExtractOptions,
-    global_cache::{FindVersion, GlobalCache, GlobalCacheError},
-    utils::cache_dir,
+    global_cache::{install_tool, FindVersion, InstallToolOptions},
     LoadOptions, Tool, Version,
 };
 
@@ -46,37 +45,22 @@ impl Tool for WasmBindgen {
     }
 
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
-        let version = opts.version.unwrap_or(Self::default_version()).to_string();
+        let version = opts.version.unwrap_or(Self::default_version());
+        let url = get_download_url(&version)?;
         let extract_opts = ExtractOptions {
             skip_base: true,
             ..Default::default()
         };
+        let install_opts = InstallToolOptions {
+            dest: opts.install_dir,
+            extract_opts,
+            find_version: FindVersion::Any,
+            min_version: None,
+            url: url.as_str(),
+        };
 
-        match opts.install_dir {
-            // Install in the given directory
-            Some(dir) => {
-                anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
-                let url = get_download_url(&version)?;
-                let bin_path = GlobalCache::download::<Self>(&url, dir, extract_opts).await?;
-                Ok(Self(bin_path))
-            }
-
-            // Install in the given directory
-            None => {
-                match GlobalCache::find_any::<Self>(FindVersion::Any).await {
-                    Ok(bin_path) => Ok(Self(bin_path)),
-                    Err(GlobalCacheError::NotFound(_)) => {
-                        // Download and install
-                        let url = get_download_url(&version)?;
-                        let cache_path = cache_dir()?;
-                        let bin_path =
-                            GlobalCache::download::<Self>(&url, &cache_path, extract_opts).await?;
-                        Ok(Self(bin_path))
-                    }
-                    Err(err) => Err(anyhow::anyhow!(err)),
-                }
-            }
-        }
+        let bin_path = install_tool::<Self>(install_opts).await?;
+        Ok(Self(bin_path))
     }
 
     fn binary_path(&self) -> &Path {
@@ -84,7 +68,7 @@ impl Tool for WasmBindgen {
     }
 }
 
-fn get_download_url(version: &str) -> anyhow::Result<String> {
+fn get_download_url(version: &Version) -> anyhow::Result<String> {
     let target_os = if cfg!(target_os = "windows") {
         "windows"
     } else if cfg!(target_os = "macos") {

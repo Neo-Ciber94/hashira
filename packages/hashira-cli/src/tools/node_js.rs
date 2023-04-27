@@ -1,10 +1,8 @@
 use super::{
     archive::ExtractOptions,
-    global_cache::{FindVersion, GlobalCacheError},
-    utils::cache_dir,
+    global_cache::{install_tool, FindVersion, InstallToolOptions},
     LoadOptions, Tool, Version,
 };
-use crate::tools::global_cache::GlobalCache;
 use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone)]
@@ -53,49 +51,27 @@ impl Tool for NodeJs {
 
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self> {
         let version = opts.version.unwrap_or(Self::default_version());
-        let version_str = version.to_string();
+        let url = get_download_url(&version)?;
+
         let extract_opts = ExtractOptions {
             skip_base: true,
             preserve_dir: false,
         };
 
-        match opts.install_dir {
-            Some(dir) => {
-                anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
+        let install_opts = InstallToolOptions {
+            dest: opts.install_dir,
+            extract_opts,
+            find_version: FindVersion::Any,
+            min_version: Some(Self::default_version()),
+            url: url.as_str(),
+        };
 
-                let url = get_download_url(&version_str)?;
-                let bin_path = GlobalCache::download::<Self>(&url, dir, extract_opts).await?;
-                Ok(Self(bin_path))
-            }
-            None => {
-                if let Ok((system_bin, version)) =
-                    GlobalCache::find_in_system::<Self>(FindVersion::Any).await
-                {
-                    // minimum version
-                    if version >= Self::default_version() {
-                        return Ok(Self(system_bin));
-                    }
-                }
-
-                match GlobalCache::find::<Self>().await {
-                    Ok(bin_path) => Ok(Self(bin_path)),
-                    Err(GlobalCacheError::NotFound(_)) => {
-                        // Download and install
-                        let version_str = version.to_string();
-                        let url = get_download_url(&version_str)?;
-                        let cache_path = cache_dir()?;
-                        let bin_path =
-                            GlobalCache::download::<Self>(&url, &cache_path, extract_opts).await?;
-                        Ok(Self(bin_path))
-                    }
-                    Err(err) => Err(anyhow::anyhow!(err)),
-                }
-            }
-        }
+        let bin_path = install_tool::<Self>(install_opts).await?;
+        Ok(Self(bin_path))
     }
 }
 
-fn get_download_url(version: &str) -> anyhow::Result<String> {
+fn get_download_url(version: &Version) -> anyhow::Result<String> {
     let os = if cfg!(target_os = "windows") {
         "windows"
     } else if cfg!(target_os = "macos") {
