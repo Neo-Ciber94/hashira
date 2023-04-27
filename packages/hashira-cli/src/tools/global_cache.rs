@@ -52,7 +52,7 @@ impl GlobalCache {
     /// Try get the given tool from cache.
     pub async fn find<T: Tool>() -> Result<PathBuf, GlobalCacheError> {
         let mut cache = GLOBAL_CACHE.lock().await;
-        let bin_name = T::binary_name();
+        let bin_name = T::binary_include_path();
 
         if let Some(bin_path) = cache.get(bin_name).cloned() {
             return Ok(bin_path);
@@ -77,7 +77,7 @@ impl GlobalCache {
         T::assert_include_files().map_err(GlobalCacheError::from_anyhow)?;
 
         let mut cache = GLOBAL_CACHE.lock().await;
-        let bin_name = T::binary_name();
+        let bin_name = T::binary_include_path();
 
         let Some(bin_path) = which::which(bin_name).ok() else {
             return Err(GlobalCacheError::NotFound(bin_name.to_owned()));
@@ -128,7 +128,7 @@ impl GlobalCache {
     ) -> anyhow::Result<PathBuf> {
         T::assert_include_files()?;
 
-        let bin_name = T::binary_name();
+        let bin_name = T::binary_include_path();
         let mut cache = GLOBAL_CACHE.lock().await;
 
         tracing::info!("⏬ Downloading `{name}` from `{url}`...", name = T::name(),);
@@ -160,7 +160,7 @@ impl GlobalCache {
         let bin_path = dest.join(bin_name);
         anyhow::ensure!(
             bin_path.exists(),
-            "failed to add binary `{}` after download",
+            "`{}` was not found after download",
             bin_path.display()
         );
         Ok(bin_path)

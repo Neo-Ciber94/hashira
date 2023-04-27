@@ -64,6 +64,28 @@ pub trait Tool: Sized {
     /// Loads the tool from cache or install it using the given options.
     async fn load_with_options(opts: LoadOptions<'_>) -> anyhow::Result<Self>;
 
+    /// Returns the actual path of the executable to include.
+    fn binary_include_path() -> &'static str {
+        let include = Self::include();
+        if include.is_empty() {
+            Self::binary_name()
+        } else {
+            let bin_name = Self::binary_name();
+
+            for file in include {
+                let name = Path::new(file).components().last().unwrap();
+
+                if let Some(name) = name.as_os_str().to_str() {
+                    if name == bin_name {
+                        return file;
+                    }
+                }
+            }
+
+            panic!("`{bin_name}` was not found within the included files")
+        }
+    }
+
     // The binary name should exists if we declare the include files
     #[doc(hidden)]
     fn assert_include_files() -> anyhow::Result<()> {
@@ -81,12 +103,12 @@ pub trait Tool: Sized {
                 .last()
                 .with_context(|| format!("failed to read include file `{file}`"))?;
 
-                if let Some(name) = name.as_os_str().to_str() {
-                    if name == bin_name {
-                        binary_included = true;
-                        break;
-                    }
+            if let Some(name) = name.as_os_str().to_str() {
+                if name == bin_name {
+                    binary_included = true;
+                    break;
                 }
+            }
         }
 
         anyhow::ensure!(

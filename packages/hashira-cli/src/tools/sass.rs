@@ -30,10 +30,8 @@ impl Tool for Sass {
     fn include() -> &'static [&'static str] {
         if cfg!(target_os = "windows") {
             &["sass.bat", "src/dart.exe", "src/sass.snapshot"]
-        } else if cfg!(target_os = "macos") {
-            &["sass", "src/dart", "src/sass.snapshot"]
         } else {
-            &[]
+            &["sass", "src/dart", "src/sass.snapshot"]
         }
     }
 
@@ -69,9 +67,12 @@ impl Tool for Sass {
                         // Download and install
                         let url = get_download_url(&version)?;
                         let cache_path = cache_dir()?;
-                        let bin_path =
-                            GlobalCache::install::<Self>(&url, &cache_path, ExtractBehavior::SkipBasePath)
-                                .await?;
+                        let bin_path = GlobalCache::install::<Self>(
+                            &url,
+                            &cache_path,
+                            ExtractBehavior::SkipBasePath,
+                        )
+                        .await?;
                         Ok(Self(bin_path))
                     }
                     Err(err) => Err(anyhow::anyhow!(err)),
