@@ -8,5 +8,5 @@ pub type TryBoxStream<T> = Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 
 // A convenient boxed future.
 pub type BoxFuture<T> = Pin<Box<dyn std::future::Future<Output = T> + Send>>;
 
-// A convenient async boxed future.
-pub type BoxSyncFuture<T> = Pin<Box<dyn std::future::Future<Output = T> + Send + Sync>>;
+// // A convenient async boxed future.
+// pub type BoxSyncFuture<T> = Pin<Box<dyn std::future::Future<Output = T> + Send + Sync>>;

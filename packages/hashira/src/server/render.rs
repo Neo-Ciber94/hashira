@@ -82,13 +82,13 @@ where
     // Run before render hooks
     #[cfg(feature = "hooks")]
     {
-        use crate::events::Hooks;
+        use crate::events::{Hooks, OnBeforeRender};
 
         let hooks = request_context
             .app_data::<Arc<Hooks>>()
             .expect("hooks where no registered in AppData");
         for before_render in hooks.on_before_render_hooks.iter() {
-            before_render
+            result_html = before_render
                 .call(result_html.clone(), request_context.clone())
                 .await
                 .map_err(RenderError::ChunkError)?

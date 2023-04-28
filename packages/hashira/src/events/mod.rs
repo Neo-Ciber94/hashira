@@ -13,10 +13,6 @@ pub use {
 
 use std::fmt::Display;
 
-use futures::Future;
-
-use crate::{error::Error, types::BoxSyncFuture};
-
 /// Represents a collection of event hooks.
 #[derive(Default)]
 pub struct Hooks {
