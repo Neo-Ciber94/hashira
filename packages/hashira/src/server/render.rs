@@ -87,9 +87,10 @@ where
         let hooks = request_context
             .app_data::<Arc<Hooks>>()
             .expect("hooks where no registered in AppData");
+
         for before_render in hooks.on_before_render_hooks.iter() {
             result_html = before_render
-                .call(result_html.clone(), request_context.clone())
+                .call(result_html, request_context.clone())
                 .await
                 .map_err(RenderError::ChunkError)?
         }
@@ -154,21 +155,27 @@ where
     }))
     // Run on chunk render hooks
     .map(move |chunk| {
-        // #[cfg(feature = "hooks")]
-        // {
-        //     use crate::events::Hooks;
+        #[cfg(feature = "hooks")]
+        {
+            use crate::events::{Hooks, OnChunkRender};
 
-        //     if let Ok(chunk) = &mut chunk {
-        //         let hooks = request_context
-        //             .app_data::<Arc<Hooks>>()
-        //             .expect("hooks where no registered in AppData");
+            match chunk {
+                Ok(mut s) => {
+                    let hooks = request_context
+                        .app_data::<Arc<Hooks>>()
+                        .expect("hooks where no registered in AppData");
 
-        //         for on_chunk in hooks.on_chunk_render_hooks.iter() {
-        //             on_chunk.call(chunk, &request_context)?
-        //         }
-        //     }
-        // }
+                    for on_chunk in hooks.on_chunk_render_hooks.iter() {
+                        s = on_chunk.call(s, request_context.clone())?
+                    }
 
+                    return Ok(s);
+                }
+                Err(err) => return Err(err),
+            }
+        }
+
+        #[cfg(not(feature = "hooks"))]
         chunk
     })
     .map_ok(Bytes::from);
