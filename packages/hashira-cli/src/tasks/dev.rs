@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 use tokio::sync::{
-    broadcast::{channel, Sender},
+    broadcast::{channel, Receiver, Sender},
     Mutex,
 };
 use tokio_stream::wrappers::BroadcastStream;
@@ -72,15 +72,14 @@ impl DevTask {
 
     pub async fn run(&self) -> anyhow::Result<()> {
         let (tx_shutdown, _) = channel::<()>(1);
-        let (build_done_tx, mut build_done_rx) = channel::<()>(1);
-        let (tx_notify, _rx_notify) = channel::<()>(16);
+        let (build_done_tx, build_done_rx) = channel::<()>(1);
+        let (tx_live_reload, _) = channel::<LiveReloadAction>(16);
 
         // Starts the watcher
-        self.start_watcher(tx_notify.clone(), build_done_tx)?;
+        self.start_watcher(build_done_tx, tx_live_reload.clone())?;
 
         // Wait until shutdown signal is received
         {
-            let tx_notify = tx_notify.clone();
             let tx_shutdown = tx_shutdown.clone();
 
             tokio::spawn({
@@ -88,9 +87,6 @@ impl DevTask {
                     tokio::signal::ctrl_c().await.ok();
                     tracing::info!("👋 Exiting...");
                     let _ = tx_shutdown.send(());
-                    tx_notify
-                        .send(())
-                        .unwrap_or_else(|_| panic!("failed to send shutdown signal"));
 
                     // FIXME: Maybe is redundant to send a shutdown signal if we are exiting the process
                     std::process::exit(0);
@@ -98,31 +94,15 @@ impl DevTask {
             });
         }
 
-        // We wait until the build is done, we sent a notification to the client
-        {
-            let tx_notify = tx_notify.clone();
-
-            tokio::spawn(async move {
-                loop {
-                    if let Err(err) = build_done_rx.recv().await {
-                        tracing::error!("{err}");
-                    }
-
-                    tracing::debug!("Received build done signal");
-                    if let Err(err) = tx_notify.send(()) {
-                        tracing::error!("Error sending change event: {err}");
-                    }
-                }
-            });
-        }
+        // Spawn on reload/loading notifiers
+        self.spawn_live_reload_notifiers(tx_live_reload.clone(), build_done_rx);
 
         // Start live-reload web-socket server
         let host = self.reload_host.as_str();
         let port = self.reload_port;
         let state = State {
-            tx_notify,
             tx_shutdown,
-            tx_watch: self.interrupt_signal.clone(),
+            tx_live_reload,
         };
 
         start_server(state, host, port).await?;
@@ -130,10 +110,44 @@ impl DevTask {
         Ok(())
     }
 
+    fn spawn_live_reload_notifiers(
+        &self,
+        tx_live_reload: Sender<LiveReloadAction>,
+        mut build_done_rx: Receiver<()>,
+    ) {
+        // Wait until we receive an interrupt signal, we sent a loading notification to the client
+        {
+            let mut interrupt = self.interrupt_signal.subscribe();
+            let tx_live_reload = tx_live_reload.clone();
+            tokio::spawn(async move {
+                loop {
+                    if let Err(err) = interrupt.recv().await {
+                        tracing::error!("{err}");
+                    }
+
+                    tracing::debug!("Received interrupt signal");
+                    let _ = tx_live_reload.send(LiveReloadAction::Loading);
+                }
+            });
+        }
+
+        // We wait until the build is done, we sent a load notification to the client
+        tokio::spawn(async move {
+            loop {
+                if let Err(err) = build_done_rx.recv().await {
+                    tracing::error!("{err}");
+                }
+
+                tracing::debug!("Received build done signal");
+                let _ = tx_live_reload.send(LiveReloadAction::Reload);
+            }
+        });
+    }
+
     fn start_watcher(
         &self,
-        tx_notify: Sender<()>,
         build_done_tx: Sender<()>,
+        tx_live_reload: Sender<LiveReloadAction>,
     ) -> anyhow::Result<()> {
         tracing::info!("🚦 Starting application in watch mode");
 
@@ -150,9 +164,9 @@ impl DevTask {
             reload_host: self.reload_host.clone(),
             reload_port: self.reload_port,
             static_dir: self.static_dir.clone(),
-            tx_notify: tx_notify.clone(),
             build_done_signal: build_done_tx,
             interrupt_signal: interrupt_signal.clone(),
+            tx_live_reload: tx_live_reload.clone(),
         });
 
         // Starts the file system watcher
@@ -287,9 +301,9 @@ struct BuildAndRunOptions {
     reload_host: String,
     reload_port: u16,
     static_dir: String,
-    tx_notify: Sender<()>,
     build_done_signal: Sender<()>,
     interrupt_signal: Sender<()>,
+    tx_live_reload: Sender<LiveReloadAction>,
 }
 
 fn change_inside_src(events: &[DebouncedEvent]) -> bool {
@@ -312,6 +326,12 @@ fn change_inside_src(events: &[DebouncedEvent]) -> bool {
     false
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LiveReloadAction {
+    Reload,
+    Loading,
+}
+
 #[allow(clippy::bool_comparison)]
 async fn build_and_run(
     opts: Arc<BuildAndRunOptions>,
@@ -326,13 +346,19 @@ async fn build_and_run(
         if !change_inside_src(&events) {
             tracing::debug!("assets changed");
 
+            // Notify clients is loading
+            opts.tx_live_reload.send(LiveReloadAction::Loading).ok();
+
             // We rebuild the assets
             let build_task = BuildTask::new(opts.build_options.as_ref().clone());
             if let Err(err) = build_task.build_assets().await {
                 tracing::error!("failed to build assets: {}", err);
             }
 
-            let _ = opts.tx_notify.send(());
+            // Notify clients to reload
+            opts.tx_live_reload.send(LiveReloadAction::Reload).ok();
+
+            // No reason to continue
             return;
         } else {
             // Interrupt the current running task
@@ -387,17 +413,9 @@ async fn build_and_run(
     *lock = true;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-enum LiveReloadEvent {
-    Loading { loading: bool },
-    Reload { reload: bool },
-}
-
 struct State {
-    tx_notify: Sender<()>,
     tx_shutdown: Sender<()>,
-    tx_watch: Sender<()>,
+    tx_live_reload: Sender<LiveReloadAction>,
 }
 
 async fn start_server(state: State, host: &str, port: u16) -> anyhow::Result<()> {
@@ -427,40 +445,43 @@ async fn websocket_handler(
     upgrade: WebSocketUpgrade,
     state: Extension<Arc<State>>,
 ) -> impl IntoResponse {
+    #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+    #[serde(untagged)]
+    enum LiveReloadEvent {
+        Loading { loading: bool },
+        Reload { reload: bool },
+    }
+
     upgrade.on_upgrade(|ws| async move {
         tracing::debug!("Livereload web socket opened");
 
-        let tx_notify = state.tx_notify.clone();
-        let tx_shutdown = state.tx_shutdown.clone();
-        let mut tx_watch = state.tx_watch.subscribe();
-
         // split the websocket into a sender and a receiver
         let (mut sender, _) = ws.split();
-        let notify = tx_notify.subscribe();
-        let mut shutdown = tx_shutdown.subscribe();
-        let mut notify_stream = BroadcastStream::new(notify);
+        let mut shutdown = state.tx_shutdown.subscribe();
+        let mut event_stream = BroadcastStream::new(state.tx_live_reload.subscribe());
 
         loop {
             tokio::select! {
-                _ = notify_stream.next() => {
-                    tracing::debug!("Sending reload message...");
+                event = event_stream.next() => {
+                    tracing::debug!("Sending `{event:?}` message");
 
-                    let json = serde_json::to_string(&LiveReloadEvent::Reload{ reload: true })
-                        .expect("Failed to serialize message");
+                    if let Some(Ok(event)) = event {
+                        let json = match event {
+                            LiveReloadAction::Reload => {
+                                serde_json::to_string(&LiveReloadEvent::Reload{ reload: true })
+                                       .expect("Failed to serialize message")
+                            },
+                            LiveReloadAction::Loading => {
+                                serde_json::to_string(&LiveReloadEvent::Loading { loading: true })
+                                         .expect("Failed to serialize message")
+                            }
+                        };
 
-                    if sender.send( Message::Text(json)).await.is_err() {
-                        break;
+                        if sender.send(Message::Text(json)).await.is_err() {
+                            break;
+                        }
                     }
-                },
-                _ = tx_watch.recv() => {
-                    tracing::debug!("Sending loading message...");
-                    let json = serde_json::to_string(&LiveReloadEvent::Loading { loading: true })
-                        .expect("Failed to serialize message");
-
-                    if sender.send( Message::Text(json)).await.is_err() {
-                        break;
-                    }
-                },
+                }
                 _ = shutdown.recv() => {
                     tracing::debug!("Shuting down livereload web socket");
                     return;

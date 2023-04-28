@@ -8,7 +8,7 @@ const pollInterval = 2000;
 
 function showLoadingIndicator() {
   const loadingElement = document.createElement("div");
-  loadingElement.innerText = "Recompiling...";
+  loadingElement.innerText = "Loading...";
   loadingElement.style.position = "absolute";
   loadingElement.style.bottom = "10px";
   loadingElement.style.left = "10px";
@@ -40,7 +40,7 @@ function handleReconnect() {
   }, pollInterval);
 }
 
-async function startWebsocket() {
+function startWebsocket() {
   console.log("⚡ Starting websocket...");
 
   const ws = new WebSocket(url);
@@ -55,7 +55,7 @@ async function startWebsocket() {
     }
 
     if (data.loading === true && !isLoading) {
-      console.log("🚧 Building...");
+      console.log("🚧 Loading...");
       isLoading = true;
       showLoadingIndicator();
     }
@@ -66,4 +66,4 @@ async function startWebsocket() {
   ws.onclose = handleReconnect;
 }
 
-startWebsocket().catch(console.error);
+startWebsocket();
