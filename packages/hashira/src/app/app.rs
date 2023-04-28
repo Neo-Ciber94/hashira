@@ -385,8 +385,14 @@ where
             Arc::new(render_layout)
         });
 
+        #[cfg(feature = "hooks")]
+        let hooks = Arc::new(hooks);
+
         // Add startup app data
         app_data.insert::<RenderLayout>(layout); // The RenderContext require the RenderLayout
+
+        #[cfg(feature = "hooks")]
+        app_data.insert(hooks.clone());
 
         // Construct app service
         let client_router = PageRouterWrapper::from(client_router);
@@ -401,7 +407,7 @@ where
             default_headers,
 
             #[cfg(feature = "hooks")]
-            hooks: Arc::new(hooks),
+            hooks,
         };
 
         AppService::new(Arc::new(inner))

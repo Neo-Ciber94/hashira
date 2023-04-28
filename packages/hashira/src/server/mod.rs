@@ -12,3 +12,9 @@ mod render;
 
 #[cfg(not(feature = "client"))]
 pub use render::*;
+
+#[cfg(not(feature = "client"))]
+mod raw_html;
+
+#[cfg(not(feature = "client"))]
+pub use raw_html::*;

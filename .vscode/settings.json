@@ -1,8 +1,16 @@
 {
     "rust-analyzer.cargo.features": [
-        "hooks", "client"
+        "hooks",
+        "client"
+    ],
+    "rust-analyzer.check.features": [
+        "hooks",
+        "client"
     ],
     "rust-analyzer.runnables.extraArgs": [
         "--all-features"
+    ],
+    "rust-analyzer.linkedProjects": [
+        ".\\packages\\hashira\\Cargo.toml"
     ]
 }

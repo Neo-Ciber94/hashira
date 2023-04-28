@@ -1,15 +1,17 @@
+use crate::{app::RequestContext, error::Error};
+
 /// A hook to the application when rendering a chunk of html,
 /// this may be a chunk of a HTML being streamed or after the complete html had been rendered.
 pub trait OnChunkRender {
     /// Called when rendering a chunk of html.
-    fn on_chunk_render(&self, html: &mut String);
+    fn call(&self, chunk: &mut String, ctx: &RequestContext) -> Result<(), Error>;
 }
 
 impl<F> OnChunkRender for F
 where
-    F: Fn(&mut String) + Send + Sync + 'static,
+    F: Fn(&mut String, &RequestContext) -> Result<(), Error> + Send + Sync + 'static,
 {
-    fn on_chunk_render(&self, html: &mut String) {
-        (self)(html);
+    fn call(&self, chunk: &mut String, ctx: &RequestContext) -> Result<(), Error> {
+        (self)(chunk, ctx)
     }
 }

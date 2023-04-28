@@ -51,13 +51,20 @@ where
             let res = ctx.render_with_props::<CounterPage, BASE>(props).await;
             Ok(res)
         })
-        .hooks(Hooks::new().on_handle(|req, next: Next| async move {
-            let start = Instant::now();
-            let res = next(req).await;
-            let elapsed = Instant::now() - start;
-            log::info!("Elapsed: {}ms", elapsed.as_millis());
-            res
-        }))
+        .hooks(
+            Hooks::new()
+                .on_handle(|req, next: Next| async move {
+                    let start = Instant::now();
+                    let res = next(req).await;
+                    let elapsed = Instant::now() - start;
+                    log::info!("Elapsed: {}ms", elapsed.as_millis());
+                    res
+                })
+                .on_before_render(|html: String, _| async {
+                    log::info!("before rendering...");
+                    Ok(html)
+                }),
+        )
         .build()
 }
 

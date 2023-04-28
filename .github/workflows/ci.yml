@@ -18,7 +18,7 @@ jobs:
 
       # Build project
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --all-features --verbose
 
       # Run clippy
       - name: Run clippy
@@ -35,4 +35,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run Test (${{ matrix.os}})
-        run: cargo test --verbose
+        run: cargo test --all-features --verbose

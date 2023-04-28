@@ -72,10 +72,27 @@ where
     } = options;
 
     // The base layout
-    let result_html = index_html;
+    #[allow(unused_mut)]
+    let mut result_html = index_html;
 
     if !result_html.contains(HASHIRA_ROOT) {
         return Err(RenderError::NoRoot);
+    }
+
+    // Run before render hooks
+    #[cfg(feature = "hooks")]
+    {
+        use crate::events::Hooks;
+
+        let hooks = request_context
+            .app_data::<Arc<Hooks>>()
+            .expect("hooks where no registered in AppData");
+        for before_render in hooks.on_before_render_hooks.iter() {
+            before_render
+                .call(result_html.clone(), request_context.clone())
+                .await
+                .map_err(RenderError::ChunkError)?
+        }
     }
 
     let props_json = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
@@ -102,7 +119,7 @@ where
         error_router,
 
         // Unnecessary?
-        server_context: ServerContext::new(Some(request_context)),
+        server_context: ServerContext::new(Some(request_context.clone())),
     };
 
     let (title, metadata, links, scripts) = head.into_parts();
@@ -135,6 +152,25 @@ where
         render_after_content_markers(after_content_html, after_content, page_data)
             .map_err(|e| e.into())
     }))
+    // Run on chunk render hooks
+    .map(move |chunk| {
+        // #[cfg(feature = "hooks")]
+        // {
+        //     use crate::events::Hooks;
+
+        //     if let Ok(chunk) = &mut chunk {
+        //         let hooks = request_context
+        //             .app_data::<Arc<Hooks>>()
+        //             .expect("hooks where no registered in AppData");
+
+        //         for on_chunk in hooks.on_chunk_render_hooks.iter() {
+        //             on_chunk.call(chunk, &request_context)?
+        //         }
+        //     }
+        // }
+
+        chunk
+    })
     .map_ok(Bytes::from);
 
     Ok(Box::pin(html_stream))

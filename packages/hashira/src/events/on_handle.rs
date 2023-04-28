@@ -27,7 +27,7 @@ where
 #[async_trait::async_trait]
 pub trait OnHandle: Cloneable {
     /// Called on the next request.
-    async fn on_handle(&self, req: Arc<Request>, next: Next) -> Response;
+    async fn call(&self, req: Arc<Request>, next: Next) -> Response;
 }
 
 #[async_trait::async_trait]
@@ -36,7 +36,7 @@ where
     F: Fn(Arc<Request>, Next) -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = Response> + Send + 'static,
 {
-    async fn on_handle(&self, req: Arc<Request>, next: Next) -> Response {
+    async fn call(&self, req: Arc<Request>, next: Next) -> Response {
         (self)(req, next).await
     }
 }
