@@ -41,6 +41,9 @@ pub struct DevOptions {
     )]
     pub reload_port: u16,
 
-    #[arg(long, help = "Path to ignore when looking for changes")]
+    #[arg(long, help = "Additional paths to watch when looking for changes")]
+    pub watch: Vec<PathBuf>,
+
+    #[arg(long, help = "Paths to ignore when looking for changes")]
     pub ignore: Vec<PathBuf>,
 }

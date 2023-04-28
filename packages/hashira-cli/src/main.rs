@@ -5,6 +5,9 @@ mod tasks;
 mod tools;
 mod utils;
 
+#[allow(dead_code)]
+mod config;
+
 use anyhow::Context;
 use clap::Parser;
 use cli::{Cli, Commands, LogLevel};

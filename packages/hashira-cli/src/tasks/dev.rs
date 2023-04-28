@@ -44,7 +44,10 @@ pub struct DevTask {
     // Port of the reload server
     reload_port: u16,
 
-    // Files to ignore while waiting for changes
+    // Additional paths to watch
+    watch: Vec<PathBuf>,
+
+    // Paths to ignore while waiting for changes
     ignore: Vec<PathBuf>,
 
     // Signal used to shutdown the processes
@@ -62,6 +65,7 @@ impl DevTask {
             static_dir: options.static_dir,
             reload_host: options.reload_host,
             reload_port: options.reload_port,
+            watch: options.watch,
             ignore: options.ignore,
         }
     }
@@ -70,6 +74,9 @@ impl DevTask {
         let (tx_shutdown, _) = channel::<()>(1);
         let (build_done_tx, mut build_done_rx) = channel::<()>(1);
         let (tx_notify, _rx_notify) = channel::<()>(16);
+
+        // Starts the watcher
+        self.start_watcher(build_done_tx)?;
 
         // Wait until shutdown signal is received
         {
@@ -94,13 +101,14 @@ impl DevTask {
         // We wait until the build is done, we sent a notification to the client
         {
             let tx_notify = tx_notify.clone();
+
             tokio::spawn(async move {
                 loop {
                     if let Err(err) = build_done_rx.recv().await {
                         tracing::error!("{err}");
                     }
-                    tracing::debug!("Received build done signal");
 
+                    tracing::debug!("Received build done signal");
                     if let Err(err) = tx_notify.send(()) {
                         tracing::error!("Error sending change event: {err}");
                     }
@@ -108,13 +116,9 @@ impl DevTask {
             });
         }
 
-        // Starts the watcher
-        self.start_watcher(build_done_tx)?;
-
-        // Starts the server
+        // Start live-reload web-socket server
         let host = self.reload_host.as_str();
         let port = self.reload_port;
-
         let state = State {
             tx_notify,
             tx_shutdown,
@@ -122,11 +126,12 @@ impl DevTask {
         };
 
         start_server(state, host, port).await?;
+
         Ok(())
     }
 
     fn start_watcher(&self, build_done_tx: Sender<()>) -> anyhow::Result<()> {
-        tracing::info!("👀 Starting application in watch mode");
+        tracing::info!("🚦 Starting application in watch mode");
 
         let build_options = &self.options;
         let interrupt_signal = self.interrupt_signal.clone();
@@ -149,8 +154,13 @@ impl DevTask {
         self.build_watcher(tx_watch)?;
 
         // Starts
-        tracing::debug!("Starting dev...");
-        tokio::spawn(build_and_run(opts.clone(), vec![], true));
+        tracing::debug!("Starting watch...");
+        tokio::spawn(build_and_run(
+            opts.clone(),
+            vec![],
+            interrupt_signal.clone(),
+            true,
+        ));
 
         // Start notifier loop
         tokio::task::spawn(async move {
@@ -163,14 +173,11 @@ impl DevTask {
                     .await
                     .expect("failed to read debounce event");
 
-                // Interrupt the current running task
-                let _ = interrupt_signal.send(());
-
                 // Rerun
                 let opts = opts.clone();
 
                 tracing::info!("🔃 Restarting...");
-                tokio::spawn(build_and_run(opts, events, false));
+                tokio::spawn(build_and_run(opts, events, interrupt_signal, false));
             }
         });
 
@@ -183,14 +190,31 @@ impl DevTask {
             .with_context(|| "failed to start watcher")?;
 
         let watch_path = Path::new(".").canonicalize()?;
-        tracing::info!("👀 Watching: {}", watch_path.display());
+        tracing::info!("Watching: {}", watch_path.display());
 
+        // Watch base path
         debouncer
             .watcher()
             .watch(&watch_path, RecursiveMode::Recursive)
-            .unwrap();
+            .expect("failed to watch directory");
+
+        // Watch any additional path
+        for watch in &self.watch {
+            anyhow::ensure!(
+                watch.exists(),
+                "path to watch `{}` was not found",
+                watch.display()
+            );
+            debouncer
+                .watcher()
+                .watch(&watch, RecursiveMode::Recursive)
+                .unwrap();
+
+            tracing::info!("Watching: {}", watch.display());
+        }
 
         std::thread::spawn(move || {
+            // We hold this otherwise the notify channel will be dropped
             let _debouncer = debouncer;
 
             loop {
@@ -273,8 +297,16 @@ struct BuildAndRunOptions {
 async fn build_and_run(
     opts: Arc<BuildAndRunOptions>,
     mut events: Vec<DebouncedEvent>,
+    interrupt_signal: Sender<()>,
     is_first_run: bool,
 ) {
+    // Interrupt the current running task
+    if !is_first_run {
+        tracing::debug!("Sending interrupt signal...");
+        let _ = interrupt_signal.send(());
+    }
+
+    // A guard to prevent concurrent access to run the app
     let mut lock = opts.can_run.lock().await;
     if *lock == false {
         return;
@@ -289,7 +321,7 @@ async fn build_and_run(
 
     let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
     if !paths.is_empty() {
-        tracing::info!("Change detected on: {:?}", paths);
+        tracing::info!("Change detected on: {:#?}", paths);
     }
 
     // Build task
@@ -304,7 +336,7 @@ async fn build_and_run(
     };
 
     // TODO: We should decide what operation to perform depending on the files affected,
-    // if only a `public_dir` file changed, maybe we don't need to rebuild the entire app
+    // if only public assets are changed, we don't need to rebuild the entire app
 
     let host = opts.reload_host.clone();
     let port = opts.reload_port.to_string();
@@ -313,6 +345,7 @@ async fn build_and_run(
     run_task.env(crate::env::HASHIRA_LIVE_RELOAD_PORT, port);
     run_task.env(crate::env::HASHIRA_LIVE_RELOAD, String::from("1"));
 
+    tracing::debug!("Starting building and running...");
     if let Err(err) = run_task.run().await {
         tracing::error!("Watch run failed: {err}");
     }
@@ -322,7 +355,7 @@ async fn build_and_run(
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
-enum LiveReloadMessage {
+enum LiveReloadEvent {
     Loading { loading: bool },
     Reload { reload: bool },
 }
@@ -378,7 +411,7 @@ async fn websocket_handler(
                 _ = notify_stream.next() => {
                     tracing::debug!("Sending reload message...");
 
-                    let json = serde_json::to_string(&LiveReloadMessage::Reload{ reload: true })
+                    let json = serde_json::to_string(&LiveReloadEvent::Reload{ reload: true })
                         .expect("Failed to serialize message");
 
                     if sender.send( Message::Text(json)).await.is_err() {
@@ -387,7 +420,7 @@ async fn websocket_handler(
                 },
                 _ = watch.recv() => {
                     tracing::debug!("Sending loading message...");
-                    let json = serde_json::to_string(&LiveReloadMessage::Loading { loading: true })
+                    let json = serde_json::to_string(&LiveReloadEvent::Loading { loading: true })
                         .expect("Failed to serialize message");
 
                     if sender.send( Message::Text(json)).await.is_err() {
