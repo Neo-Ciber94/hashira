@@ -120,7 +120,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Route {
             path: path.to_owned(),
@@ -134,7 +134,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, None, handler)
     }
@@ -144,7 +144,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::POST), handler)
     }
@@ -154,7 +154,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::GET), handler)
     }
@@ -164,7 +164,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::HEAD), handler)
     }
@@ -174,7 +174,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::PUT), handler)
     }
@@ -184,7 +184,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::DELETE), handler)
     }
@@ -194,7 +194,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::OPTIONS), handler)
     }
@@ -204,7 +204,7 @@ impl Route {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         Self::new(path, Some(HttpMethod::PATCH), handler)
     }

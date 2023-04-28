@@ -32,7 +32,7 @@ impl PageHandler {
     where
         H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
         R: IntoResponse,
-        Fut: Future<Output = R> + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
     {
         PageHandler(Box::new(move |ctx| {
             let ret = handler(ctx);
@@ -58,7 +58,7 @@ impl ErrorPageHandler {
     pub fn new<H, Fut>(handler: H) -> Self
     where
         H: Fn(RequestContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<Response, Error>> + Send + 'static,
     {
         ErrorPageHandler(Box::new(move |ctx, status| {
             let fut = handler(ctx, status);
@@ -197,7 +197,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
         self.add_component::<COMP>(path);
 
@@ -225,7 +225,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
         #[cfg(not(feature = "client"))]
         {
@@ -255,7 +255,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
         #[cfg(not(feature = "client"))]
         {

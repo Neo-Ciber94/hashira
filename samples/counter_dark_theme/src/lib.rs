@@ -63,6 +63,10 @@ where
                 .on_before_render(|html: String, _| async {
                     log::info!("before rendering...");
                     Ok(html)
+                })
+                .on_chunk_render(|chunk, _ctx| {
+                    println!("Chunk: {chunk}");
+                    Ok(chunk)
                 }),
         )
         .build()

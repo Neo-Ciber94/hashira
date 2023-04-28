@@ -51,7 +51,7 @@ impl<BASE> AppNested<BASE> {
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
         H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + Sync + 'static,
+        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
         self.add_component::<COMP>(path);
 
