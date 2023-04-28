@@ -1,6 +1,6 @@
 use crate::{
     cli::{BuildOptions, DevOptions},
-    tasks::run::RunTask,
+    tasks::{build::BuildTask, run::RunTask},
 };
 use anyhow::Context;
 use axum::{
@@ -76,7 +76,7 @@ impl DevTask {
         let (tx_notify, _rx_notify) = channel::<()>(16);
 
         // Starts the watcher
-        self.start_watcher(build_done_tx)?;
+        self.start_watcher(tx_notify.clone(), build_done_tx)?;
 
         // Wait until shutdown signal is received
         {
@@ -130,7 +130,11 @@ impl DevTask {
         Ok(())
     }
 
-    fn start_watcher(&self, build_done_tx: Sender<()>) -> anyhow::Result<()> {
+    fn start_watcher(
+        &self,
+        tx_notify: Sender<()>,
+        build_done_tx: Sender<()>,
+    ) -> anyhow::Result<()> {
         tracing::info!("🚦 Starting application in watch mode");
 
         let build_options = &self.options;
@@ -146,6 +150,7 @@ impl DevTask {
             reload_host: self.reload_host.clone(),
             reload_port: self.reload_port,
             static_dir: self.static_dir.clone(),
+            tx_notify: tx_notify.clone(),
             build_done_signal: build_done_tx,
             interrupt_signal: interrupt_signal.clone(),
         });
@@ -155,18 +160,11 @@ impl DevTask {
 
         // Starts
         tracing::debug!("Starting watch...");
-        tokio::spawn(build_and_run(
-            opts.clone(),
-            vec![],
-            interrupt_signal.clone(),
-            true,
-        ));
+        tokio::spawn(build_and_run(opts.clone(), vec![], true));
 
         // Start notifier loop
         tokio::task::spawn(async move {
             loop {
-                let interrupt_signal = interrupt_signal.clone();
-
                 // Wait for change event
                 let events = rx_watch
                     .recv()
@@ -177,7 +175,7 @@ impl DevTask {
                 let opts = opts.clone();
 
                 tracing::info!("🔃 Restarting...");
-                tokio::spawn(build_and_run(opts, events, interrupt_signal, false));
+                tokio::spawn(build_and_run(opts, events, false));
             }
         });
 
@@ -289,21 +287,58 @@ struct BuildAndRunOptions {
     reload_host: String,
     reload_port: u16,
     static_dir: String,
+    tx_notify: Sender<()>,
     build_done_signal: Sender<()>,
     interrupt_signal: Sender<()>,
+}
+
+fn change_inside_src(events: &[DebouncedEvent]) -> bool {
+    let cwd = std::env::current_dir().unwrap();
+    let src_dir = dunce::canonicalize(cwd.join("src")).unwrap();
+
+    let files = events
+        .iter()
+        .filter(|event| event.path.is_file())
+        .map(|event| &event.path);
+
+    for file in files {
+        let file_path = dunce::canonicalize(file).unwrap();
+        match file_path.strip_prefix(&src_dir) {
+            Ok(_) => return true,
+            Err(_) => {}
+        }
+    }
+
+    false
 }
 
 #[allow(clippy::bool_comparison)]
 async fn build_and_run(
     opts: Arc<BuildAndRunOptions>,
     mut events: Vec<DebouncedEvent>,
-    interrupt_signal: Sender<()>,
     is_first_run: bool,
 ) {
-    // Interrupt the current running task
+    // Remove any ignored path
+    remove_ignored_paths(&opts, &mut events);
+
     if !is_first_run {
-        tracing::debug!("Sending interrupt signal...");
-        let _ = interrupt_signal.send(());
+        // Only assets changed, reload
+        if !change_inside_src(&events) {
+            tracing::debug!("assets changed");
+
+            // We rebuild the assets
+            let build_task = BuildTask::new(opts.build_options.as_ref().clone());
+            if let Err(err) = build_task.build_assets().await {
+                tracing::error!("failed to build assets: {}", err);
+            }
+
+            let _ = opts.tx_notify.send(());
+            return;
+        } else {
+            // Interrupt the current running task
+            tracing::debug!("src changed, sending interrupt signal...");
+            let _ = opts.interrupt_signal.send(());
+        }
     }
 
     // A guard to prevent concurrent access to run the app
@@ -313,7 +348,6 @@ async fn build_and_run(
     }
 
     *lock = false;
-    remove_ignored_paths(&opts, &mut events);
 
     if events.is_empty() && !is_first_run {
         return;
@@ -398,7 +432,7 @@ async fn websocket_handler(
 
         let tx_notify = state.tx_notify.clone();
         let tx_shutdown = state.tx_shutdown.clone();
-        let mut watch = state.tx_watch.subscribe();
+        let mut tx_watch = state.tx_watch.subscribe();
 
         // split the websocket into a sender and a receiver
         let (mut sender, _) = ws.split();
@@ -418,7 +452,7 @@ async fn websocket_handler(
                         break;
                     }
                 },
-                _ = watch.recv() => {
+                _ = tx_watch.recv() => {
                     tracing::debug!("Sending loading message...");
                     let json = serde_json::to_string(&LiveReloadEvent::Loading { loading: true })
                         .expect("Failed to serialize message");

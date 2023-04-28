@@ -66,7 +66,7 @@ impl BuildTask {
         self.cargo_build_wasm().await?;
         self.wasm_bindgen().await?;
         self.optimize_wasm().await?; // If the optimization flag is set or in release mode
-        self.include_files().await?;
+        self.build_assets().await?;
 
         tracing::info!("✅ Wasm build done!");
         Ok(())
@@ -120,8 +120,8 @@ impl BuildTask {
         Ok(())
     }
 
-    async fn include_files(&self) -> anyhow::Result<()> {
-        tracing::info!("📂 Copying files to public directory...");
+    pub(crate) async fn build_assets(&self) -> anyhow::Result<()> {
+        tracing::info!("📂 Preparing assets...");
 
         let opts = &self.options;
 
@@ -150,9 +150,9 @@ impl BuildTask {
 
         process_stylesheet(self.options.as_ref(), &dest_dir).await?;
 
-        process_files(include_files, dest_dir.as_path(), opts)
+        process_assets(include_files, dest_dir.as_path(), opts)
             .await
-            .context("Failed to copy files")?;
+            .context("Failed to process assets")?;
 
         Ok(())
     }
@@ -317,7 +317,7 @@ impl BuildTask {
 }
 
 #[tracing::instrument(level = "debug", skip(opts))]
-async fn process_files(
+async fn process_assets(
     include_files: Vec<IncludeFiles>,
     dest_dir: &Path,
     opts: &BuildOptions,
