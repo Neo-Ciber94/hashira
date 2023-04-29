@@ -113,7 +113,8 @@ impl AppService {
                 Box::pin(async move { this.handle_request(req).await }) as BoxFuture<Response>
             }) as Next;
 
-            let handler = hooks.iter().fold(next, move |cur, next_handler| {
+            // We execute the hooks in the order they were added
+            let handler = hooks.iter().rev().fold(next, move |cur, next_handler| {
                 let next_handler = next_handler.clone_handler();
                 Box::new(move |req| Box::pin(async move { next_handler.call(req, cur).await }))
             }) as Next;

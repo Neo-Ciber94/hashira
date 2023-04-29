@@ -1,4 +1,11 @@
 [workspace]
-members = ["packages/*", "packages/adapters/*", "templates/*", "samples/*"]
+members = [
+    "packages/*",
+    "packages/adapters/*",
+    "templates/*",
+    "samples/*",
+    "tests/*",
+]
+default-members = ["packages/*"]
 exclude = ["packages/adapters"]
 resolver = "2"

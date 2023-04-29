@@ -14,7 +14,7 @@ pub fn page_component_impl(item_fn: ItemFn) -> TokenStream {
     // which the documentation says the return may not be stable.
     quote::quote! {
         #[automatically_derived]
-        impl hashira::components::PageComponent for #component {
+        impl ::hashira::components::PageComponent for #component {
             fn id() -> &'static str {
                 std::concat!(std::module_path!(), "::", #name)
             }

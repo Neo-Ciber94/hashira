@@ -157,7 +157,7 @@ where
     .map(move |chunk| {
         #[cfg(feature = "hooks")]
         {
-            use crate::events::{Hooks, OnChunkRender};
+            use crate::events::Hooks;
 
             match chunk {
                 Ok(mut s) => {
