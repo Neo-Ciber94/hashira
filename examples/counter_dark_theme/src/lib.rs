@@ -4,11 +4,9 @@ mod pages;
 use crate::components::{root_layout, ThemeToggle};
 use hashira::{
     app::{App as HashiraApp, AppService, RenderContext},
-    events::{Hooks, Next},
     server::Metadata,
 };
 pub use pages::{CounterPage, CounterPageProps, HomePage};
-use std::time::Instant;
 use yew::{html::ChildrenProps, BaseComponent, Suspense};
 
 #[yew::function_component]
@@ -51,24 +49,6 @@ where
             let res = ctx.render_with_props::<CounterPage, BASE>(props).await;
             Ok(res)
         })
-        .hooks(
-            Hooks::new()
-                .on_handle(|req, next: Next| async move {
-                    let start = Instant::now();
-                    let res = next(req).await;
-                    let elapsed = Instant::now() - start;
-                    log::info!("Elapsed: {}ms", elapsed.as_millis());
-                    res
-                })
-                .on_before_render(|html: String, _| async {
-                    log::info!("before rendering...");
-                    Ok(html)
-                })
-                .on_chunk_render(|chunk, _ctx| {
-                    println!("Chunk: {chunk}");
-                    Ok(chunk)
-                }),
-        )
         .build()
 }
 

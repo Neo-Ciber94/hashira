@@ -66,6 +66,10 @@ pub fn ServerContextProvider(props: &ServerContextProps) -> yew::Html {
 }
 
 /// Returns handle containing server data.
+/// 
+/// # Returns
+/// - `Some(ServerContext)` when ran on the server.
+/// - `None` when ran on the client.
 #[hook]
 pub fn use_server_context() -> Option<ServerContext> {
     // The server context is only available on the server side.

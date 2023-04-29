@@ -53,6 +53,7 @@ where
 
 // TODO: during development show a modal with the error,
 // this way the error is not just shallowed by the console
+#[cfg_attr(not(feature = "hooks"), allow(dead_code, unused_variables))]
 fn set_panic_hook(service: &AppService) {
     #[cfg(feature = "hooks")]
     {
