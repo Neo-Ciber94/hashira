@@ -3,7 +3,7 @@ members = [
     "packages/*",
     "packages/adapters/*",
     "templates/*",
-    "samples/*",
+    "examples/*",
     "tests/*",
 ]
 default-members = ["packages/*"]
