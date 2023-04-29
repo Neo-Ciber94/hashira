@@ -3,6 +3,7 @@ name = "hashira-axum"
 description = "Axum adapter for hashira"
 version = "0.0.1-alpha"
 edition = "2021"
+repository = "https://github.com/Neo-Ciber94/hashira"
 
 [dependencies]
 axum = "0.6.15"

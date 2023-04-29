@@ -1,6 +1,7 @@
 [package]
 name = "hashira-cli"
 description = "A command line utility for building hashira applications"
+repository = "https://github.com/Neo-Ciber94/hashira"
 version = "0.0.1"
 edition = "2021"
 

@@ -1,6 +1,7 @@
 [package]
 name = "hashira-macros"
 version = "0.0.1-alpha"
+repository = "https://github.com/Neo-Ciber94/hashira"
 edition = "2021"
 
 [lib]
