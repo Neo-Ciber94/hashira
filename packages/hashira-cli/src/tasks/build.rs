@@ -2,6 +2,7 @@ use crate::cli::{BuildOptions, WasmOptimizationLevel, DEFAULT_INCLUDES};
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use crate::tools::sass::Sass;
+use crate::tools::tailwindcss::TailwindCss;
 use crate::tools::wasm_bindgen::WasmBindgen;
 use crate::tools::{Tool, ToolExt};
 use crate::utils::wait_interruptible;
@@ -148,13 +149,87 @@ impl BuildTask {
         // We process each file and include then in the public directory
         let dest_dir = opts.profile_target_dir()?.join(&opts.public_dir);
 
-        process_stylesheet(self.options.as_ref(), &dest_dir).await?;
+        // TODO: We can sheet if the tailwind.config exists and just check a bool
+        // We try to execute tailwind, if there no configuration we return `Ok(false)`
+        // and continue to process the stylesheet file normally
+        if self.try_build_tailwind_css().await? == false {
+            process_stylesheet(self.options.as_ref(), &dest_dir).await?;
+        }
 
         process_assets(include_files, dest_dir.as_path(), opts)
             .await
             .context("Failed to process assets")?;
 
         Ok(())
+    }
+
+    async fn try_build_tailwind_css(&self) -> anyhow::Result<bool> {
+        // TODO: We should cache if the tailwind config exists
+
+        // If not tailwind.config is detected we do nothing
+        if let None = get_tailwind_config_path()? {
+            return Ok(false);
+        }
+
+        match get_styles_file_path(self.options.as_ref())? {
+            Some(style_file) => {
+                if !style_file.exists() {
+                    tracing::warn!("stylesheet file `{}` was not found", style_file.display());
+                    return Ok(false);
+                }
+
+                tracing::debug!("tailwindcss detected");
+
+                // SAFETY: If the style file was detected means is a valid style sheet
+                let ext = style_file.extension().and_then(|s| s.to_str()).unwrap();
+                if ext != "css" {
+                    tracing::warn!(
+                        "styles file was detected but is not a css file: {}",
+                        style_file.display()
+                    );
+                    return Ok(false);
+                }
+
+                let tailwind = TailwindCss::load().await?;
+
+                let file_name = style_file.file_stem().unwrap().to_string_lossy();
+                let target_dir = self.options.resolved_target_dir()?;
+                let public_dir = &self.options.public_dir;
+                let out_dir = target_dir.join(public_dir).join(format!("{file_name}.css"));
+
+                tracing::info!("Executing TailwindCSS...");
+                let mut cmd = tailwind.async_cmd();
+
+                cmd.arg("--input") // input
+                    .arg(style_file)
+                    .arg("--output")
+                    .arg(&out_dir);
+
+                if self.options.release {
+                    cmd.arg("--minify");
+                }
+
+                let result = cmd.output().await;
+
+                match result {
+                    Ok(output) => {
+                        if !output.status.success() {
+                            let err = String::from_utf8_lossy(&output.stderr);
+                            tracing::error!("tailwindcss failed: {err}");
+                        }
+
+                        tracing::debug!("written tailwindcss to: {}", out_dir.display());
+                    }
+                    Err(err) => {
+                        tracing::warn!("failed to run tailwindcss: {err}");
+                    }
+                };
+
+                // We return true because we actually ran the command
+                Ok(true)
+            }
+            None => Ok(false),
+        }
     }
 
     fn spawn_cargo_build_wasm(&self) -> anyhow::Result<Child> {
@@ -399,10 +474,19 @@ fn detect_stylesheet_file() -> anyhow::Result<Option<PathBuf>> {
     Ok(None)
 }
 
+fn get_styles_file_path(opts: &BuildOptions) -> anyhow::Result<Option<PathBuf>> {
+    let detected_style_sheet = detect_stylesheet_file()?;
+
+    if let Some(styles) = opts.styles.as_ref() {
+        return Ok(Some(styles.clone()));
+    }
+
+    Ok(detected_style_sheet)
+}
+
 #[tracing::instrument(level = "debug", skip(opts))]
 async fn process_stylesheet(opts: &BuildOptions, dest_dir: &Path) -> anyhow::Result<()> {
-    let detected_style_sheet = detect_stylesheet_file()?;
-    let Some(style_file) = opts.styles.as_ref().or(detected_style_sheet.as_ref()) else {
+    let Some(style_file) = get_styles_file_path(opts)? else {
         tracing::warn!("no stylesheet declared");
         return Ok(())
     };
@@ -419,20 +503,18 @@ async fn process_stylesheet(opts: &BuildOptions, dest_dir: &Path) -> anyhow::Res
     };
 
     match ext.to_string_lossy().as_ref() {
-        "css" => bundle_css(style_file, dest_dir, opts)
+        "css" => bundle_css(&style_file, dest_dir, opts)
             .await
             .with_context(|| format!("failed to bundle css: {}", style_file.display()))?,
-        "sass" | "scss" | "less" => {
-            bundle_sass(style_file, dest_dir, opts)
-                .await
-                .with_context(|| {
-                    format!(
-                        "failed to bundle {}: {}",
-                        ext.to_string_lossy(),
-                        style_file.display()
-                    )
-                })?
-        }
+        "sass" | "scss" | "less" => bundle_sass(&style_file, dest_dir, opts)
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to bundle {}: {}",
+                    ext.to_string_lossy(),
+                    style_file.display()
+                )
+            })?,
         _ => {
             anyhow::bail!("unknown stylesheet file `{}`", style_file.display());
         }
@@ -644,4 +726,20 @@ fn pipelines() -> Vec<Box<dyn Pipeline + Send>> {
         // The last pipeline should always be the copy files
         Box::new(CopyFilesPipeline),
     ]
+}
+
+fn get_tailwind_config_path() -> anyhow::Result<Option<PathBuf>> {
+    const TAILWIND_CONFIG: &[&str] = &["tailwind.config.js", "tailwind.config.ts"];
+
+    let cwd = std::env::current_dir()?;
+
+    for file_name in TAILWIND_CONFIG {
+        let tailwind_config = cwd.join(file_name);
+
+        if tailwind_config.exists() {
+            return Ok(Some(tailwind_config));
+        }
+    }
+
+    Ok(None)
 }
