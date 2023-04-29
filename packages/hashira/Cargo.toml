@@ -4,7 +4,10 @@ description = "A server side rendering framework build on top of Yew"
 version = "0.0.1-alpha"
 edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
+authors = ["Freddy L. Paredes (neo-ciber_94@hotmail.com)"]
 license = "MIT"
+keywords = ["web", "web-framework", "server-side-rendering", "yew"]
+readme = "../../README.md"
 
 [dependencies]
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }
