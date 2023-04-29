@@ -32,65 +32,96 @@ impl Hooks {
     }
 
     /// Adds a hook to be executed before handling a request.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_handle<F>(mut self, f: F) -> Self
     where
         F: OnHandle + Clone + Send + Sync + 'static,
     {
-        self.on_handle_hooks.push(Box::new(f));
+        #[cfg(not(feature = "client"))]
+        {
+            self.on_handle_hooks.push(Box::new(f));
+        }
         self
     }
 
     /// Adds a hook to be executed before rendering a response.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_before_render<F>(mut self, f: F) -> Self
     where
         F: OnBeforeRender + Send + Sync + 'static,
     {
-        self.on_before_render_hooks.push(BoxOnBeforeRender::new(f));
+        #[cfg(not(feature = "client"))]
+        {
+            self.on_before_render_hooks.push(BoxOnBeforeRender::new(f));
+        }
         self
     }
 
     /// Adds a hook to be executed after rendering a chunk of a response.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_chunk_render<F>(mut self, f: F) -> Self
     where
         F: OnChunkRender + Send + Sync + 'static,
     {
-        self.on_chunk_render_hooks.push(Box::new(f));
+        #[cfg(not(feature = "client"))]
+        {
+            self.on_chunk_render_hooks.push(Box::new(f));
+        }
         self
     }
 
     /// Adds a hook to be executed when the server is initialized.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_server_initialize<F>(mut self, f: F) -> Self
     where
         F: OnServerInitialize + Send + Sync + 'static,
     {
-        self.on_server_initialize_hooks.push(Box::new(f));
+        #[cfg(not(feature = "client"))]
+        {
+            self.on_server_initialize_hooks.push(Box::new(f));
+        }
+
         self
     }
 
-    /// Adds a hook to be executed when the client is initialized.
+    /// Adds a hook to be executed when the client is initialized,
+    /// this is ran after hydration.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_client_initialize<F>(mut self, f: F) -> Self
     where
         F: OnClientInitialize + Send + Sync + 'static,
     {
-        self.on_client_initialize_hooks.push(Box::new(f));
+        #[cfg(feature = "client")]
+        {
+            self.on_client_initialize_hooks.push(Box::new(f));
+        }
+
         self
     }
 
     /// Adds a hook to be executed when a server error occurs.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_server_error<F>(mut self, f: F) -> Self
     where
         F: OnServerError + Send + Sync + 'static,
     {
-        self.on_server_error_hooks.push(Box::new(f));
+        #[cfg(not(feature = "client"))]
+        {
+            self.on_server_error_hooks.push(Box::new(f));
+        }
         self
     }
 
     /// Adds a hook to be executed when a client error occurs.
+    #[allow(unused_mut, unused_variables)]
     pub fn on_client_error<F>(mut self, f: F) -> Self
     where
         F: OnClientError + Send + Sync + 'static,
     {
-        self.on_client_error_hooks.push(Box::new(f));
+        #[cfg(feature = "client")]
+        {
+            self.on_client_error_hooks.push(Box::new(f));
+        }
         self
     }
 

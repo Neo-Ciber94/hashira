@@ -28,6 +28,7 @@ tokio = { version = "1.27.0", features = ["sync"] }
 mime = "0.3.17"
 serde_urlencoded = "0.7.1"
 pin-project-lite = "0.2.9"
+console_error_panic_hook = "0.1.7"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # We use this dependencies to safely render the html layout on wasm without blocking

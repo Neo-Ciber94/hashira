@@ -57,18 +57,20 @@ impl AppService {
         )
     }
 
-    /// Returns the server router.
-    pub fn server_router(&self) -> &PathRouter<Route> {
-        &self.0.server_router
+    /// Returns the app data of the app.
+    pub fn app_data(&self) -> &AppData {
+        self.0.app_data.as_ref()
     }
 
     /// Returns the page router.
-    pub fn page_router(&self) -> &PageRouterWrapper {
+    #[cfg_attr(not(feature = "client"), allow(dead_code))]
+    pub(crate) fn page_router(&self) -> &PageRouterWrapper {
         &self.0.client_router
     }
 
     /// Returns the router for handling error pages on the client.
-    pub fn error_router(&self) -> &Arc<ErrorRouter> {
+    #[cfg_attr(not(feature = "client"), allow(dead_code))]
+    pub(crate) fn error_router(&self) -> &Arc<ErrorRouter> {
         &self.0.client_error_router
     }
 
@@ -78,7 +80,7 @@ impl AppService {
 
         // Merge the response headers with the default headers
         if !self.0.default_headers.is_empty() {
-            let mut headers =self.0.default_headers.clone();
+            let mut headers = self.0.default_headers.clone();
             headers.extend(res.headers().clone());
             *res.headers_mut() = headers;
         }
@@ -183,10 +185,10 @@ impl AppService {
         };
 
         let status = err.status();
-        match self.0.server_error_router.find_match(&status) {
+        let mut response = match self.0.server_error_router.find_match(&status) {
             Some(error_handler) => {
                 let params = Params::default();
-                let ctx = self.create_context(req, params, Some(err));
+                let ctx = self.create_context(req, params, Some(err.clone()));
 
                 match error_handler.call(ctx, status).await {
                     Ok(res) => res,
@@ -198,8 +200,23 @@ impl AppService {
                     },
                 }
             }
-            None => err.into_response(),
+            None => err.clone().into_response(),
+        };
+
+        // Append the error to the response
+        response.extensions_mut().insert(err);
+
+        #[cfg(feature = "hooks")]
+        {
+            let hooks = &self.0.hooks;
+
+            for on_error in hooks.on_server_error_hooks.iter() {
+                response = on_error.call(response);
+            }
         }
+
+        // Returns the error response
+        response
     }
 }
 

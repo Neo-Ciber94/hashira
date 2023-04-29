@@ -1,13 +1,12 @@
 use crate::app::AppService;
 use crate::components::{PageData, PageProps};
 use crate::context::ServerContext;
+
 use yew::html::ChildrenProps;
 use yew::BaseComponent;
 use yew::Renderer;
 
 use crate::components::{Page, HASHIRA_PAGE_DATA, HASHIRA_ROOT};
-
-// TODO: Add custom panic hook
 
 pub fn mount<BASE>(service: AppService)
 where
@@ -29,9 +28,53 @@ where
         server_context: ServerContext::new(None),
     };
 
+    // Find the element to hydrate the page
     let root = find_element_by_id(HASHIRA_ROOT);
     let renderer = Renderer::<Page<BASE>>::with_root_and_props(root, props);
     renderer.hydrate();
+
+    // Initialize
+    #[cfg(feature = "hooks")]
+    {
+        use crate::events::Hooks;
+        use std::sync::Arc;
+
+        let hooks = service
+            .app_data()
+            .get::<Arc<Hooks>>()
+            .expect("hooks were not set");
+
+        // FIXME: We only use the initialize hooks once, so must be dropped somehow after being called
+        for init in hooks.on_client_initialize_hooks.iter() {
+            init.call(&service);
+        }
+    }
+}
+
+// TODO: during development show a modal with the error,
+// this way the error is not just shallowed by the console
+fn set_panic_hook(service: &AppService) {
+    #[cfg(feature = "hooks")]
+    {
+        use crate::events::Hooks;
+        use std::sync::Arc;
+
+        let service = service.clone();
+
+        yew::set_custom_panic_hook(Box::new(move |info| {
+            let hooks = service
+                .app_data()
+                .get::<Arc<Hooks>>()
+                .expect("hooks were not set");
+
+            for on_error in hooks.on_client_error_hooks.iter() {
+                on_error.call(info);
+            }
+
+            // Send the error to the console
+            console_error_panic_hook::hook(info);
+        }));
+    }
 }
 
 fn find_element_by_id(id: &str) -> web_sys::Element {

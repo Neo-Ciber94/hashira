@@ -1,15 +1,17 @@
-use crate::app::ResponseError;
+use crate::web::Response;
 
-/// A hook called when an response error will be returned.
+// FIXME: Make async?
+
+/// A hook called when an response error is returned.
 pub trait OnServerError {
-    fn call(&self, err: &ResponseError);
+    fn call(&self, err: Response) -> Response;
 }
 
 impl<F> OnServerError for F
 where
-    F: Fn(&ResponseError) + Send + Sync + 'static,
+    F: Fn(Response) -> Response + 'static,
 {
-    fn call(&self, err: &ResponseError) {
+    fn call(&self, err: Response) -> Response {
         (self)(err)
     }
 }

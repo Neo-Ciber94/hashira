@@ -410,7 +410,25 @@ where
             hooks,
         };
 
-        AppService::new(Arc::new(inner))
+        let service = AppService::new(Arc::new(inner));
+
+        // Initialize
+        #[cfg(feature = "hooks")]
+        {
+            use crate::events::Hooks;
+
+            let hooks = service
+                .app_data()
+                .get::<Arc<Hooks>>()
+                .expect("hooks were not set");
+
+            // FIXME: We only use the initialize hooks once, so must be dropped somehow after being called
+            for init in hooks.on_server_initialize_hooks.iter() {
+                init.call(&service);
+            }
+        }
+
+        service
     }
 
     fn add_component<COMP>(&mut self, path: &str)
