@@ -1,7 +1,9 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 /// Represents a `<script>` element to insert on the `<body>`.
-/// If you want to insert a script on the head, use [`LinkTag#script`]
+/// If you want to insert a script on the head, use [`LinkTag`].
+/// 
+/// [`LinkTag`]: ./struct.LinkTag.html#method.script
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ScriptTag {
     attrs: BTreeMap<String, String>,

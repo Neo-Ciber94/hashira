@@ -22,7 +22,7 @@ pub(crate) const HASHIRA_LIVE_RELOAD_PORT: &str = "HASHIRA_LIVE_RELOAD_PORT";
 pub(crate) const HASHIRA_WASM_LIB: &str = "HASHIRA_WASM_LIB";
 
 /// Returns the name of the wasm client library.
-pub(crate) fn get_wasm_name() -> Option<String> {
+pub(crate) fn get_client_name() -> Option<String> {
     if let Some(name) = get_env(HASHIRA_WASM_LIB) {
         return Some(name);
     }
