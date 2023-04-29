@@ -8,7 +8,7 @@ license = "MIT"
 
 [dependencies]
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }
-hashira-macros = { path = "../hashira-macros" }
+hashira-macros = { path = "../hashira-macros", version = "0.0.1-alpha" }
 cookie = { version = "0.17.0", features = ["percent-encode"] }
 web-sys = "0.3.61"
 serde = { version = "1.0", features = ["derive"] }

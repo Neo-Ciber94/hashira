@@ -2,7 +2,7 @@
 name = "{{crate_name}}_server"
 version = "0.1.0"
 edition = "2021"
-authors = [ "{{authors}}" ]
+authors = ["{{authors}}"]
 
 [lib]
 name = "{{crate_name}}"
@@ -14,18 +14,18 @@ opt-level = 1
 
 [profile.release]
 lto = true
-opt-level= 's'
+opt-level = 's'
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-hashira = { path = "../../packages/hashira", features = ["client"] }
+hashira = { version = "0.0.1-alpha", features = ["client"] }
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hashira = { path = "../../packages/hashira", features = [] }
+hashira = { version = "0.0.1-alpha", features = [] }
+hashira-actix-web = { version = "0.0.1-alpha" }
 env_logger = "0.10.0"
 actix-web = "4.3.1"
 actix-files = "0.6.2"
-hashira-actix-web = { path = "../../packages/adapters/hashira-actix-web" }
 tokio = { version = "1.27.0", features = ["macros"] }
 
 [dependencies]
@@ -33,4 +33,3 @@ yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = "0.2.84"
-
