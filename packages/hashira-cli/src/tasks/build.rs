@@ -42,7 +42,7 @@ impl BuildTask {
     /// Runs the build operation
     pub async fn run(self) -> anyhow::Result<()> {
         self.build_server().await?;
-        self.build_wasm().await?;
+        self.build_client().await?;
         Ok(())
     }
 
@@ -55,20 +55,20 @@ impl BuildTask {
         Ok(())
     }
 
-    /// Builds the wasm bundle
-    pub async fn build_wasm(&self) -> anyhow::Result<()> {
+    /// Builds the client wasm bundle
+    pub async fn build_client(&self) -> anyhow::Result<()> {
         // Cleanup the public dir
         self.prepare_public_dir().await?;
 
         // Start Wasm build
-        tracing::info!("📦 Building Wasm...");
+        tracing::info!("📦 Building client...");
 
         self.cargo_build_wasm().await?;
         self.wasm_bindgen().await?;
         self.optimize_wasm().await?; // If the optimization flag is set or in release mode
         self.build_assets().await?;
 
-        tracing::info!("✅ Wasm build done!");
+        tracing::info!("✅ Client build done!");
         Ok(())
     }
 
