@@ -1,6 +1,6 @@
 [template]
 cargo_generate_version = ">=0.9.0"
-include = ["./templates/*"]
+include = ["./templates"]
 sub_templates = [
     "./templates/with-actix-web",
     "./templates/with-axum",
