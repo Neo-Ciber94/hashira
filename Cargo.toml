@@ -6,5 +6,5 @@ members = [
     "tests/*",
 ]
 default-members = ["packages/*"]
-exclude = ["packages/adapters"]
+exclude = ["packages/adapters", "templates"]
 resolver = "2"
