@@ -26,11 +26,11 @@ async fn on_handle_hook_test() {
         port,
     } = start_server_in_random_port(service).await;
 
-    let res1 = get(&format!("http://{host}:{port}/home")).await;
-    assert_content_type(res1, "text/html");
+    let res1 = crate::utils::get(&format!("http://{host}:{port}/home")).await;
+    crate::utils::assert_content_type(&res1, "text/html");
 
-    let res2 = get(&format!("http://{host}:{port}/home")).await;
-    assert_content_type(res2, "text/html");
+    let res2 = crate::utils::get(&format!("http://{host}:{port}/home")).await;
+    crate::utils::assert_content_type(&res2, "text/html");
 
     assert_eq!(count.load(Ordering::Acquire), 2);
     shutdown.send(()).unwrap();
@@ -73,21 +73,12 @@ async fn on_handle_hook_ordered_test() {
         port,
     } = start_server_in_random_port(service).await;
 
-    let res1 = get(&format!("http://{host}:{port}/home")).await;
-    assert_content_type(res1, "text/html");
+    let res1 = crate::utils::get(&format!("http://{host}:{port}/home")).await;
+    crate::utils::assert_content_type(&res1, "text/html");
 
-    let res2 = get(&format!("http://{host}:{port}/home")).await;
-    assert_content_type(res2, "text/html");
+    let res2 = crate::utils::get(&format!("http://{host}:{port}/home")).await;
+    crate::utils::assert_content_type(&res2, "text/html");
 
     assert_eq!(values.lock().unwrap().clone(), vec![1, 2, 3, 1, 2, 3]);
     shutdown.send(()).unwrap();
-}
-
-fn assert_content_type(res: reqwest::Response, content_type: &str) {
-    let header = res.headers().get("content-type").unwrap();
-    assert!(header.to_str().unwrap().starts_with(content_type));
-}
-
-async fn get(url: &str) -> reqwest::Response {
-    reqwest::get(url).await.expect("request failed")
 }

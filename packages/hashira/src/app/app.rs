@@ -424,7 +424,7 @@ where
 
             // FIXME: We only use the initialize hooks once, so must be dropped somehow after being called
             for init in hooks.on_server_initialize_hooks.iter() {
-                init.call(&service);
+                init.call(service.clone());
             }
         }
 
