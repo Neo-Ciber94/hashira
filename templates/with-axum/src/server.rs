@@ -2,7 +2,7 @@ use axum::Router;
 use hashira::adapter::Adapter;
 use hashira_axum::HashiraAxum;
 use tower_http::services::ServeDir;
-use with_axum_client::hashira;
+use {{crate_name}}::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<BASE>() -> Result<(), hashira::error::Error>

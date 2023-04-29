@@ -1,11 +1,20 @@
 [package]
-name = "with-deno"
+name = "{{crate_name}}"
 version = "0.1.0"
 edition = "2021"
+authors = [ "{{authors}}" ]
 
 [lib]
-name = "with_deno"
+name = "{{crate_name}}"
 crate-type = ["cdylib", "rlib"]
+
+[profile.dev]
+lto = true
+opt-level = 1
+
+[profile.release]
+lto = true
+opt-level= 's'
 
 [dependencies]
 hashira = { path = "../../packages/hashira" }

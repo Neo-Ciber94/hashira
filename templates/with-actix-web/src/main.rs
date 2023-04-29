@@ -1,4 +1,4 @@
-pub use with_actix_web_client::App;
+pub use {{crate_name}}::App;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod server;

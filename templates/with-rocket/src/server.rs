@@ -1,7 +1,7 @@
 use hashira::adapter::Adapter;
 use hashira_rocket::HashiraRocket;
 use rocket::{fs::NamedFile, get, routes, Build, Rocket};
-use with_rocket_client::hashira;
+use {{crate_name}}::hashira;
 use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server<BASE>() -> Result<(), hashira::error::Error>
