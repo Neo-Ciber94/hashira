@@ -2,4 +2,7 @@
     "rust-analyzer.runnables.extraArgs": [
         "--all-features"
     ],
+    "tailwindCSS.includeLanguages": {
+        "rust": "html",
+    },
 }

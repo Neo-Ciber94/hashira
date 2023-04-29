@@ -193,7 +193,7 @@ impl BuildTask {
                 let tailwind = TailwindCss::load().await?;
 
                 let file_name = style_file.file_stem().unwrap().to_string_lossy();
-                let target_dir = self.options.resolved_target_dir()?;
+                let target_dir = self.options.profile_target_dir()?;
                 let public_dir = &self.options.public_dir;
                 let out_dir = target_dir.join(public_dir).join(format!("{file_name}.css"));
 

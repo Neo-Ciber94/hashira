@@ -1,9 +1,32 @@
 use hashira::{
-    app::{App as HashiraApp, AppService, RenderContext},
+    app::{App as HashiraApp, AppService, LayoutContext, RenderContext},
     page_component,
     server::{LinkTag, Metadata, PageLinks},
 };
 use yew::{html::ChildrenProps, BaseComponent};
+
+pub async fn root_layout(_: LayoutContext) -> yew::Html {
+    use hashira::components::*;
+
+    yew::html! {
+        <html lang="en">
+            <head>
+                <Title/>
+                <Meta/>
+                <Links/>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            </head>
+            <body class="h-screen bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+                <Main class="flex justify-center items-center h-full">
+                    <Content/>
+                </Main>
+                <Scripts/>
+                <LiveReload/>
+            </body>
+        </html>
+    }
+}
 
 #[page_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
@@ -15,34 +38,17 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
 #[page_component]
 pub fn HomePage() -> yew::Html {
     yew::html! {
-        <div class="container">
-            <div class="space-y-4">
-                <div class="w-96 bg-white shadow rounded">
-                    {"w-96"}
-                </div>
-                <div class="w-80 bg-white shadow rounded">
-                    {"w-80"}
-                </div>
-                <div class="w-72 bg-white shadow rounded">
-                    {"w-72"}
-                </div>
-                <div class="w-64 bg-white shadow rounded">
-                    {"w-64"}
-                </div>
-                <div class="w-60 bg-white shadow rounded">
-                    {"w-60"}
-                </div>
-                <div class="w-56 bg-white shadow rounded">
-                    {"w-56"}
-                </div>
-                <div class="w-52 bg-white shadow rounded">
-                    {"w-52"}
-                </div>
-                <div class="w-48 bg-white shadow rounded">
-                    {"w-48"}
-                </div>
-            </div>
-        </div>
+    <div class="bg-gray-900 font-bold rounded-lg shadow-lg w-11/12 h-[400px]
+    flex flex-row justify-center items-center">
+        <h1 class="text-center text-white text-4xl flex md:flex-row items-center flex-col md:gap-0 gap-2">
+            <span>{"Hashira"}</span>
+            <span class="mx-5">{'\u{00D7}'}</span>
+            <span class="h-auto w-[250px]">
+                <img alt="TailwindCSS" src="/static/tailwindcss-logo.svg"/>
+
+            </span>
+        </h1>
+    </div>
     }
 }
 
@@ -52,10 +58,12 @@ where
     BASE: BaseComponent<Properties = ChildrenProps>,
 {
     HashiraApp::<BASE>::new()
+        .layout(root_layout)
         .use_default_error_pages()
         .page("/", |mut ctx: RenderContext| async {
-            ctx.metadata(Metadata::new().description("An Hashira x TailwindCSS example"));
-            ctx.links(PageLinks::new().insert(LinkTag::stylesheet("static/global.css")));
+            ctx.title("Hashira x TailwindCSS");
+            ctx.metadata(Metadata::new().description("A Hashira x TailwindCSS example"));
+            ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
 
             let res = ctx.render::<HomePage, BASE>().await;
             Ok(res)

@@ -1,0 +1,6 @@
+{
+    // Required to get tailwindcss hightlight
+    "tailwindCSS.includeLanguages": {
+        "rust": "html",
+    },
+}

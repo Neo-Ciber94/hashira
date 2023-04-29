@@ -1,4 +1,4 @@
-use yew::{html::ChildrenProps, AttrValue};
+use yew::{AttrValue, Properties, Children};
 
 pub const HASHIRA_TITLE_MARKER: &str = "<!--hashira_title-->";
 pub const HASHIRA_META_MARKER: &str = "<!--hashira_meta-->";
@@ -7,6 +7,18 @@ pub const HASHIRA_LINKS_MARKER: &str = "<!--hashira_links-->";
 pub const HASHIRA_SCRIPTS_MARKER: &str = "<!--hashira_scripts-->";
 pub const HASHIRA_ROOT: &str = "__hashira__root__";
 pub const HASHIRA_PAGE_DATA: &str = "__hashira__page_data__";
+
+#[derive(Debug, Clone, PartialEq, Properties)]
+pub struct MainProps {
+    #[prop_or_default]
+    pub class: Option<String>,
+
+    #[prop_or_default]
+    pub style: Option<String>,
+
+    #[prop_or_default]
+    pub children: Children,
+}
 
 /// A marker for insert the page `<title>` element.
 #[yew::function_component]
@@ -40,9 +52,9 @@ pub fn Scripts() -> yew::Html {
 
 /// A components that insert a `<main>` element where the page will be rendered and hydrated.
 #[yew::function_component]
-pub fn Main(props: &ChildrenProps) -> yew::Html {
+pub fn Main(props: &MainProps) -> yew::Html {
     yew::html! {
-        <main id={HASHIRA_ROOT}>
+        <main id={HASHIRA_ROOT} class={props.class.clone()} style={props.style.clone()}>
             {for props.children.iter()}
         </main>
     }
