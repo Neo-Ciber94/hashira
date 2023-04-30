@@ -30,7 +30,8 @@ impl NewTask {
         let cargo_generate = CargoGenerate::load().await?;
         let mut cmd = cargo_generate.async_cmd();
 
-        cmd.arg("--git")
+        cmd.arg("generate")
+            .arg("--git")
             .arg(REPOSITORY_URL)
             .arg(template.git_path());
 
@@ -73,7 +74,10 @@ impl NewTask {
 
         let mut cmd = cargo_generate.async_cmd();
 
-        cmd.arg("--git").arg(REPOSITORY_URL).arg(example);
+        cmd.arg("generate")
+            .arg("--git")
+            .arg(REPOSITORY_URL)
+            .arg(example);
 
         // We actually don't use the name, examples are not the same as templates,
         // but the name is required
