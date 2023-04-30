@@ -9,6 +9,5 @@ sub_templates = [
     "./templates/with-deno",
 
     # Examples
-    "./examples/counter-dark-theme",
-    "./examples/with-tailwind",
+    "./examples/*"
 ]

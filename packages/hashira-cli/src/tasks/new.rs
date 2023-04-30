@@ -78,7 +78,7 @@ impl NewTask {
         cmd.arg("generate")
             .arg("--git")
             .arg(REPOSITORY_URL)
-            .arg(example);
+            .arg(format!("examples/{example}"));
 
         // We actually don't use the name, examples are not the same as templates,
         // but the name is required
