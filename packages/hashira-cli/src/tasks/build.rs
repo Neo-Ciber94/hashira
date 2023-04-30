@@ -1,4 +1,5 @@
 use crate::cli::{BuildOptions, WasmOptimizationLevel, DEFAULT_INCLUDES};
+use crate::emojis;
 use crate::pipelines::PipelineFile;
 use crate::pipelines::{copy_files::CopyFilesPipeline, Pipeline};
 use crate::tools::sass::Sass;
@@ -49,10 +50,10 @@ impl BuildTask {
 
     /// Builds the server
     pub async fn build_server(&self) -> anyhow::Result<()> {
-        tracing::info!("📦 Building server...");
+        tracing::info!("{}Building server...", emojis::BUILD);
         self.cargo_build().await?;
 
-        tracing::info!("✅ Server build done!");
+        tracing::info!("{}Server build done!", emojis::DONE);
         Ok(())
     }
 
@@ -62,14 +63,14 @@ impl BuildTask {
         self.prepare_public_dir().await?;
 
         // Start Wasm build
-        tracing::info!("📦 Building client...");
+        tracing::info!("{}Building client...", emojis::BUILD);
 
         self.cargo_build_wasm().await?;
         self.wasm_bindgen().await?;
         self.optimize_wasm().await?; // If the optimization flag is set or in release mode
         self.build_assets().await?;
 
-        tracing::info!("✅ Client build done!");
+        tracing::info!("{}Client build done!", emojis::DONE);
         Ok(())
     }
 
@@ -78,7 +79,11 @@ impl BuildTask {
         let mut public_dir = opts.profile_target_dir()?;
 
         public_dir.push(&opts.public_dir);
-        tracing::info!("🚧 Preparing public directory: {}", public_dir.display());
+        tracing::info!(
+            "{}Preparing public directory: {}",
+            emojis::CONSTRUCTION,
+            public_dir.display()
+        );
 
         if public_dir.exists() {
             tokio::fs::remove_dir_all(&public_dir)
@@ -122,7 +127,7 @@ impl BuildTask {
     }
 
     pub(crate) async fn build_assets(&self) -> anyhow::Result<()> {
-        tracing::info!("📂 Preparing assets...");
+        tracing::info!("{}Preparing assets...", emojis::FILES);
 
         let opts = &self.options;
 
@@ -386,7 +391,7 @@ impl BuildTask {
             .await
             .context("failed to move optimized wasm")?;
 
-        tracing::info!("✅ Wasm optimization done");
+        tracing::info!("{}Wasm optimization done", emojis::DONE);
         Ok(())
     }
 }

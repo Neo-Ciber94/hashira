@@ -60,7 +60,7 @@ impl NewTask {
 
     async fn create_example(self) -> anyhow::Result<()> {
         // TODO: Allow to navigate over all the examples available
-        
+
         let cargo_generate = CargoGenerate::load().await?;
         let example = self
             .options
@@ -74,9 +74,9 @@ impl NewTask {
             .arg("https://github.com/Neo-Ciber94/hashira.git")
             .arg(example);
 
-        if let Some(name) = self.options.name {
-            cmd.arg("--name").arg(name);
-        }
+        // We actually don't use the name, examples are not the same as templates,
+        // but the name is required
+        cmd.arg("--name").arg(example);
 
         if let Some(path) = self.options.path {
             cmd.arg("--destination").arg(path);

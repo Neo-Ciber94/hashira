@@ -6,6 +6,7 @@ use std::{
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
+use crate::emojis;
 
 use super::{archive::ExtractOptions, Tool, Version};
 use crate::tools::{
@@ -132,7 +133,7 @@ impl GlobalCache {
         let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
 
-        tracing::info!("⏬ Downloading `{name}` from `{url}`...", name = T::name(),);
+        tracing::info!("{}Downloading `{name}` from `{url}`...", emojis::DOWNLOAD, name = T::name(),);
 
         // Downloads an extract the binary
         let downloaded = download_to_dir(url, dest).await?;

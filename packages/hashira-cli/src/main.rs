@@ -4,6 +4,7 @@ mod pipelines;
 mod tasks;
 mod tools;
 mod utils;
+mod emojis;
 
 #[allow(dead_code)]
 mod config;

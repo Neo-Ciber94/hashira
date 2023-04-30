@@ -14,7 +14,7 @@ impl Adapter for HashiraAxum {
         let port = hashira::env::get_port().unwrap_or(5000);
         let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();
 
-        println!("⚡ Server started at: `http://{addr}`");
+        println!("Server started at: `http://{addr}`");
 
         let router = self.0.unwrap_or_default().merge(core::router(app));
 

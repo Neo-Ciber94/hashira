@@ -3,6 +3,7 @@ use crate::{
     cli::{BuildOptions, RunOptions},
     utils::wait_interruptible,
 };
+use crate::emojis;
 use anyhow::Context;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::{
@@ -87,7 +88,7 @@ impl RunTask {
     }
 
     fn spawn_server_exec(&self) -> anyhow::Result<Child> {
-        tracing::info!("⚡ Executing...");
+        tracing::info!("{}Executing...", emojis::LIGHTING);
         let exec_path = self
             .get_executable_path()
             .context("Failed to get executable path")?;

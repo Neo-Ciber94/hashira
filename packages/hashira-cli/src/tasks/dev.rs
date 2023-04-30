@@ -19,6 +19,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use crate::emojis;
 use tokio::sync::{
     broadcast::{channel, Receiver, Sender},
     Mutex,
@@ -85,7 +86,7 @@ impl DevTask {
             tokio::spawn({
                 async move {
                     tokio::signal::ctrl_c().await.ok();
-                    tracing::info!("👋 Exiting...");
+                    tracing::info!("{}Exiting...", emojis::BYE);
                     let _ = tx_shutdown.send(());
 
                     // FIXME: Maybe is redundant to send a shutdown signal if we are exiting the process
@@ -149,7 +150,7 @@ impl DevTask {
         build_done_tx: Sender<()>,
         tx_live_reload: Sender<LiveReloadAction>,
     ) -> anyhow::Result<()> {
-        tracing::info!("🚦 Starting application in watch mode");
+        tracing::info!("{}Starting application in watch mode", emojis::SEMAPHORE);
 
         let build_options = &self.options;
         let interrupt_signal = self.interrupt_signal.clone();
@@ -188,7 +189,7 @@ impl DevTask {
                 // Rerun
                 let opts = opts.clone();
 
-                tracing::info!("🔃 Restarting...");
+                tracing::info!("{}Restarting...", emojis::RESTART);
                 tokio::spawn(build_and_run(opts, events, false));
             }
         });
