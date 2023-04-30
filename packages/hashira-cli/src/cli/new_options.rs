@@ -22,7 +22,7 @@ pub struct NewOptions {
     #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix-web", "axum", "rocket", "example"])]
     pub deno: bool,
 
-    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["name", "actix-web", "axum", "rocket", "deno"])]
+    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix-web", "axum", "rocket", "deno"])]
     pub example: Option<String>,
 
     #[arg(

@@ -66,11 +66,12 @@ impl NewTask {
     async fn create_example(self) -> anyhow::Result<()> {
         // TODO: Allow to navigate over all the examples available
 
+        let name = self.options.name.as_deref();
         let cargo_generate = CargoGenerate::load().await?;
         let example = self
             .options
             .example
-            .as_ref()
+            .as_deref()
             .context("no example provided")?;
 
         let mut cmd = cargo_generate.async_cmd();
@@ -80,9 +81,10 @@ impl NewTask {
             .arg(REPOSITORY_URL)
             .arg(format!("examples/{example}"));
 
-        // We actually don't use the name, examples are not the same as templates,
-        // but the name is required
-        cmd.arg("--name").arg(example);
+        cmd.arg("--name").arg(name.unwrap_or(example));
+        if name.is_none() {
+            tracing::warn!("`--name` was not provided, using example name instead: {example}")
+        }
 
         if let Some(path) = self.options.path {
             cmd.arg("--destination").arg(path);
