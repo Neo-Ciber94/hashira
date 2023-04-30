@@ -6,6 +6,7 @@ pub mod parcel;
 pub mod sass;
 pub mod tailwindcss;
 pub mod wasm_bindgen;
+pub mod cargo_generate;
 
 //
 use std::{

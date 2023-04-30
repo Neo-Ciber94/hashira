@@ -46,6 +46,8 @@ which = "4.4.0"
 dunce = "1.0.4"
 lightningcss = "1.0.0-alpha.41"
 directories = "5.0.0"
+enum-iterator = "1.4.0"
+dialoguer = "0.10.4"
 
 [dev-dependencies]
 tokio = { version = "1.27.0", features = ["macros", "rt"] }

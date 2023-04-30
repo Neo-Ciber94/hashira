@@ -11,7 +11,7 @@ mod config;
 use anyhow::Context;
 use clap::Parser;
 use cli::{Cli, Commands, LogLevel};
-use tasks::{build::BuildTask, dev::DevTask, run::RunTask};
+use tasks::{build::BuildTask, dev::DevTask, run::RunTask, new::NewTask};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -20,6 +20,7 @@ async fn main() -> anyhow::Result<()> {
     setup_logger(cli.log_level)?;
 
     match cli.command {
+        Commands::New(opts) => NewTask::new(opts).run().await,
         Commands::Build(opts) => BuildTask::new(opts).run().await,
         Commands::Run(opts) => RunTask::new(opts).run().await,
         Commands::Dev(opts) => DevTask::new(opts).run().await,

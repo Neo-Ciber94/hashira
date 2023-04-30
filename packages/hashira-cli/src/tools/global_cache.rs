@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use super::{archive::ExtractOptions, Tool, Version};
 use crate::tools::{
     archive::Archive,
+    unchecked_test_version,
     utils::{cache_dir, download_to_dir},
 };
 
@@ -167,7 +168,6 @@ impl GlobalCache {
     }
 }
 
-
 /// Options to install the tool.
 pub struct InstallToolOptions<'a> {
     pub url: &'a str,
@@ -187,9 +187,28 @@ pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Resu
         url,
     } = opts;
 
+    // FIXME: Check this logic, we may not need to check for `None` or `Some`,
+    // if the destination is `None` we will check in the `cache_dir`, what is just a `unwrap_or(cache_dir())`
     match dest {
         Some(dir) => {
             anyhow::ensure!(dir.is_dir(), "`{}` is not a directory", dir.display());
+
+            // First we check if the tool exists in the directory
+            let tool_path = dir.join(T::binary_name());
+
+            if tool_path.exists() {
+                // If we had a min version we should match it
+                if let Some(min_version) = min_version {
+                    let version = unchecked_test_version::<T>(&tool_path)?;
+                    if version >= min_version {
+                        return Ok(tool_path);
+                    }
+                } else {
+                    return Ok(tool_path);
+                }
+            }
+
+            // Otherwise download the tool
             let bin_path = GlobalCache::download::<T>(&url, dir, extract_opts).await?;
             Ok(bin_path)
         }

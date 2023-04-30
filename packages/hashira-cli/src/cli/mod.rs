@@ -1,9 +1,11 @@
 mod build_options;
 mod dev_options;
 mod log_level;
+mod new_options;
 mod run_options;
 mod wasm_opt_level;
 
+pub use new_options::*;
 pub use build_options::*;
 pub use dev_options::*;
 pub use log_level::*;
@@ -27,12 +29,15 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    #[command(about = "Build the application")]
+    #[command(about = "Creates a new project")]
+    New(NewOptions),
+
+    #[command(about = "Build the project")]
     Build(BuildOptions),
 
-    #[command(about = "Build and run the application")]
+    #[command(about = "Build and run the project")]
     Run(RunOptions),
 
-    #[command(about = "Runs the application in watch mode")]
+    #[command(about = "Runs the project in watch mode")]
     Dev(DevOptions),
 }

@@ -6,4 +6,5 @@ sub_templates = [
     "./templates/with-axum",
     "./templates/with-rocket",
     "./templates/with-deno",
+    "./examples/*"
 ]
