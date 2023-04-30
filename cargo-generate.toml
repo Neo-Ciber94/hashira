@@ -1,10 +1,14 @@
 [template]
 cargo_generate_version = ">=0.10.0"
-include = ["./templates"]
+include = ["./templates", "./examples"]
 sub_templates = [
+    # Templates
     "./templates/with-actix-web",
     "./templates/with-axum",
     "./templates/with-rocket",
     "./templates/with-deno",
-    "./examples/*"
+
+    # Examples
+    "./examples/counter-dark-theme",
+    "./examples/with-tailwind",
 ]
