@@ -50,6 +50,9 @@ impl BuildTask {
 
     /// Builds the server
     pub async fn build_server(&self) -> anyhow::Result<()> {
+        // We make some checks to ensure the hashira is not ran in an invalid directory or project
+        self.check_can_build()?;
+
         tracing::info!("{}Building server...", emojis::BUILD);
         self.cargo_build().await?;
 
@@ -71,6 +74,36 @@ impl BuildTask {
         self.build_assets().await?;
 
         tracing::info!("{}Client build done!", emojis::DONE);
+        Ok(())
+    }
+
+    fn check_can_build(&self) -> anyhow::Result<()> {
+        // FIXME: This check exists if for some reason someone wants to bypass the checks,
+        // we should consider if is valid for an user ignore this checks
+        if let Ok(s) = std::env::var("HASHIRA_SKIP_BUILD_CHECK") {
+            if s == "1" {
+                return Ok(());
+            }
+        }
+
+        let cwd = std::env::current_dir()?;
+        let main_path = cwd.join("src").join("main.rs");
+        let lib_path = cwd.join("src").join("lib.rs");
+
+        anyhow::ensure!(
+            lib_path.exists(),
+            "`src/lib.rs` was not found, Ensure you are in the correct directory."
+        );
+
+        anyhow::ensure!(
+main_path.exists(),
+"`src/main.rs` was not found. Ensure you are in the correct directory.
+
+If you are trying to run a non-rust server, currently not possible with the hashira CLI, try other method instead:
+    - Checkout the README.md for more information
+    - Check if the project provide a Makefile.toml or other method to execute the project"
+        );
+
         Ok(())
     }
 

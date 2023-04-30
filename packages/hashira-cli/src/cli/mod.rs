@@ -41,3 +41,14 @@ pub enum Commands {
     #[command(about = "Runs the project in watch mode")]
     Dev(DevOptions),
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::Cli;
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
+    }
+}

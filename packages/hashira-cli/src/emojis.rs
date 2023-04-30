@@ -1,12 +1,12 @@
 use console::Emoji;
 
 
-pub const BUILD: Emoji<'_, '_> = Emoji("📦 ", "");
-pub const DONE: Emoji<'_, '_> = Emoji("✅ ", "");
-pub const CONSTRUCTION: Emoji<'_, '_> = Emoji("🚧 ", "");
-pub const FILES: Emoji<'_, '_> = Emoji("📂 ", "");
-pub const LIGHTING: Emoji<'_, '_> = Emoji("⚡ ", "");
-pub const BYE: Emoji<'_, '_> = Emoji("👋 ", "");
-pub const SEMAPHORE: Emoji<'_, '_> = Emoji("🚦 ", "");
-pub const RESTART: Emoji<'_, '_> = Emoji("🔃 ", "");
-pub const DOWNLOAD: Emoji<'_, '_> = Emoji("⏬ ", "");
+pub static BUILD: Emoji<'_, '_> = Emoji("📦 ", "");
+pub static DONE: Emoji<'_, '_> = Emoji("✅ ", "");
+pub static CONSTRUCTION: Emoji<'_, '_> = Emoji("🚧 ", "");
+pub static FILES: Emoji<'_, '_> = Emoji("📂 ", "");
+pub static LIGHTING: Emoji<'_, '_> = Emoji("⚡ ", "");
+pub static BYE: Emoji<'_, '_> = Emoji("👋 ", "");
+pub static SEMAPHORE: Emoji<'_, '_> = Emoji("🚦 ", "");
+pub static RESTART: Emoji<'_, '_> = Emoji("🔃 ", "");
+pub static DOWNLOAD: Emoji<'_, '_> = Emoji("⏬ ", "");
