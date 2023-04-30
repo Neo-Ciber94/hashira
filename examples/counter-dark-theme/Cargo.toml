@@ -1,5 +1,6 @@
 [package]
 name = "counter-dark-theme"
+description = "A counter with dark mode using formaction"
 version = "0.1.0"
 edition = "2021"
 

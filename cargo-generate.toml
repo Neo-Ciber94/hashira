@@ -3,11 +3,8 @@ cargo_generate_version = ">=0.10.0"
 include = ["./templates", "./examples"]
 sub_templates = [
     # Templates
-    "./templates/with-actix-web",
-    "./templates/with-axum",
-    "./templates/with-rocket",
-    "./templates/with-deno",
+    "./templates/*",
 
     # Examples
-    "./examples/*"
+    "./examples/*",
 ]
