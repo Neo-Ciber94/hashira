@@ -52,7 +52,8 @@ impl NewTask {
         }
 
         tracing::debug!("Running: {cmd:?}");
-        let result = cmd.output().await?;
+        let child = cmd.spawn()?;
+        let result = child.wait_with_output().await?;
 
         if !result.status.success() {
             let err = String::from_utf8_lossy(&result.stderr);
@@ -96,7 +97,8 @@ impl NewTask {
         }
 
         tracing::debug!("Running: {cmd:?}");
-        let result = cmd.output().await?;
+        let child = cmd.spawn()?;
+        let result = child.wait_with_output().await?;
 
         if !result.status.success() {
             let err = String::from_utf8_lossy(&result.stderr);

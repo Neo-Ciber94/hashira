@@ -31,9 +31,18 @@ impl Tool for CargoGenerate {
     }
 
     fn parse_version(s: &str) -> anyhow::Result<super::Version> {
-        // version is on the format: cargo generate-generate x.xx.x
-        let rest = s.trim().trim_start_matches("cargo generate-generate ");
-        Version::from_str(rest)
+        // version is on the formats: cargo generate-generate x.xx.x, cargo generate x.xx.x
+        let s: &str = s.trim();
+
+        if let Some(text) = s.strip_prefix("cargo generate") {
+            return Version::from_str(text.trim());
+        }
+
+        if let Some(text) = s.strip_prefix("cargo generate-generate") {
+            return Version::from_str(text.trim());
+        }
+
+        anyhow::bail!("failed to parse version of: {s}")
     }
 
     fn binary_path(&self) -> &std::path::Path {

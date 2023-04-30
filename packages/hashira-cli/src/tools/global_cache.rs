@@ -20,7 +20,10 @@ static GLOBAL_CACHE: Lazy<Mutex<HashMap<String, PathBuf>>> = Lazy::new(Default::
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FindVersion {
+    /// Attempts to find the exact version on the system
     Exact,
+
+    /// Finds any version on the system
     Any,
 }
 
@@ -215,8 +218,8 @@ pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Resu
 
             if tool_path.exists() {
                 // If we had a min version we should match it
-                if let Some(min_version) = min_version {
-                    let version = unchecked_test_version::<T>(&tool_path)?;
+                if let Some(min_version) = &min_version {
+                    let version = &unchecked_test_version::<T>(&tool_path)?;
                     if version >= min_version {
                         return Ok(tool_path);
                     }
@@ -230,13 +233,27 @@ pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Resu
             Ok(bin_path)
         }
         None => {
-            if let Ok((system_bin, version)) = GlobalCache::find_in_system::<T>(find_version).await
-            {
-                // minimum version
-                if let Some(min_version) = min_version {
-                    if version >= min_version {
-                        return Ok(system_bin);
+            match GlobalCache::find_in_system::<T>(find_version).await {
+                Ok((system_bin, version)) => {
+                    // minimum version
+                    if let Some(min_version) = min_version {
+                        if version >= min_version {
+                            return Ok(system_bin);
+                        }
+
+                        tracing::debug!("`{}` exists on the system but not meet version requirements: >= {min_version}", T::binary_name());
                     }
+                }
+                Err(err) => {
+                    let version = min_version
+                        .as_ref()
+                        .cloned()
+                        .unwrap_or(T::default_version());
+                    
+                    tracing::debug!(
+                        "`{} {version}` was not found in system: {err}",
+                        T::binary_name()
+                    )
                 }
             }
 
