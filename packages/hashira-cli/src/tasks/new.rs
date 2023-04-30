@@ -55,7 +55,7 @@ impl NewTask {
 
         if !result.status.success() {
             let err = String::from_utf8_lossy(&result.stderr);
-            return Err(anyhow::anyhow!("Failed to create template: {err}"));
+            return Err(anyhow::anyhow!("Failed to create template, {err}"));
         }
 
         Ok(())
@@ -96,7 +96,7 @@ impl NewTask {
 
         if !result.status.success() {
             let err = String::from_utf8_lossy(&result.stderr);
-            return Err(anyhow::anyhow!("Failed to create example: {err}"));
+            return Err(anyhow::anyhow!("Failed to create example, {err}"));
         }
 
         Ok(())
