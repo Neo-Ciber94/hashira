@@ -5,10 +5,10 @@ mod new_options;
 mod run_options;
 mod wasm_opt_level;
 
-pub use new_options::*;
 pub use build_options::*;
 pub use dev_options::*;
 pub use log_level::*;
+pub use new_options::*;
 pub use run_options::*;
 pub use wasm_opt_level::*;
 

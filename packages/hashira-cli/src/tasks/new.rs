@@ -6,6 +6,8 @@ use crate::{
     tools::{cargo_generate::CargoGenerate, Tool, ToolExt},
 };
 
+const REPOSITORY_URL: &str = "https://github.com/Neo-Ciber94/hashira.git";
+
 pub struct NewTask {
     pub options: NewOptions,
 }
@@ -29,7 +31,7 @@ impl NewTask {
         let mut cmd = cargo_generate.async_cmd();
 
         cmd.arg("--git")
-            .arg("https://github.com/Neo-Ciber94/hashira.git")
+            .arg(REPOSITORY_URL)
             .arg(template.git_path());
 
         if let Some(name) = self.options.name {
@@ -48,6 +50,7 @@ impl NewTask {
             cmd.arg("--overwrite");
         }
 
+        tracing::debug!("Running: {cmd:?}");
         let result = cmd.output().await?;
 
         if !result.status.success() {
@@ -70,9 +73,7 @@ impl NewTask {
 
         let mut cmd = cargo_generate.async_cmd();
 
-        cmd.arg("--git")
-            .arg("https://github.com/Neo-Ciber94/hashira.git")
-            .arg(example);
+        cmd.arg("--git").arg(REPOSITORY_URL).arg(example);
 
         // We actually don't use the name, examples are not the same as templates,
         // but the name is required
@@ -90,6 +91,7 @@ impl NewTask {
             cmd.arg("--overwrite");
         }
 
+        tracing::debug!("Running: {cmd:?}");
         let result = cmd.output().await?;
 
         if !result.status.success() {
@@ -97,7 +99,7 @@ impl NewTask {
             return Err(anyhow::anyhow!("Failed to create example: {err}"));
         }
 
-        todo!()
+        Ok(())
     }
 
     fn get_template(&self) -> anyhow::Result<ProjectTemplate> {

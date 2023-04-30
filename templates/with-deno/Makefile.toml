@@ -44,7 +44,10 @@ command = "deno"
 args = ["run", "--allow-read", "--allow-net", "--allow-env", "src/index.ts"]
 
 [tasks.run-with-deno.env]
-HASHIRA_WASM_LIB = "with_deno"
+HASHIRA_WASM_LIB = "{{crate_name}}"
+HASHIRA_STATIC_DIR = "static/"
+HASHIRA_HOST = "127.0.0.1"
+HASHIRA_PORT = 5000
 
 [tasks.run]
 dependencies = ["build", "run-with-deno"]

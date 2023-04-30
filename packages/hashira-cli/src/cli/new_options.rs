@@ -11,16 +11,16 @@ pub struct NewOptions {
     pub path: Option<PathBuf>,
 
     #[arg(long, help = "Use the actix-web template", conflicts_with_all = &[ "axum", "rocket", "deno", "example"])]
-    pub actix_web: Option<bool>,
+    pub actix_web: bool,
 
     #[arg(long, help = "Use the axum template", conflicts_with_all = &["actix-web", "rocket", "deno", "example"])]
-    pub axum: Option<bool>,
+    pub axum: bool,
 
     #[arg(long, help = "Use the rocket template", conflicts_with_all = &["actix-web", "axum", "deno", "example"])]
-    pub rocket: Option<bool>,
+    pub rocket: bool,
 
     #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix-web", "axum", "rocket", "example"])]
-    pub deno: Option<bool>,
+    pub deno: bool,
 
     #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix-web", "axum", "rocket", "deno"])]
     pub example: Option<String>,
@@ -42,19 +42,19 @@ pub struct NewOptions {
 
 impl NewOptions {
     pub fn template(&self) -> Option<ProjectTemplate> {
-        if self.actix_web == Some(true) {
+        if self.actix_web {
             return Some(ProjectTemplate::ActixWeb);
         }
 
-        if self.axum == Some(true) {
+        if self.axum {
             return Some(ProjectTemplate::Axum);
         }
 
-        if self.rocket == Some(true) {
+        if self.rocket {
             return Some(ProjectTemplate::Rocket);
         }
 
-        if self.deno == Some(true) {
+        if self.deno {
             return Some(ProjectTemplate::Deno);
         }
 

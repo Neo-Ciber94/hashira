@@ -1,3 +1,4 @@
+use crate::{emojis, utils::OnDrop};
 use anyhow::Context;
 use once_cell::sync::Lazy;
 use std::{
@@ -6,7 +7,6 @@ use std::{
 };
 use thiserror::Error;
 use tokio::sync::Mutex;
-use crate::emojis;
 
 use super::{archive::ExtractOptions, Tool, Version};
 use crate::tools::{
@@ -133,10 +133,26 @@ impl GlobalCache {
         let bin_name = T::binary_name();
         let mut cache = GLOBAL_CACHE.lock().await;
 
-        tracing::info!("{}Downloading `{name}` from `{url}`...", emojis::DOWNLOAD, name = T::name(),);
+        tracing::info!(
+            "{}Downloading `{name}` from `{url}`...",
+            emojis::DOWNLOAD,
+            name = T::name(),
+        );
 
         // Downloads an extract the binary
         let downloaded = download_to_dir(url, dest).await?;
+
+        // We delete the downloaded file at the end
+        let _remove_file = OnDrop::new(|| {
+            if let Err(err) = std::fs::remove_file(&downloaded) {
+                tracing::warn!(
+                    "failed to remove downloaded file on {}: {err}",
+                    downloaded.display()
+                );
+            }
+        });
+
+        // Extract the file
         let mut archive = Archive::new(&downloaded)?;
         let include_files = T::include();
 
