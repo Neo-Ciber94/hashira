@@ -1,7 +1,13 @@
+[env]
+BUILD_CMD = "build"
+
+[env.prod]
+BUILD_CMD = "build --release"
+
 # Build wasm server
 [tasks.cargo-build]
 command = "cargo"
-args = ["build", "--target", "wasm32-unknown-unknown"]
+args = ["@@split(BUILD_CMD, )", "--target", "wasm32-unknown-unknown"]
 
 [tasks.wasm-bindgen]
 command = "wasm-bindgen"
@@ -19,7 +25,7 @@ dependencies = ["cargo-build", "wasm-bindgen"]
 # Build wasm client
 [tasks.cargo-build-client]
 command = "cargo"
-args = ["build", "--target", "wasm32-unknown-unknown", "--features", "client"]
+args = ["@@split(BUILD_CMD, )", "--target", "wasm32-unknown-unknown", "--features", "client"]
 
 [tasks.wasm-bindgen-client]
 command = "wasm-bindgen"
@@ -51,4 +57,3 @@ HASHIRA_PORT = 5000
 
 [tasks.run]
 dependencies = ["build", "deno-run"]
-

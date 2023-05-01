@@ -1,2 +1,3 @@
 [template]
 cargo_generate_version = ">=0.10.0"
+include = ["Makefile.toml"]
