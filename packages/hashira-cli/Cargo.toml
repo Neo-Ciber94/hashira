@@ -30,6 +30,7 @@ tokio = { version = "1.28.0", features = [
     "signal",
     "sync",
     "rt-multi-thread",
+    "parking_lot"
 ] }
 notify-debouncer-mini = "0.2.1"
 serde_json = "1.0.96"

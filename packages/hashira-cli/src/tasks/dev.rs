@@ -57,7 +57,8 @@ pub struct DevTask {
 
 impl DevTask {
     pub fn new(options: DevOptions) -> Self {
-        let (interrupt_signal, _) = channel(8);
+        let (interrupt_signal, _) = channel(1);
+
         DevTask {
             options: Arc::new(BuildOptions::from(&options)),
             interrupt_signal,
@@ -157,7 +158,6 @@ impl DevTask {
         let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(8);
 
         let opts = Arc::new(BuildAndRunOptions {
-            can_run: Arc::new(Mutex::new(true)),
             build_options: build_options.clone(),
             ignore: self.ignore.clone(),
             host: self.host.clone(),
@@ -173,9 +173,9 @@ impl DevTask {
         // Starts the file system watcher
         self.build_watcher(tx_watch)?;
 
-        // Starts
+        // Start
         tracing::debug!("Starting watch...");
-        tokio::spawn(build_and_run(opts.clone(), vec![], true));
+        tokio::spawn(restart(opts.clone(), vec![], true));
 
         // Start notifier loop
         tokio::task::spawn(async move {
@@ -190,7 +190,7 @@ impl DevTask {
                 let opts = opts.clone();
 
                 tracing::info!("{}Restarting...", emojis::RESTART);
-                tokio::spawn(build_and_run(opts, events, false));
+                tokio::spawn(restart(opts, events, false));
             }
         });
 
@@ -295,7 +295,6 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
 
 struct BuildAndRunOptions {
     build_options: Arc<BuildOptions>,
-    can_run: Arc<Mutex<bool>>,
     ignore: Vec<PathBuf>,
     host: String,
     port: u16,
@@ -332,8 +331,10 @@ enum LiveReloadAction {
     Loading,
 }
 
+static LOCK: Mutex<()> = Mutex::const_new(());
+
 #[allow(clippy::bool_comparison)]
-async fn build_and_run(
+async fn restart(
     opts: Arc<BuildAndRunOptions>,
     mut events: Vec<DebouncedEvent>,
     is_first_run: bool,
@@ -361,19 +362,24 @@ async fn build_and_run(
             // No reason to continue
             return;
         } else {
-            // Interrupt the current running task
-            tracing::debug!("src changed, sending interrupt signal...");
-            let _ = opts.interrupt_signal.send(());
+            // // Interrupt the current build task, if any
+            // tracing::debug!("src changed, sending interrupt signal...");
+            // let _ = opts.interrupt_signal.send(());
         }
     }
 
-    // A guard to prevent concurrent access to run the app
-    let mut lock = opts.can_run.lock().await;
-    if *lock == false {
-        return;
-    }
-
-    *lock = false;
+    // // A guard to prevent concurrent access to build the app
+    let lock = match LOCK.try_lock() {
+        Ok(x) => {
+            // Interrupt the current build task, if any
+            tracing::debug!("src changed, sending interrupt signal...");
+            let _ = opts.interrupt_signal.send(());
+            x
+        }
+        Err(_) => {
+            return;
+        }
+    };
 
     if events.is_empty() && !is_first_run {
         return;
@@ -384,19 +390,17 @@ async fn build_and_run(
         tracing::info!("Change detected on: {:#?}", paths);
     }
 
-    // Build task
+    // Run task
     let mut run_task = RunTask {
         envs: Default::default(),
         host: opts.host.clone(),
         port: opts.port,
+        is_dev: true,
         static_dir: opts.static_dir.clone(),
         options: opts.build_options.clone(),
         build_done_signal: Some(opts.build_done_signal.clone()),
         interrupt_signal: Some(opts.interrupt_signal.clone()),
     };
-
-    // TODO: We should decide what operation to perform depending on the files affected,
-    // if only public assets are changed, we don't need to rebuild the entire app
 
     let host = opts.reload_host.clone();
     let port = opts.reload_port.to_string();
@@ -405,12 +409,28 @@ async fn build_and_run(
     run_task.env(crate::env::HASHIRA_LIVE_RELOAD_PORT, port);
     run_task.env(crate::env::HASHIRA_LIVE_RELOAD, String::from("1"));
 
-    tracing::debug!("Starting building and running...");
-    if let Err(err) = run_task.run().await {
-        tracing::error!("Watch run failed: {err}");
+    // Build client and server
+    match run_task.build().await {
+        Ok(true) => {
+            tracing::debug!("Build completed successfully");
+        }
+        Ok(false) => {
+            tracing::debug!("Build interrupted");
+            // The build was interrupted, so we return
+            return;
+        }
+        Err(err) => {
+            tracing::error!("Failed: {err}");
+        }
     }
 
-    *lock = true;
+    // Release the lock
+    drop(lock);
+
+    // Execute binary
+    if let Err(err) = run_task.exec().await {
+        tracing::error!("Failed: {err}");
+    }
 }
 
 struct State {

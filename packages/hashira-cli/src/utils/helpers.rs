@@ -60,25 +60,25 @@ pub fn get_cargo_lib_name() -> anyhow::Result<String> {
     Ok(package.name)
 }
 
-/// Spawn a command that can be interrupted with the given signal.
+/// Waits for a child process until complete or interrupted with the given signal.
 pub async fn wait_interruptible(
-    mut spawn: Child,
+    mut child: Child,
     interrupt_signal: Option<Sender<()>>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     let Some(interrupt_signal) = interrupt_signal else {
-        let status = spawn.wait().await?;
+        let status = child.wait().await?;
         anyhow::ensure!(status.success(), "Process failed");
-        return Ok(());
+        return Ok(true);
     };
 
     let mut int = interrupt_signal.subscribe();
 
     tokio::select! {
-        ret = spawn.wait() => {
+        ret = child.wait() => {
             match ret {
                 Ok(status) => {
                     anyhow::ensure!(status.success(), "Process failed");
-                    Ok(())
+                    Ok(true)
                 },
                 Err(err) => {
                     tracing::error!("Process failed: {err}");
@@ -87,7 +87,7 @@ pub async fn wait_interruptible(
             }
         },
         ret = int.recv() => {
-            spawn.kill().await?;
+            child.kill().await?;
 
             if let Err(err) = ret {
                 tracing::error!("{err}");
@@ -95,7 +95,7 @@ pub async fn wait_interruptible(
             }
 
             // Interrupted
-            Ok(())
+            Ok(false)
         }
     }
 }

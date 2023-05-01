@@ -1,11 +1,13 @@
 use hashira::{app::AppNested, page_component};
-
+use crate::components::Text;
 use crate::App;
 
 #[page_component]
 pub fn OrdersPage() -> yew::Html {
     yew::html! {
-        "Orders Page"
+        <Text>
+            {"Orders Page"}
+        </Text>
     }
 }
 

@@ -43,38 +43,54 @@ impl BuildTask {
 
     /// Runs the build operation
     pub async fn run(self) -> anyhow::Result<()> {
-        self.build_server().await?;
-        self.build_client().await?;
+        self.run_interruptible().await?;
         Ok(())
     }
 
+    pub(crate) async fn run_interruptible(self) -> anyhow::Result<bool> {
+        if !self.build_server().await? {
+            return Ok(false);
+        }
+
+        if !self.build_client().await? {
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+
     /// Builds the server
-    pub async fn build_server(&self) -> anyhow::Result<()> {
+    pub async fn build_server(&self) -> anyhow::Result<bool> {
         // We make some checks to ensure the hashira is not ran in an invalid directory or project
         self.check_can_build()?;
 
         tracing::info!("{}Building server...", emojis::BUILD);
-        self.cargo_build().await?;
+        if !self.cargo_build().await? {
+            return Ok(false);
+        }
 
         tracing::info!("{}Server build done!", emojis::DONE);
-        Ok(())
+        Ok(true)
     }
 
     /// Builds the client wasm bundle
-    pub async fn build_client(&self) -> anyhow::Result<()> {
+    pub async fn build_client(&self) -> anyhow::Result<bool> {
         // Cleanup the public dir
         self.prepare_public_dir().await?;
 
         // Start Wasm build
         tracing::info!("{}Building client...", emojis::BUILD);
 
-        self.cargo_build_wasm().await?;
+        if !self.cargo_build_wasm().await? {
+            return Ok(false);
+        }
+
         self.wasm_bindgen().await?;
         self.optimize_wasm().await?; // If the optimization flag is set or in release mode
         self.build_assets().await?;
 
         tracing::info!("{}Client build done!", emojis::DONE);
-        Ok(())
+        Ok(true)
     }
 
     fn check_can_build(&self) -> anyhow::Result<()> {
@@ -131,14 +147,14 @@ If you are trying to run a non-rust server, currently not possible with the hash
         Ok(())
     }
 
-    async fn cargo_build_wasm(&self) -> anyhow::Result<()> {
+    async fn cargo_build_wasm(&self) -> anyhow::Result<bool> {
         tracing::debug!("Running cargo build --target wasm32-unknown-unknown...");
 
         let spawn = self.spawn_cargo_build_wasm()?;
-        wait_interruptible(spawn, self.interrupt_signal.clone())
+        let result = wait_interruptible(spawn, self.interrupt_signal.clone())
             .await
             .context("cargo build wasm failed")?;
-        Ok(())
+        Ok(result)
     }
 
     async fn wasm_bindgen(&self) -> anyhow::Result<()> {
@@ -151,12 +167,12 @@ If you are trying to run a non-rust server, currently not possible with the hash
         Ok(())
     }
 
-    async fn cargo_build(&self) -> anyhow::Result<()> {
+    async fn cargo_build(&self) -> anyhow::Result<bool> {
         let spawn = self.spawn_cargo_build()?;
-        wait_interruptible(spawn, self.interrupt_signal.clone())
+        let result = wait_interruptible(spawn, self.interrupt_signal.clone())
             .await
             .context("cargo build failed")?;
-        Ok(())
+        Ok(result)
     }
 
     pub(crate) async fn build_assets(&self) -> anyhow::Result<()> {

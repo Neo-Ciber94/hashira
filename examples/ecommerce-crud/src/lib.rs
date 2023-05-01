@@ -41,9 +41,8 @@ pub fn hashira() -> AppService {
         .nest("/auth", crate::pages::auth())
         .build()
 
-
-
         
+
 }
 
 #[cfg(target_arch = "wasm32")]
