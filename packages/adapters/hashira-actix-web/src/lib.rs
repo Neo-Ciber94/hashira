@@ -33,7 +33,7 @@ where
         let port = hashira::env::get_port().unwrap_or(5000);
         let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();
 
-        println!("Server started at: `http://{addr}`");
+        println!("Server started at: http://{addr}");
 
         // Create and run the server
         let server = HttpServer::new(move || {

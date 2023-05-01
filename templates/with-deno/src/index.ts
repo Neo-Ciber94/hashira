@@ -113,6 +113,6 @@ await serve(handleRequest, {
   hostname: HOST,
   onError: handleError,
   onListen: ({ hostname, port }) => {
-    console.log(`⚡ Server started at: \`http://${hostname}:${port}\``);
+    console.log(`⚡ Server started at: http://${hostname}:${port}`);
   },
 });

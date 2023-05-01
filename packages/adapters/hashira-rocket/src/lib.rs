@@ -55,7 +55,7 @@ impl Adapter for HashiraRocket {
             .merge((rocket::Config::SHUTDOWN, shutdown));
 
         let rocket = rocket.configure(figment).ignite().await?;
-        println!("Server started at: `http://{addr}`");
+        println!("Server started at: http://{addr}");
 
         // Start the server
         rocket.launch().await?;
