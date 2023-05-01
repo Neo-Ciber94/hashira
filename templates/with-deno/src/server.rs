@@ -4,9 +4,7 @@ use hashira::app::AppService;
 use once_cell::sync::Lazy;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-use crate::App;
-
-static HASHIRA: Lazy<AppService> = Lazy::new(crate::hashira::<App>);
+static HASHIRA: Lazy<AppService> = Lazy::new(crate::hashira);
 
 // Entry point of the library
 #[wasm_bindgen(start, skip_typescript)]

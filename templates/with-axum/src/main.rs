@@ -1,5 +1,3 @@
-pub use {{crate_name}}::App;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod server;
 
@@ -7,7 +5,7 @@ mod server;
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    crate::server::start_server::<App>().await
+    crate::server::start_server().await
 }
 
 // Starts client

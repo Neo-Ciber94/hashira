@@ -1,5 +1,3 @@
-pub use {{crate_name}}::App;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod server;
 
@@ -7,7 +5,7 @@ mod server;
 #[cfg(not(target_arch = "wasm32"))]
 #[actix_web::main]
 async fn main() -> Result<(), hashira::error::Error> {
-    crate::server::start_server::<App>().await
+    crate::server::start_server().await
 }
 
 // Starts client

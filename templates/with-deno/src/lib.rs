@@ -8,7 +8,7 @@ use hashira::{
     server::Metadata,
 };
 use serde::{Deserialize, Serialize};
-use yew::{html::ChildrenProps, BaseComponent, Properties};
+use yew::{html::ChildrenProps, Properties};
 
 #[page_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
@@ -56,17 +56,14 @@ pub fn CounterPage(props: &CounterPageProps) -> yew::Html {
 }
 
 // Setup all the components
-pub fn hashira<BASE>() -> AppService
-where
-    BASE: BaseComponent<Properties = ChildrenProps>,
-{
-    HashiraApp::<BASE>::new()
+pub fn hashira() -> AppService {
+    HashiraApp::<App>::new()
         .use_default_error_pages()
         .layout(root_layout)
         .page("/", |mut ctx: RenderContext| async {
             ctx.metadata(Metadata::new().description("An Hashira x Actix Web example"));
 
-            let res = ctx.render::<HomePage, BASE>().await;
+            let res = ctx.render::<HomePage, _>().await;
             Ok(res)
         })
         .page("/counter", |mut ctx: RenderContext| async {
@@ -74,7 +71,7 @@ where
             ctx.metadata(Metadata::new().description("A counter made with hashira actix-web"));
 
             let props = yew::props! { CounterPageProps {} };
-            let res = ctx.render_with_props::<CounterPage, BASE>(props).await;
+            let res = ctx.render_with_props::<CounterPage, _>(props).await;
             Ok(res)
         })
         .build()
@@ -84,6 +81,6 @@ where
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
     log::debug!("Hydrating app...");
-    let service = hashira::<App>();
+    let service = hashira();
     hashira::client::mount::<App>(service);
 }
