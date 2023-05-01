@@ -13,16 +13,16 @@ pub struct NewOptions {
     #[arg(long, help = "Use the actix-web template", conflicts_with_all = &[ "axum", "rocket", "deno", "example"])]
     pub actix_web: bool,
 
-    #[arg(long, help = "Use the axum template", conflicts_with_all = &["actix-web", "rocket", "deno", "example"])]
+    #[arg(long, help = "Use the axum template", conflicts_with_all = &["actix_web", "rocket", "deno", "example"])]
     pub axum: bool,
 
-    #[arg(long, help = "Use the rocket template", conflicts_with_all = &["actix-web", "axum", "deno", "example"])]
+    #[arg(long, help = "Use the rocket template", conflicts_with_all = &["actix_web", "axum", "deno", "example"])]
     pub rocket: bool,
 
-    #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix-web", "axum", "rocket", "example"])]
+    #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix_web", "axum", "rocket", "example"])]
     pub deno: bool,
 
-    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix-web", "axum", "rocket", "deno"])]
+    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix_web", "axum", "rocket", "deno"])]
     pub example: Option<String>,
 
     #[arg(

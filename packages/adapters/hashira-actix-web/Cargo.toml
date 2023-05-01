@@ -4,6 +4,8 @@ description = "Actix-web adapter for hashira"
 version = "0.0.1-alpha"
 edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
+license = "MIT"
+readme = "../../../README.md"
 
 [dependencies]
 hashira = { path = "../../hashira", version = "0.0.1-alpha" }
