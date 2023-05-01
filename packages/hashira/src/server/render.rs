@@ -119,8 +119,13 @@ where
         router,
         error_router,
 
-        // Unnecessary?
+        // FIXME: Unnecessary?
+        // We need to clone when using hooks
+        #[cfg(feature = "hooks")]
         server_context: ServerContext::new(Some(request_context.clone())),
+
+        #[cfg(not(feature = "hooks"))]
+        server_context: ServerContext::new(Some(request_context)),
     };
 
     let (title, metadata, links, scripts) = head.into_parts();

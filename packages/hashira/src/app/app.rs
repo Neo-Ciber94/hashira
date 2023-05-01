@@ -362,6 +362,7 @@ where
     }
 
     /// Constructs an `AppService` using this instance.
+    #[allow(clippy::let_and_return)]
     pub fn build(self) -> AppService where BASE: BaseComponent<Properties =ChildrenProps>{
         let App {
             layout,

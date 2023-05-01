@@ -190,7 +190,7 @@ If you are trying to run a non-rust server, currently not possible with the hash
         // TODO: We can sheet if the tailwind.config exists and just check a bool
         // We try to execute tailwind, if there no configuration we return `Ok(false)`
         // and continue to process the stylesheet file normally
-        if self.try_build_tailwind_css().await? == false {
+        if !(self.try_build_tailwind_css().await?) {
             process_stylesheet(self.options.as_ref(), &dest_dir).await?;
         }
 
@@ -205,7 +205,7 @@ If you are trying to run a non-rust server, currently not possible with the hash
         // TODO: We should cache if the tailwind config exists
 
         // If not tailwind.config is detected we do nothing
-        if let None = get_tailwind_config_path()? {
+        if get_tailwind_config_path()?.is_none() {
             return Ok(false);
         }
 

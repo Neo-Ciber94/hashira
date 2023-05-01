@@ -1,3 +1,4 @@
+use crate::emojis;
 use crate::{
     cli::{BuildOptions, DevOptions},
     tasks::{build::BuildTask, run::RunTask},
@@ -19,7 +20,6 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use crate::emojis;
 use tokio::sync::{
     broadcast::{channel, Receiver, Sender},
     Mutex,
@@ -166,8 +166,8 @@ impl DevTask {
             reload_port: self.reload_port,
             static_dir: self.static_dir.clone(),
             build_done_signal: build_done_tx,
-            interrupt_signal: interrupt_signal.clone(),
-            tx_live_reload: tx_live_reload.clone(),
+            interrupt_signal,
+            tx_live_reload,
         });
 
         // Starts the file system watcher
@@ -220,7 +220,7 @@ impl DevTask {
             );
             debouncer
                 .watcher()
-                .watch(&watch, RecursiveMode::Recursive)
+                .watch(watch, RecursiveMode::Recursive)
                 .unwrap();
 
             tracing::info!("Watching: {}", watch.display());
@@ -318,9 +318,8 @@ fn change_inside_src(events: &[DebouncedEvent]) -> bool {
 
     for file in files {
         let file_path = dunce::canonicalize(file).unwrap();
-        match file_path.strip_prefix(&src_dir) {
-            Ok(_) => return true,
-            Err(_) => {}
+        if file_path.strip_prefix(&src_dir).is_ok() {
+            return true;
         }
     }
 

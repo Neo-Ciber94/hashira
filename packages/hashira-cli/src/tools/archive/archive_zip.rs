@@ -37,11 +37,9 @@ impl ArchiveZip {
                     idx = Some(index);
                     break;
                 }
-            } else {
-                if name.as_path() == path {
-                    idx = Some(index);
-                    break;
-                }
+            } else if name.as_path() == path {
+                idx = Some(index);
+                break;
             }
         }
 

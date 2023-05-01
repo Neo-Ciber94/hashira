@@ -229,7 +229,7 @@ pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Resu
             }
 
             // Otherwise download the tool
-            let bin_path = GlobalCache::download::<T>(&url, dir, extract_opts).await?;
+            let bin_path = GlobalCache::download::<T>(url, dir, extract_opts).await?;
             Ok(bin_path)
         }
         None => {
@@ -263,7 +263,7 @@ pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Resu
                     // Download and install
                     let cache_path = cache_dir()?;
                     let bin_path =
-                        GlobalCache::download::<T>(&url, &cache_path, extract_opts).await?;
+                        GlobalCache::download::<T>(url, &cache_path, extract_opts).await?;
                     Ok(bin_path)
                 }
                 Err(err) => Err(anyhow::anyhow!(err)),

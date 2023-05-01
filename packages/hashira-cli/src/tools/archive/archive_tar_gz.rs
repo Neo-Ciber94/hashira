@@ -63,10 +63,8 @@ impl ArchiveTarGz {
                 if name.as_path() == path {
                     return Ok(Some(entry));
                 }
-            } else {
-                if name.as_path() == path {
-                    return Ok(Some(entry));
-                }
+            } else if name.as_path() == path {
+                return Ok(Some(entry));
             }
         }
 
