@@ -1,5 +1,6 @@
 use anyhow::Context;
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
+use crate::emojis;
 
 use crate::{
     cli::{NewOptions, ProjectTemplate},
@@ -26,6 +27,8 @@ impl NewTask {
     }
 
     async fn create_project(self) -> anyhow::Result<()> {
+        tracing::info!("{}Creating project...", emojis::CONSTRUCTION);
+
         let template = self.get_template()?;
         let cargo_generate = CargoGenerate::load().await?;
         let mut cmd = cargo_generate.async_cmd();
@@ -64,6 +67,7 @@ impl NewTask {
     }
 
     async fn create_example(self) -> anyhow::Result<()> {
+        tracing::info!("{}Generating example...", emojis::CONSTRUCTION);
         // TODO: Allow to navigate over all the examples available
 
         let name = self.options.name.as_deref();
