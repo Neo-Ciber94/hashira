@@ -1,5 +1,16 @@
 # hashira
 
+[![CI-badge]](ci) [![Latest Version]][crates.io] [![Docs][docs-badge]][docs-link]
+
+[CI-badge]: https://github.com/Neo-Ciber94/hashira/actions/workflows/ci.yml/badge.svg
+[ci]: https://github.com/Neo-Ciber94/hashira/actions/workflows/ci.yml
+
+[latest version]: https://img.shields.io/crates/v/hashira.svg
+[crates.io]: https://crates.io/crates/hashira
+
+[docs-badge]: https://img.shields.io/badge/docs-hashira-blue.svg
+[docs-link]: https://docs.rs/hashira/latest
+
 A server side rendering framework built on top of yew.
 
 ## Getting started

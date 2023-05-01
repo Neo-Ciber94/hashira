@@ -26,8 +26,8 @@ thiserror = "1.0.40"
 async-trait = { version = "0.1.68" }
 matchit = "0.7.0"
 futures = { version = "0.3.28", features = ["executor"] }
-tokio-stream = { version = "0.1.12", features = ["sync"] }
-tokio = { version = "1.27.0", features = ["sync"] }
+tokio-stream = { version = "0.1.14", features = ["sync"] }
+tokio = { version = "1.28.0", features = ["sync"] }
 mime = "0.3.17"
 serde_urlencoded = "0.7.1"
 pin-project-lite = "0.2.9"
@@ -46,4 +46,4 @@ hooks = []
 client = []
 
 [dev-dependencies]
-tokio = { version = "1.27.0", features = ["macros", "rt"] }
+tokio = { version = "1.28.0", features = ["macros", "rt"] }
