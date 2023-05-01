@@ -14,6 +14,7 @@ use futures::{SinkExt, StreamExt};
 use notify::RecursiveMode;
 use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::AtomicBool;
 use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
@@ -157,7 +158,7 @@ impl DevTask {
         let interrupt_signal = self.interrupt_signal.clone();
         let (tx_watch, mut rx_watch) = channel::<Vec<DebouncedEvent>>(8);
 
-        let opts = Arc::new(BuildAndRunOptions {
+        let opts = Arc::new(RestartOptions {
             build_options: build_options.clone(),
             ignore: self.ignore.clone(),
             host: self.host.clone(),
@@ -251,7 +252,7 @@ impl DevTask {
     }
 }
 
-fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEvent>) {
+fn remove_ignored_paths(opts: &RestartOptions, events: &mut Vec<DebouncedEvent>) {
     if events.is_empty() {
         return;
     }
@@ -293,7 +294,7 @@ fn remove_ignored_paths(opts: &BuildAndRunOptions, events: &mut Vec<DebouncedEve
     }
 }
 
-struct BuildAndRunOptions {
+struct RestartOptions {
     build_options: Arc<BuildOptions>,
     ignore: Vec<PathBuf>,
     host: String,
@@ -331,14 +332,10 @@ enum LiveReloadAction {
     Loading,
 }
 
-static LOCK: Mutex<()> = Mutex::const_new(());
-
 #[allow(clippy::bool_comparison)]
-async fn restart(
-    opts: Arc<BuildAndRunOptions>,
-    mut events: Vec<DebouncedEvent>,
-    is_first_run: bool,
-) {
+async fn restart(opts: Arc<RestartOptions>, mut events: Vec<DebouncedEvent>, is_first_run: bool) {
+    static BUILD_LOCK: Mutex<()> = Mutex::const_new(());
+
     // Remove any ignored path
     remove_ignored_paths(&opts, &mut events);
 
@@ -361,15 +358,11 @@ async fn restart(
 
             // No reason to continue
             return;
-        } else {
-            // // Interrupt the current build task, if any
-            // tracing::debug!("src changed, sending interrupt signal...");
-            // let _ = opts.interrupt_signal.send(());
         }
     }
 
     // // A guard to prevent concurrent access to build the app
-    let lock = match LOCK.try_lock() {
+    let lock = match BUILD_LOCK.try_lock() {
         Ok(x) => {
             // Interrupt the current build task, if any
             tracing::debug!("src changed, sending interrupt signal...");
@@ -465,6 +458,10 @@ async fn websocket_handler(
     upgrade: WebSocketUpgrade,
     state: Extension<Arc<State>>,
 ) -> impl IntoResponse {
+    use std::sync::atomic::Ordering;
+
+    static LOADING: AtomicBool = AtomicBool::new(false);
+
     #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
     #[serde(untagged)]
     enum LiveReloadEvent {
@@ -480,6 +477,15 @@ async fn websocket_handler(
         let mut shutdown = state.tx_shutdown.subscribe();
         let mut event_stream = BroadcastStream::new(state.tx_live_reload.subscribe());
 
+        if LOADING.load(Ordering::Acquire) {
+            let json = serde_json::to_string(&LiveReloadEvent::Loading { loading: true })
+                .expect("Failed to serialize message");
+
+            if let Err(err) = sender.send(Message::Text(json)).await {
+                tracing::debug!("Failed to send message to new web socket: {err}")
+            };
+        }
+
         loop {
             tokio::select! {
                 event = event_stream.next() => {
@@ -488,10 +494,14 @@ async fn websocket_handler(
                     if let Some(Ok(event)) = event {
                         let json = match event {
                             LiveReloadAction::Reload => {
+                                LOADING.store(false, Ordering::Relaxed);
+
                                 serde_json::to_string(&LiveReloadEvent::Reload{ reload: true })
                                        .expect("Failed to serialize message")
                             },
                             LiveReloadAction::Loading => {
+                                LOADING.store(true, Ordering::Relaxed);
+
                                 serde_json::to_string(&LiveReloadEvent::Loading { loading: true })
                                          .expect("Failed to serialize message")
                             }
