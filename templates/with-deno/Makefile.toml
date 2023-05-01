@@ -4,6 +4,12 @@ BUILD_CMD = "build"
 [env.prod]
 BUILD_CMD = "build --release"
 
+[tasks.deno-run.env]
+HASHIRA_WASM_LIB = "{{crate_name}}"
+HASHIRA_STATIC_DIR = "static/"
+HASHIRA_HOST = "127.0.0.1"
+HASHIRA_PORT = 5000
+
 # Build wasm server
 [tasks.cargo-build]
 command = "cargo"
@@ -17,6 +23,8 @@ args = [
     "deno",
     "--out-dir",
     "build/",
+    "--out-name",
+    "{{crate_name}}_server"
 ]
 
 [tasks.build-wasm]
@@ -48,12 +56,6 @@ dependencies = ["build-wasm", "build-wasm-client"]
 [tasks.deno-run]
 command = "deno"
 args = ["run", "--allow-read", "--allow-net", "--allow-env", "src/index.ts"]
-
-[tasks.deno-run.env]
-HASHIRA_WASM_LIB = "{{crate_name}}"
-HASHIRA_STATIC_DIR = "static/"
-HASHIRA_HOST = "127.0.0.1"
-HASHIRA_PORT = 5000
 
 [tasks.run]
 dependencies = ["build", "deno-run"]

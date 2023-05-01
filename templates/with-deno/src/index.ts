@@ -1,6 +1,6 @@
+import { handler, set_envs } from "../build/{{crate_name}}_server.js";
 import { serve } from "https://deno.land/std@0.184.0/http/mod.ts";
 import { contentType } from "https://deno.land/std@0.184.0/media_types/mod.ts";
-import { handler, set_envs } from "../build/{{crate_name}}.js";
 import * as denoPath from "https://deno.land/std@0.183.0/path/mod.ts";
 import * as denoFs from "https://deno.land/std@0.183.0/fs/mod.ts";
 import {

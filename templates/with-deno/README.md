@@ -21,6 +21,8 @@ A hashira template using `Deno`.
 - 3. **Only** run:
   - `cargo make deno-run`
 
+> For a production build use: `cargo make --profile prod build`
+
 ## Run without `Cargo make`
 
 The commands with arguments specified in the configuration file are:
