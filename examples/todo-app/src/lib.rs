@@ -1,13 +1,38 @@
 mod components;
-pub mod models;
+mod database;
+mod models;
 mod pages;
 
+use hashira::web::status::StatusCode;
 use hashira::{
-    app::{App as HashiraApp, AppService, LayoutContext, RenderContext},
-    page_component,
+    app::{redirect, App as HashiraApp, AppService, LayoutContext},
     server::{LinkTag, PageLinks},
 };
-use yew::{html::ChildrenProps, function_component};
+use yew::{function_component, html::ChildrenProps};
+
+use crate::components::NavBar;
+
+// Setup all the components
+pub fn hashira() -> AppService {
+    HashiraApp::<App>::new()
+        .use_default_error_pages()
+        .layout(root_layout)
+        .route(redirect("/", "/todos", StatusCode::PERMANENT_REDIRECT))
+        .nest("/todos", crate::pages::todos())
+        .build()
+}
+
+#[function_component]
+pub fn App(props: &ChildrenProps) -> yew::Html {
+    yew::html! {
+       <>
+        <NavBar />
+        <div class="container mx-auto">
+            {for props.children.iter()}
+        </div>
+       </>
+    }
+}
 
 async fn root_layout(mut ctx: LayoutContext) -> yew::Html {
     use hashira::components::*;
@@ -33,44 +58,6 @@ async fn root_layout(mut ctx: LayoutContext) -> yew::Html {
             </body>
         </html>
     }
-}
-
-#[function_component]
-pub fn App(props: &ChildrenProps) -> yew::Html {
-    yew::html! {
-       <>
-            <header class="w-full p-4 bg-slate-800">
-                <nav class="flex flex-row gap-5 text-white text-lg">
-                    <a href="/todos">{"Todos"}</a>
-                    <a href="/todos/c502da4f-42c4-4b35-a47a-0f1c11ee632e">{"View Todo"}</a>
-                    <a href="/todos/add">{"Create Todo"}</a>
-                    <a href="/todos/edit/c502da4f-42c4-4b35-a47a-0f1c11ee632e">{"Update Todo"}</a>
-                    <a href="/todos/delete/c502da4f-42c4-4b35-a47a-0f1c11ee632e">{"Delete Todo"}</a>
-                </nav>
-            </header>
-
-        {for props.children.iter()}
-       </>
-    }
-}
-
-#[page_component]
-pub fn HomePage() -> yew::Html {
-    yew::html! {
-        <div class="container">
-            {"Todo App!"}
-        </div>
-    }
-}
-
-// Setup all the components
-pub fn hashira() -> AppService {
-    HashiraApp::<App>::new()
-        .use_default_error_pages()
-        .layout(root_layout)
-        .page::<HomePage>()
-        .nest("/todos", crate::pages::todos())
-        .build()
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -12,6 +12,12 @@ pub struct Todo {
     pub updated_at: OffsetDateTime,
 }
 
+impl PartialEq for Todo {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateTodo {
     pub title: String,

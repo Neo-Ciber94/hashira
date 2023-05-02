@@ -37,6 +37,9 @@ pub mod events;
 #[doc(hidden)]
 pub mod types;
 
+/// A result type.
+pub type Result<T> = std::result::Result<T, crate::error::Error>;
+
 /// Macro attribute for declaring [`PageComponent`]s.
 /// 
 /// [`PageComponent`]: ./components/trait.PageComponent.html
