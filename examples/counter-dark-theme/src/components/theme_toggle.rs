@@ -5,30 +5,20 @@ use yew::{function_component, html::onsubmit::Event, use_state};
 #[function_component]
 pub fn ThemeToggle() -> yew::HtmlResult {
     let ctx = use_server_context();
-    // let is_dark = yew::use_prepared_state!(
-    //     |_| -> bool {
-    //         // SAFETY: Is safe to unwrap here because this is only ran on the server
-    //         let ctx = ctx.unwrap();
-    //         ctx.request()
-    //             .cookie("dark")
-    //             .map(|c| c.value() == "true")
-    //             .unwrap_or_default()
-    //     },
-    //     ()
-    // )?
-    // .expect("failed to get dark mode state");
-
-    let is_dark = use_state(|| {
-        if hashira::consts::IS_SERVER {
+    let initial_state = yew::use_prepared_state!(
+        |_| -> bool {
+            // SAFETY: Is safe to unwrap here because this is only ran on the server
             let ctx = ctx.unwrap();
             ctx.request()
                 .cookie("dark")
                 .map(|c| c.value() == "true")
                 .unwrap_or_default()
-        } else {
-            false
-        }
-    });
+        },
+        ()
+    )?
+    .expect("failed to get dark mode state");
+
+    let is_dark = use_state(|| *initial_state);
 
     let on_dark_mode_toggle = {
         let is_dark = is_dark.clone();

@@ -2,10 +2,9 @@ use actix_files::NamedFile;
 use actix_web::{
     cookie::Cookie, http::header, web::ServiceConfig, HttpRequest, HttpResponse, Responder,
 };
-use counter_dark_theme_web::hashira;
+use counter_dark_theme::hashira;
 use hashira::adapter::Adapter;
 use hashira_actix_web::HashiraActixWeb;
-use yew::{html::ChildrenProps, BaseComponent};
 
 pub async fn start_server() -> Result<(), hashira::error::Error> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));

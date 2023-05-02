@@ -6,6 +6,7 @@ use {{crate_name}}::hashira;
 
 pub async fn start_server() -> Result<(), hashira::error::Error> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    
     let app = hashira();
     HashiraActixWeb::from(actix_web).serve(app).await
 }

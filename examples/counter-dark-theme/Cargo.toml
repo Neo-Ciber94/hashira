@@ -1,11 +1,11 @@
 [package]
-name = "counter-dark-theme"
+name = "counter-dark-theme-server"
 description = "A counter with dark mode using formaction"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "counter_dark_theme_web"
+name = "counter_dark_theme"
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

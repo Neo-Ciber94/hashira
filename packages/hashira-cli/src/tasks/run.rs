@@ -127,8 +127,15 @@ impl RunTask {
             cmd.env(name, value);
         }
 
-        let child = cmd.spawn()?;
-        *RUNNING_PROCESS.lock().await = Some(child);
+        let mut child = cmd.spawn()?;
+
+        // If is dev we keep the process, otherwise we just run normally and wait
+        if self.is_dev {
+            *RUNNING_PROCESS.lock().await = Some(child);
+        } else {
+            child.wait().await?;
+        }
+
         Ok(())
     }
 

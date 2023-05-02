@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RenderContext, RequestContext, Route, AppData, page_head::PageHead, DefaultHeaders,
+    RequestContext, Route, AppData, DefaultHeaders,
 };
 use crate::{
     components::{
@@ -201,6 +201,8 @@ where
 
         #[cfg(not(feature = "client"))]
         {
+            use crate::app::RenderContext;
+
             self.route(Route::get(route, move |ctx| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
@@ -226,6 +228,7 @@ where
         #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
+            use crate::app::RenderContext;
 
             self.server_error_router.insert(
                 status,
@@ -254,6 +257,7 @@ where
         #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
+            use crate::app::RenderContext;
 
             self.server_error_router
                 .fallback(ErrorPageHandler(Box::new(move |ctx, _status| {
@@ -507,39 +511,5 @@ pub fn redirect(from: &str, to: &str, status: StatusCode) -> Route {
         async move {       
             Redirect::new(to, status).expect("invalid redirection")
         }
-    })
-}
-
-/// Returns a route that renders the given component with the given `<head>`.
-pub fn render<COMP, BASE>(route: &str, head: PageHead) -> Route     
-    where
-        BASE: BaseComponent<Properties = ChildrenProps>,
-        COMP: PageComponent,
-        COMP::Properties: Default + serde::Serialize + Send + Sync + Clone {
-    Route::get(route, move |ctx| {
-        let head = head.clone();
-        let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-        let render_ctx = RenderContext::new(ctx, head, render_layout);
-
-        // Returns the future
-        render_ctx.render::<COMP, BASE>()
-    })
-}
-
-/// Returns a route that renders the given component with props, with the given `<head>`.
-pub fn render_with_props<COMP, BASE>(route: &str, props: COMP::Properties, head: PageHead) -> Route     
-    where
-        BASE: BaseComponent<Properties = ChildrenProps>,
-        COMP: PageComponent,
-        COMP::Properties: serde::Serialize + Send + Sync + Clone {
-    Route::get(route, move |ctx| {
-        let head = head.clone();
-        let props = props.clone();
-
-        let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-        let render_ctx = RenderContext::new(ctx, head, render_layout);
-
-        // Returns the future
-        render_ctx.render_with_props::<COMP, BASE>(props)
     })
 }

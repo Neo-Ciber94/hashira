@@ -31,6 +31,7 @@ pub struct RenderContext {
 
 impl RenderContext {
     /// Constructs a new render context from the given request context.
+    #[allow(dead_code)]
     pub(crate) fn new(
         context: RequestContext,
         head: PageHead,
@@ -108,7 +109,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Default + Serialize + Send + Clone,
+        COMP::Properties: Default + Serialize + Send,
     {
         use crate::web::Html;
 
@@ -125,7 +126,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Serialize + Send + Clone,
+        COMP::Properties: Serialize + Send,
     {
         use crate::web::Html;
 
@@ -141,7 +142,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Default + Serialize + Send + Clone,
+        COMP::Properties: Default + Serialize + Send,
     {
         #[cfg(feature = "client")]
         server_only!();
@@ -164,7 +165,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Serialize + Send + Clone,
+        COMP::Properties: Serialize + Send,
     {
         #[cfg(feature = "client")]
         server_only!();
@@ -189,7 +190,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Default + Serialize + Send + Clone,
+        COMP::Properties: Default + Serialize + Send,
     {
         #[cfg(feature = "client")]
         server_only!();
@@ -208,7 +209,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Serialize + Send + Clone,
+        COMP::Properties: Serialize + Send,
     {
         #[cfg(feature = "client")]
         server_only!();
@@ -230,7 +231,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Default + Serialize + Send + Clone,
+        COMP::Properties: Default + Serialize + Send,
     {
         #[cfg(feature = "client")]
         server_only!();
@@ -249,7 +250,7 @@ impl RenderContext {
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
-        COMP::Properties: Serialize + Send + Clone,
+        COMP::Properties: Serialize + Send,
     {
         #[cfg(feature = "client")]
         server_only!();

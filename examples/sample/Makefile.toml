@@ -5,7 +5,7 @@ BUILD_CMD = "build"
 BUILD_CMD = "build --release"
 
 [tasks.deno-run.env]
-HASHIRA_WASM_LIB = "{{crate_name}}"
+HASHIRA_WASM_LIB = "sample"
 HASHIRA_STATIC_DIR = "/static"
 HASHIRA_HOST = "127.0.0.1"
 HASHIRA_PORT = 5000
@@ -18,13 +18,13 @@ args = ["@@split(BUILD_CMD, )", "--target", "wasm32-unknown-unknown"]
 [tasks.wasm-bindgen]
 command = "wasm-bindgen"
 args = [
-    "target/wasm32-unknown-unknown/debug/{{crate_name}}.wasm",
+    "../../target/wasm32-unknown-unknown/debug/sample.wasm",
     "--target",
     "deno",
     "--out-dir",
     "build/",
     "--out-name",
-    "{{crate_name}}_server"
+    "sample_server"
 ]
 
 [tasks.build-wasm]
@@ -38,7 +38,7 @@ args = ["@@split(BUILD_CMD, )", "--target", "wasm32-unknown-unknown", "--feature
 [tasks.wasm-bindgen-client]
 command = "wasm-bindgen"
 args = [
-    "target/wasm32-unknown-unknown/debug/{{crate_name}}.wasm",
+    "../../target/wasm32-unknown-unknown/debug/sample.wasm",
     "--target",
     "web",
     "--out-dir",

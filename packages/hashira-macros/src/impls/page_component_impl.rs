@@ -13,19 +13,22 @@ pub struct PageComponentAttr {
 
 impl Parse for PageComponentAttr {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        const EXPECTED_ROUTE: &str =
+            "`PageComponent` require a route, provide a string literal or `None`";
+
         let route = {
             if input.peek(syn::Ident) {
                 let none: Ident = input.parse()?;
                 if none.to_string() == "None" {
                     None
                 } else {
-                    return Err(syn::Error::new(
-                        input.span(),
-                        "Expected `None` or string literal",
-                    ));
+                    return Err(syn::Error::new(input.span(), EXPECTED_ROUTE));
                 }
             } else {
-                input.parse()?
+                let lit: LitStr = input
+                    .parse()
+                    .map_err(|_| syn::Error::new(input.span(), EXPECTED_ROUTE))?;
+                Some(lit)
             }
         };
 
@@ -84,9 +87,12 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
             }
         }
         None => {
-            quote::quote! {
-                let fut = ctx.render::<Self, BASE>();
-                std::boxed::Box::pin(fut)
+            // TODO: Use FutureExt::map
+            quote::quote! {                
+                std::boxed::Box::pin(async move {
+                    let res = ctx.render::<Self, BASE>().await;
+                    Ok(res)
+                })
             }
         }
     };

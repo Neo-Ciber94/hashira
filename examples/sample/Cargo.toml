@@ -1,0 +1,44 @@
+[package]
+name = "sample"
+version = "0.1.0"
+edition = "2021"
+authors = [ "Freddy L. <neo-ciber_94@hotmail.com>" ]
+
+[lib]
+name = "sample"
+crate-type = ["cdylib", "rlib"]
+
+[profile.dev]
+lto = true
+opt-level = 1
+
+[profile.release]
+lto = true
+opt-level= 's'
+
+[dependencies]
+hashira = { path = "../../packages/hashira" }
+hashira-wasm = { path = "../../packages/adapters/hashira-wasm" }
+yew = "0.20"
+log = "0.4.17"
+serde = { version = "1.0", features = ["derive"] }
+wasm-bindgen = "0.2.84"
+web-sys = { version = "0.3", features = [
+    "Headers",
+    "Request",
+    "RequestInit",
+    "RequestMode",
+    "Response",
+    "FormData",
+    "Blob",
+    "BlobPropertyBag",
+] }
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+js-sys = "0.3.58"
+once_cell = "1.17.1"
+wasm-logger = { version = "0.2.0" }
+serde-wasm-bindgen = "0.5.0"
+
+[features]
+client = ["hashira/client"]
