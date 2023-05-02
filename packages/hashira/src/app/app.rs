@@ -6,14 +6,13 @@ use super::{
 };
 use crate::{
     components::{
-        error::{ErrorPage, ErrorPageProps, NotFoundPage},
+        error::{ErrorPage, NotFoundPage},
         id::PageId,
         PageComponent,
     },
     error::Error,
     web::{IntoResponse, Response, Redirect}, routing::PathRouter, types::BoxFuture,
 };
-use super::PageResponse;
 use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
@@ -111,7 +110,7 @@ impl<BASE> App<BASE> {
 
 impl<BASE> App<BASE>
 where
-    BASE: 'static,
+    BASE: BaseComponent<Properties = ChildrenProps> + 'static, 
 {
     /// Adds a handler that renders the base `index.html` for the requests.
     ///
@@ -192,24 +191,23 @@ where
 
     /// Adds a page for the given route.
     #[cfg_attr(feature = "client", allow(unused_variables))]
-    pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
+    pub fn page<COMP>(mut self) -> Self
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
-        self.add_component::<COMP>(path);
+        let route = COMP::route().unwrap_or_else(|| panic!("`{}` is not declaring a route", std::any::type_name::<COMP>()));
+        self.add_component::<COMP>(route);
 
         #[cfg(not(feature = "client"))]
         {
-            self.route(Route::get(path, move |ctx| {
+            self.route(Route::get(route, move |ctx| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
-                
+
                 // Returns the future
-                handler(render_ctx)
+                COMP::loader::<BASE>(render_ctx)
             }))
         }
 
@@ -220,12 +218,10 @@ where
 
     /// Adds an error page for teh given status code.
     #[cfg_attr(feature="client", allow(unused_variables))]
-    pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
+    pub fn error_page<COMP>(mut self, status: StatusCode) -> Self
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
         #[cfg(not(feature = "client"))]
         {
@@ -233,13 +229,13 @@ where
 
             self.server_error_router.insert(
                 status,
-                ErrorPageHandler::new(move |ctx, status| {
+                ErrorPageHandler::new(move |ctx, _status| {
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                     // Returns the future
-                    handler(render_ctx, status).map_ok(|x| x.into_response())
+                    COMP::loader::<BASE>(render_ctx).map_ok(|x| x.into_response())
                 }),
             );
         }
@@ -250,23 +246,23 @@ where
 
     /// Register a page to handle any error.
     #[cfg_attr(feature="client", allow(unused_variables))]
-    pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
+    pub fn error_page_fallback<COMP>(mut self) -> Self
     where
         COMP: PageComponent,
-        COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
+        COMP::Properties: DeserializeOwned
     {
         #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
 
             self.server_error_router
-                .fallback(ErrorPageHandler(Box::new(move |ctx, status| {
+                .fallback(ErrorPageHandler(Box::new(move |ctx, _status| {
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
-                    let res = handler(render_ctx, status).map_ok(|x| x.into_response());
+                    let res = COMP::loader::<BASE>(render_ctx).map_ok(|x| x.into_response());
+
+                    // Returns the future
                     Box::pin(res)
                 })));
         }
@@ -280,38 +276,8 @@ where
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
     {
-        self.error_page(
-            StatusCode::NOT_FOUND,
-            move |mut ctx: RenderContext, status: StatusCode| async move {
-                ctx.title(format!(
-                    "{} | {}",
-                    status.as_u16(),
-                    status.canonical_reason().unwrap_or("Not Found")
-                ));
-
-                let mut res = ctx.render::<NotFoundPage, BASE>().await;
-                *res.status_mut() = status;
-                Ok(res)
-            },
-        )
-        .error_page_fallback(
-            move |mut ctx: RenderContext, status| async move {
-                ctx.title(format!(
-                    "{} | {}",
-                    status.as_u16(),
-                    status.canonical_reason().unwrap_or("Page Error")
-                ));
-
-                let mut res = ctx
-                    .render_with_props::<ErrorPage, BASE>(ErrorPageProps {
-                        status,
-                        message: None,
-                    })
-                    .await;
-                *res.status_mut() = status;
-                Ok(res)
-            },
-        )
+        self.error_page::<NotFoundPage>(StatusCode::NOT_FOUND)
+            .error_page_fallback::<ErrorPage>()
     }
 
     /// Adds a shared state that will be shared between server and client.

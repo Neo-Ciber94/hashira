@@ -1,11 +1,10 @@
-use super::PageResponse;
-use super::{ClientPageRoute, RenderContext, Route};
+use super::{ClientPageRoute, Route};
 use crate::components::id::PageId;
 use crate::components::PageComponent;
-use crate::error::Error;
 use serde::de::DeserializeOwned;
-use std::future::Future;
 use std::{collections::HashMap, marker::PhantomData};
+use yew::html::ChildrenProps;
+use yew::BaseComponent;
 
 /// Represents a nested route in a `App`.
 #[derive(Default)]
@@ -21,7 +20,10 @@ pub struct AppNested<BASE> {
     _marker: PhantomData<BASE>,
 }
 
-impl<BASE> AppNested<BASE> {
+impl<BASE> AppNested<BASE>
+where
+    BASE: BaseComponent<Properties = ChildrenProps> + 'static,
+{
     /// Creates a new nested route.
     pub fn new() -> Self {
         AppNested {
@@ -33,7 +35,7 @@ impl<BASE> AppNested<BASE> {
     }
 
     /// Adds a route handler.
-    #[cfg_attr(feature="client", allow(unused_mut, unused_variables))]
+    #[cfg_attr(feature = "client", allow(unused_mut, unused_variables))]
     pub fn route(mut self, route: Route) -> Self {
         #[cfg(not(feature = "client"))]
         {
@@ -46,27 +48,31 @@ impl<BASE> AppNested<BASE> {
 
     /// Adds a page for the given route.
     #[cfg_attr(feature = "client", allow(unused_variables))]
-    pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
+    pub fn page<COMP>(mut self) -> Self
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
-        self.add_component::<COMP>(path);
+        let route = COMP::route().unwrap_or_else(|| {
+            panic!(
+                "`{}` is not declaring a route",
+                std::any::type_name::<COMP>()
+            )
+        });
+
+        self.add_component::<COMP>(route);
 
         #[cfg(not(feature = "client"))]
         {
-            use super::page_head::PageHead;
-            use crate::app::RenderLayout;
+            use crate::app::{RenderLayout, RenderContext};
 
-            self.route(Route::get(path, move |ctx| {
-                let head = PageHead::new();
+            self.route(Route::get(route, move |ctx| {
+                let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
-                // Returns the handler future
-                handler(render_ctx)
+                // Returns the future
+                COMP::loader::<BASE>(render_ctx)
             }))
         }
 
@@ -105,6 +111,9 @@ impl<BASE> AppNested<BASE> {
 }
 
 /// Creates a new nested app.
-pub fn nested<BASE>() -> AppNested<BASE> {
+pub fn nested<BASE>() -> AppNested<BASE>
+where
+    BASE: BaseComponent<Properties = ChildrenProps> + 'static,
+{
     AppNested::new()
 }

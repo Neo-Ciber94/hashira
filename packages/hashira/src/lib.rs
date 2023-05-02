@@ -34,12 +34,13 @@ pub mod client;
 #[cfg(feature = "hooks")]
 pub mod events;
 
-pub(crate) mod types;
+#[doc(hidden)]
+pub mod types;
 
 /// Macro attribute for declaring [`PageComponent`]s.
 /// 
 /// [`PageComponent`]: ./components/trait.PageComponent.html
-pub use hashira_macros::page_component;
+pub use hashira_macros::*;
 
 mod reexports {
     /// Reexport of `async_trait`

@@ -1,6 +1,3 @@
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
-
 use super::RenderLayout;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
@@ -95,18 +92,19 @@ impl RenderContext {
     /// # Panic
     /// - If the status is not a valid redirection
     /// - the `to` is no a valid uri
-    pub fn redirect(self, to: &str, status: StatusCode) -> PageResponse<(), ()> {
+    pub fn redirect(self, to: &str, status: StatusCode) -> Response {
         assert!(
             status.is_redirection(),
             "invalid redirection status code: {status}"
         );
 
-        let res = Redirect::new(to, status).expect("redirection error");
-        PageResponse::new(res)
+        Redirect::new(to, status)
+            .expect("redirection error")
+            .into_response()
     }
 
     /// Render the page and returns the `text/html` response.
-    pub async fn render<COMP, BASE>(self) -> PageResponse<COMP, BASE>
+    pub async fn render<COMP, BASE>(self) -> Response
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -116,17 +114,14 @@ impl RenderContext {
 
         // Return a text/html response
         match self.render_html::<COMP, BASE>().await {
-            Ok(html) => PageResponse::new(Html(html)),
-            Err(err) => PageResponse::new(ResponseError::from_error(err)),
+            Ok(html) => Html(html).into_response(),
+            Err(err) => ResponseError::from_error(err).into_response(),
         }
     }
 
     /// Render the page with the given props and returns the `text/html` response.
     #[allow(unused_variables)]
-    pub async fn render_with_props<COMP, BASE>(
-        self,
-        props: COMP::Properties,
-    ) -> PageResponse<COMP, BASE>
+    pub async fn render_with_props<COMP, BASE>(self, props: COMP::Properties) -> Response
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -136,13 +131,13 @@ impl RenderContext {
 
         // Return a text/html response
         match self.render_html_with_props::<COMP, BASE>(props).await {
-            Ok(html) => PageResponse::new(Html(html)),
-            Err(err) => PageResponse::new(ResponseError::from_error(err)),
+            Ok(html) => Html(html).into_response(),
+            Err(err) => ResponseError::from_error(err).into_response(),
         }
     }
 
     /// Render the page and returns the `text/html` response stream.
-    pub async fn render_stream<COMP, BASE>(self) -> PageResponse<COMP, BASE>
+    pub async fn render_stream<COMP, BASE>(self) -> Response
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -157,18 +152,15 @@ impl RenderContext {
 
             // Return a stream text/html response
             match self.render_html_stream::<COMP, BASE>().await {
-                Ok(stream) => PageResponse::new(StreamResponse(stream)),
-                Err(err) => PageResponse::new(ResponseError::from_error(err)),
+                Ok(stream) => StreamResponse(stream).into_response(),
+                Err(err) => ResponseError::from_error(err).into_response(),
             }
         }
     }
 
     /// Render the page with the given props and returns the `text/html` response stream.
     #[allow(unused_variables)]
-    pub async fn render_stream_with_props<COMP, BASE>(
-        self,
-        props: COMP::Properties,
-    ) -> PageResponse<COMP, BASE>
+    pub async fn render_stream_with_props<COMP, BASE>(self, props: COMP::Properties) -> Response
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -186,8 +178,8 @@ impl RenderContext {
                 .render_html_stream_with_props::<COMP, BASE>(props)
                 .await
             {
-                Ok(stream) => PageResponse::new(StreamResponse(stream)),
-                Err(err) => PageResponse::new(ResponseError::from_error(err)),
+                Ok(stream) => StreamResponse(stream).into_response(),
+                Err(err) => ResponseError::from_error(err).into_response(),
             }
         }
     }
@@ -240,10 +232,10 @@ impl RenderContext {
         COMP: PageComponent,
         COMP::Properties: Default + Serialize + Send + Clone,
     {
-        #[cfg(feature="client")]
+        #[cfg(feature = "client")]
         server_only!();
 
-        #[cfg(not(feature="client"))]
+        #[cfg(not(feature = "client"))]
         self.render_html_stream_with_props::<COMP, BASE>(COMP::Properties::default())
             .await
     }
@@ -297,7 +289,7 @@ impl RenderContext {
                     let request_context = request_context.clone();
                     let head = layout_head.clone();
                     let layout_ctx = LayoutContext::new(request_context, head);
-    
+
                     move || {
                         // We need to block to pass the node to the function because the returned type is no `Send`
                         futures::executor::block_on(render_layout(layout_ctx))
@@ -305,7 +297,7 @@ impl RenderContext {
                 })
                 .await;
             }
-    
+
             // On wasm targets we cannot block the thread,
             // we use `Fragile` to safely send the `VNode` which is no `Send` to the render function,
             // this is safe because wasm is single threaded
@@ -316,11 +308,11 @@ impl RenderContext {
                     let request_context = request_context.clone();
                     let head = layout_head.clone();
                     let layout_ctx = LayoutContext::new(request_context, head);
-    
+
                     //let node = render_layout(layout_ctx).await;
                     let node = render_layout(layout_ctx).await;
                     let fragile = fragile::Fragile::new(node);
-    
+
                     move || {
                         // SAFETY: This is safe because wasm only run one thread
                         fragile.into_inner()
@@ -341,43 +333,5 @@ impl RenderContext {
             error_router,
             request_context,
         }
-    }
-}
-
-/// Represents the response out a page route.
-pub struct PageResponse<COMP, BASE> {
-    response: Response,
-    _marker: PhantomData<(COMP, BASE)>,
-}
-
-impl<COMP, BASE> Deref for PageResponse<COMP, BASE> {
-    type Target = Response;
-
-    fn deref(&self) -> &Self::Target {
-        &self.response
-    }
-}
-
-impl<COMP, BASE> DerefMut for PageResponse<COMP, BASE> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.response
-    }
-}
-
-impl<COMP, BASE> PageResponse<COMP, BASE> {
-    #[allow(dead_code)]
-    pub(crate) fn new<T: IntoResponse>(response: T) -> Self {
-        let response = response.into_response();
-
-        PageResponse {
-            response,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<COMP, BASE> IntoResponse for PageResponse<COMP, BASE> {
-    fn into_response(self) -> Response {
-        self.response
     }
 }

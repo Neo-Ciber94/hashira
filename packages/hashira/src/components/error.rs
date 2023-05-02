@@ -1,8 +1,8 @@
+use super::PageComponent;
+use crate::app::ResponseError;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use yew::{function_component, Properties};
-
-use super::PageComponent;
+use yew::{function_component, html::ChildrenProps, BaseComponent, Properties};
 
 /// Properties for an error page.
 #[derive(Clone, Properties, PartialEq, Serialize, Deserialize)]
@@ -46,7 +46,39 @@ pub fn ErrorPage(props: &ErrorPageProps) -> yew::Html {
     }
 }
 
-impl PageComponent for ErrorPage {}
+impl PageComponent for ErrorPage {
+    fn route() -> Option<&'static str> {
+        None
+    }
+
+    fn loader<BASE>(
+        mut ctx: crate::app::RenderContext,
+    ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::Error>>
+    where
+        BASE: BaseComponent<Properties = ChildrenProps>,
+    {
+        let err = ctx
+            .request()
+            .extensions()
+            .get::<ResponseError>()
+            .expect("expected error");
+
+        let status = err.status();
+        let message = err.message().map(|s| s.to_string());
+        ctx.title(format!(
+            "{} | {}",
+            status.as_u16(),
+            status.canonical_reason().unwrap_or("Page Error")
+        ));
+
+        Box::pin(async move {
+            let props = ErrorPageProps { status, message };
+            let mut res = ctx.render_with_props::<Self, BASE>(props).await;
+            *res.status_mut() = status;
+            Ok(res)
+        })
+    }
+}
 
 /// Props for the `NotFoundPage`
 #[derive(Clone, Default, Properties, PartialEq, Serialize, Deserialize)]
@@ -64,7 +96,32 @@ pub fn NotFoundPage(props: &NotFoundPageProps) -> yew::Html {
     }
 }
 
-impl PageComponent for NotFoundPage {}
+impl PageComponent for NotFoundPage {
+    fn route() -> Option<&'static str> {
+        None
+    }
+
+    fn loader<BASE>(
+        mut ctx: crate::app::RenderContext,
+    ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::Error>>
+    where
+        BASE: BaseComponent<Properties = ChildrenProps>,
+    {
+        let status = StatusCode::NOT_FOUND;
+
+        ctx.title(format!(
+            "{} | {}",
+            status.as_u16(),
+            status.canonical_reason().unwrap_or("Not Found")
+        ));
+
+        Box::pin(async move {
+            let mut res = ctx.render::<Self, BASE>().await;
+            *res.status_mut() = status;
+            Ok(res)
+        })
+    }
+}
 
 // FIXME: minify styles
 // This styles may collide with the page styles,
