@@ -4,7 +4,7 @@ use hashira::page_component;
 //     todo!()
 // }
 
-#[page_component]
+#[page_component("/")]
 //#[hashira::loader(GetText)]
 pub fn ListTodosPage() -> yew::Html {
     yew::html! {

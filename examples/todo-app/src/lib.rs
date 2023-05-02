@@ -7,7 +7,7 @@ use hashira::{
     page_component,
     server::{LinkTag, PageLinks},
 };
-use yew::html::ChildrenProps;
+use yew::{html::ChildrenProps, function_component};
 
 async fn root_layout(mut ctx: LayoutContext) -> yew::Html {
     use hashira::components::*;
@@ -35,7 +35,7 @@ async fn root_layout(mut ctx: LayoutContext) -> yew::Html {
     }
 }
 
-#[page_component]
+#[function_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
     yew::html! {
        <>
@@ -68,10 +68,7 @@ pub fn hashira() -> AppService {
     HashiraApp::<App>::new()
         .use_default_error_pages()
         .layout(root_layout)
-        .page("/", |ctx: RenderContext| async {
-            let res = ctx.render::<HomePage, _>().await;
-            Ok(res)
-        })
+        .page::<HomePage>()
         .nest("/todos", crate::pages::todos())
         .build()
 }

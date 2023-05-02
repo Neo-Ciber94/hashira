@@ -1,15 +1,33 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use syn::{parse::Parse, ItemFn, LitStr, Result};
 
+// #[page_component("/route")]
+// #[page_component("/route", loader = "path::to::function")]
+// #[page_component(None, loader = "path::to::function")]
+
 #[derive(Debug, Clone)]
 pub struct PageComponentAttr {
-    route: LitStr,
+    route: Option<LitStr>,
     loader: Option<Ident>,
 }
 
 impl Parse for PageComponentAttr {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
-        let route: LitStr = input.parse()?;
+        let route = {
+            if input.peek(syn::Ident) {
+                let none: Ident = input.parse()?;
+                if none.to_string() == "None" {
+                    None
+                } else {
+                    return Err(syn::Error::new(
+                        input.span(),
+                        "Expected `None` or string literal",
+                    ));
+                }
+            } else {
+                input.parse()?
+            }
+        };
 
         let _comma: Option<syn::Token![,]> = input.parse()?;
 
@@ -67,7 +85,7 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
         }
         None => {
             quote::quote! {
-                let res = ctx.render::<Self, BASE>();
+                let fut = ctx.render::<Self, BASE>();
                 std::boxed::Box::pin(fut)
             }
         }
