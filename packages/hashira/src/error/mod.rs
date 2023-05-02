@@ -3,7 +3,7 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-/// A convenient error type.
+/// A boxed error.
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// A error that occurred while processing a request.
@@ -16,10 +16,10 @@ pub struct ResponseError {
 
 impl ResponseError {
     /// Constructs a new `ResponseError`.
-    pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
+    pub fn new(status: StatusCode, message: impl Display) -> Self {
         ResponseError {
             status,
-            message: Some(message.into()),
+            message: Some(message.to_string()),
         }
     }
 
@@ -66,33 +66,33 @@ impl ResponseError {
 
 impl ResponseError {
     /// Returns a `400` bad request response error
-    pub fn bad_request(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::BAD_REQUEST, error)
+    pub fn bad_request(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::BAD_REQUEST, error)
     }
 
     /// Returns a `401` unauthorized response error
-    pub fn unauthorized(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::UNAUTHORIZED, error)
+    pub fn unauthorized(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::UNAUTHORIZED, error)
     }
 
     /// Returns a `403` forbidden response error
-    pub fn forbidden(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::FORBIDDEN, error)
+    pub fn forbidden(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::FORBIDDEN, error)
     }
 
     /// Returns a `404` not found response error
-    pub fn not_found(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::NOT_FOUND, error)
+    pub fn not_found(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::NOT_FOUND, error)
     }
 
     /// Returns a `422` unprocessable entity response error
-    pub fn unprocessable_entity(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::UNPROCESSABLE_ENTITY, error)
+    pub fn unprocessable_entity(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::UNPROCESSABLE_ENTITY, error)
     }
 
     /// Returns a `500` internal server error response error
-    pub fn internal_server_error(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::INTERNAL_SERVER_ERROR, error)
+    pub fn internal_server_error(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::INTERNAL_SERVER_ERROR, error)
     }
 }
 
