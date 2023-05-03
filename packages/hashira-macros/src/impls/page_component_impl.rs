@@ -50,7 +50,7 @@ impl Parse for PageComponentAttr {
         let ident_span = input.span();
         let ident: syn::Path = input.parse()?;
 
-        if ident != syn::parse_str("loader").unwrap() {
+        if !ident.is_ident("loader") {
             return Err(syn::Error::new(
                 ident_span,
                 "invalid signature, expected: #[page_component(loader = \"path::to::loader\")]",
@@ -88,7 +88,7 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
         }
         None => {
             // TODO: Use FutureExt::map
-            quote::quote! {                
+            quote::quote! {
                 std::boxed::Box::pin(async move {
                     let res = ctx.render::<Self, BASE>().await;
                     Ok(res)

@@ -78,3 +78,13 @@ fn TodoItem(props: &TodoItemProps) -> yew::Html {
         </div>
     }
 }
+
+
+mod x {
+    use hashira::{app::RequestContext, web::Response, types::BoxFuture};
+
+    trait Action {
+        fn route() -> &'static str;
+        fn call(ctx: RequestContext) -> BoxFuture<hashira::Result<Response>>;
+    }
+}
