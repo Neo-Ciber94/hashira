@@ -2,13 +2,13 @@ use proc_macro2::{Ident, Span, TokenStream};
 use syn::{parse::Parse, ItemFn, LitStr, Result};
 
 // #[page_component("/route")]
-// #[page_component("/route", loader = "path::to::function")]
-// #[page_component(None, loader = "path::to::function")]
+// #[page_component("/route", render = "path::to::function")]
+// #[page_component(None, render = "path::to::function")]
 
 #[derive(Debug, Clone)]
 pub struct PageComponentAttr {
     route: Option<LitStr>,
-    loader: Option<Ident>,
+    render: Option<Ident>,
 }
 
 impl Parse for PageComponentAttr {
@@ -37,33 +37,33 @@ impl Parse for PageComponentAttr {
         if _comma.is_none() {
             if !input.is_empty() {
                 return Err(input.error(
-                    "expected #[page_component(\"/route\", loader = \"path::to::loader\")]",
+                    "expected #[page_component(\"/route\", render = \"path::to::render\")]",
                 ));
             }
 
             return Ok(PageComponentAttr {
                 route,
-                loader: None,
+                render: None,
             });
         }
 
         let ident_span = input.span();
         let ident: syn::Path = input.parse()?;
 
-        if !ident.is_ident("loader") {
+        if !ident.is_ident("render") {
             return Err(syn::Error::new(
                 ident_span,
-                "invalid signature, expected: #[page_component(loader = \"path::to::loader\")]",
+                "invalid signature, expected: #[page_component(render = \"path::to::render\")]",
             ));
         }
 
         let _equals: syn::Token![=] = input.parse()?;
-        let loader_str: LitStr = input.parse()?;
-        let loader = Ident::new(&loader_str.value(), Span::call_site());
+        let render_str: LitStr = input.parse()?;
+        let render = Ident::new(&render_str.value(), Span::call_site());
 
         return Ok(PageComponentAttr {
             route,
-            loader: Some(loader),
+            render: Some(render),
         });
     }
 }
@@ -79,10 +79,10 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
         quote::quote! { Some(#lit_str) }
     };
 
-    let loader = match attr.loader {
-        Some(path) => {
+    let render = match attr.render {
+        Some(render_fn) => {
             quote::quote! {
-                let fut = #path (ctx);
+                let fut = ::hashira::components::handler::call_render(ctx, #render_fn);
                 std::boxed::Box::pin(fut)
             }
         }
@@ -113,11 +113,11 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
                 #route
             }
 
-            fn loader<BASE>(ctx: ::hashira::app::RenderContext)
+            fn render<BASE>(ctx: ::hashira::app::RenderContext)
                 -> ::hashira::types::BoxFuture<std::result::Result<::hashira::web::Response, ::hashira::error::Error>>
                 where
                     BASE: yew::BaseComponent<Properties = yew::html::ChildrenProps>,{
-                #loader
+                #render
             }
         }
 

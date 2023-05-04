@@ -14,7 +14,7 @@ async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
     Ok(res)
 }
 
-#[page_component("/", loader = "render")]
+#[page_component("/", render = "render")]
 pub fn HomePage() -> yew::Html {
     yew::html! {
         <div class="container">

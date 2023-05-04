@@ -72,7 +72,7 @@ where
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                 // Returns the future
-                COMP::loader::<BASE>(render_ctx)
+                COMP::render::<BASE>(render_ctx)
             }))
         }
 

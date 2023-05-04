@@ -36,7 +36,7 @@ pub struct EditTodoPageProps {
     todo: Todo,
 }
 
-#[page_component("/edit/:id", loader = "render")]
+#[page_component("/edit/:id", render = "render")]
 pub fn EditTodoPage(props: &EditTodoPageProps) -> yew::Html {
     yew::html! {
         <div class="mt-10">

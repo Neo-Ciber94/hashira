@@ -21,7 +21,7 @@ pub struct ListTodosPageProps {
     todos: Vec<Todo>,
 }
 
-#[page_component("/", loader = "render")]
+#[page_component("/", render = "render")]
 pub fn ListTodosPage(props: &ListTodosPageProps) -> yew::Html {
     yew::html! {
         <>
@@ -70,21 +70,11 @@ fn TodoItem(props: &TodoItemProps) -> yew::Html {
             }
 
             <div class="flex flex-row gap-2 text-sm justify-start font-semibold monospace mt-2">
-                <a class="text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-gray-300/20 block" 
+                <a class="text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-gray-300/20 block"
                     href={format!("/todos/edit/{}", props.todo.id)}>{"Edit"}</a>
-                <button class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-gray-300/20 block" 
+                <button class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-gray-300/20 block"
                     onclick={delete}>{"Delete"}</button>
             </div>
         </div>
-    }
-}
-
-
-mod x {
-    use hashira::{app::RequestContext, web::Response, types::BoxFuture};
-
-    trait Action {
-        fn route() -> &'static str;
-        fn call(ctx: RequestContext) -> BoxFuture<hashira::Result<Response>>;
     }
 }

@@ -51,7 +51,7 @@ impl PageComponent for ErrorPage {
         None
     }
 
-    fn loader<BASE>(
+    fn render<BASE>(
         mut ctx: crate::app::RenderContext,
     ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::Error>>
     where
@@ -101,7 +101,7 @@ impl PageComponent for NotFoundPage {
         None
     }
 
-    fn loader<BASE>(
+    fn render<BASE>(
         mut ctx: crate::app::RenderContext,
     ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::Error>>
     where

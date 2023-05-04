@@ -217,7 +217,7 @@ where
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                 // Returns the future
-                COMP::loader::<BASE>(render_ctx)
+                COMP::render::<BASE>(render_ctx)
             }))
         }
 
@@ -246,7 +246,7 @@ where
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                     // Returns the future
-                    COMP::loader::<BASE>(render_ctx).map_ok(|x| x.into_response())
+                    COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response())
                 }),
             );
         }
@@ -272,7 +272,7 @@ where
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
-                    let res = COMP::loader::<BASE>(render_ctx).map_ok(|x| x.into_response());
+                    let res = COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response());
 
                     // Returns the future
                     Box::pin(res)

@@ -8,7 +8,7 @@ async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
     Ok(res)
 }
 
-#[page_component("/add", loader = "render")]
+#[page_component("/add", render = "render")]
 pub fn AddTodoPage() -> yew::Html {
     yew::html! {
         <div class="mt-10">

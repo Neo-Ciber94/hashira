@@ -45,7 +45,7 @@ async fn hello_page_loader(mut ctx: RenderContext) -> Result<Response, hashira::
     Ok(res.into_response())
 }
 
-#[page_component("/", loader = "hello_page_loader")]
+#[page_component("/", render = "hello_page_loader")]
 pub fn HomePage() -> yew::Html {
     yew::html! {
         <div class="bg-gray-900 font-bold rounded-lg shadow-lg w-11/12 h-[400px]
