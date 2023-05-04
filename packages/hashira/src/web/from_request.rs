@@ -9,7 +9,7 @@ use crate::{
     error::Error,
 };
 use futures::Future;
-use http::StatusCode;
+use http::{HeaderMap, Method, StatusCode, Version, Uri};
 
 use super::{parse_body_to_bytes, ParseBodyOptions};
 
@@ -25,12 +25,57 @@ pub trait FromRequest: Sized {
     fn from_request(ctx: &RequestContext) -> Self::Fut;
 }
 
+impl FromRequest for RequestContext {
+    type Error = Infallible;
+    type Fut = Ready<Result<RequestContext, Infallible>>;
+
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ready(Ok(ctx.clone()))
+    }
+}
+
 impl FromRequest for () {
     type Error = Infallible;
     type Fut = Ready<Result<(), Self::Error>>;
 
     fn from_request(_ctx: &RequestContext) -> Self::Fut {
         ready(Ok(()))
+    }
+}
+
+impl FromRequest for Method {
+    type Error = Infallible;
+    type Fut = Ready<Result<Method, Infallible>>;
+
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ready(Ok(ctx.request().method().clone()))
+    }
+}
+
+impl FromRequest for HeaderMap {
+    type Error = Infallible;
+    type Fut = Ready<Result<HeaderMap, Infallible>>;
+
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ready(Ok(ctx.request().headers().clone()))
+    }
+}
+
+impl FromRequest for Version {
+    type Error = Infallible;
+    type Fut = Ready<Result<Version, Infallible>>;
+
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ready(Ok(ctx.request().version().clone()))
+    }
+}
+
+impl FromRequest for Uri {
+    type Error = Infallible;
+    type Fut = Ready<Result<Uri, Infallible>>;
+
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ready(Ok(ctx.request().uri().clone()))
     }
 }
 
