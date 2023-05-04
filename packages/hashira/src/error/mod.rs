@@ -1,7 +1,7 @@
-use crate::web::{IntoResponse, Json, Response};
+use crate::web::{FromRequest, IntoResponse, Json, Response};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{fmt::Display, future::Ready};
 
 /// A boxed error.
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -131,6 +131,24 @@ impl IntoResponse for ResponseError {
         // We also insert the error as an extension in the response
         res.extensions_mut().insert(this);
         res
+    }
+}
+
+// ResponseError is available for error handlers if an error ocurred,
+// checkout `AppService::handle_error`
+impl FromRequest for ResponseError {
+    type Error = Error;
+    type Fut = Ready<Result<ResponseError, Error>>;
+
+    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+        let err = ctx
+            .request()
+            .extensions()
+            .get::<ResponseError>()
+            .cloned()
+            .ok_or_else(|| format!("request does not contains an error").into());
+
+        std::future::ready(err)
     }
 }
 
