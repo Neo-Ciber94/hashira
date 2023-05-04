@@ -123,3 +123,112 @@ impl Future for StringFromRequestFuture {
         }
     }
 }
+
+// Adapted from: https://docs.rs/actix-web/latest/src/actix_web/extract.rs.html#413
+
+#[doc(hidden)]
+#[allow(non_snake_case)]
+mod tuple_from_req {
+    use super::{FromRequest, RequestContext};
+    use crate::error::Error;
+    use pin_project_lite::pin_project;
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    macro_rules! tuple_from_req {
+        ($fut: ident; $($T: ident),*) => {
+            /// FromRequest implementation for tuple
+            #[allow(unused_parens)]
+            impl<$($T: FromRequest + 'static),+> FromRequest for ($($T,)+)
+            {
+                type Error = Error;
+                type Fut = $fut<$($T),+>;
+
+                fn from_request(ctx: &RequestContext) -> Self::Fut {
+                    $fut {
+                        $(
+                            $T: ExtractFuture::Future {
+                                fut: $T::from_request(ctx)
+                            },
+                        )+
+                    }
+                }
+            }
+
+            pin_project! {
+                pub struct $fut<$($T: FromRequest),+> {
+                    $(
+                        #[pin]
+                        $T: ExtractFuture<$T::Fut, $T>,
+                    )+
+                }
+            }
+
+            impl<$($T: FromRequest),+> Future for $fut<$($T),+>
+            {
+                type Output = crate::Result<($($T,)+),>;
+
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                    let mut this = self.project();
+
+                    let mut ready = true;
+                    $(
+                        match this.$T.as_mut().project() {
+                            ExtractProj::Future { fut } => match fut.poll(cx) {
+                                Poll::Ready(Ok(output)) => {
+                                    let _ = this.$T.as_mut().project_replace(ExtractFuture::Done { output });
+                                },
+                                Poll::Ready(Err(e)) => return Poll::Ready(Err(e.into())),
+                                Poll::Pending => ready = false,
+                            },
+                            ExtractProj::Done { .. } => {},
+                            ExtractProj::Empty => unreachable!("FromRequest polled after finished"),
+                        }
+                    )+
+
+                    if ready {
+                        Poll::Ready(Ok(
+                            ($(
+                                match this.$T.project_replace(ExtractFuture::Empty) {
+                                    ExtractReplaceProj::Done { output } => output,
+                                    _ => unreachable!("FromRequest polled after finished"),
+                                },
+                            )+)
+                        ))
+                    } else {
+                        Poll::Pending
+                    }
+                }
+            }
+        };
+    }
+
+    pin_project! {
+        #[project = ExtractProj]
+        #[project_replace = ExtractReplaceProj]
+        enum ExtractFuture<Fut, Res> {
+            Future {
+                #[pin]
+                fut: Fut
+            },
+            Done {
+                output: Res,
+            },
+            Empty
+        }
+    }
+
+    tuple_from_req! { TupleFromRequest1; A }
+    tuple_from_req! { TupleFromRequest2; A, B }
+    tuple_from_req! { TupleFromRequest3; A, B, C }
+    tuple_from_req! { TupleFromRequest4; A, B, C, D }
+    tuple_from_req! { TupleFromRequest5; A, B, C, D, E }
+    tuple_from_req! { TupleFromRequest6; A, B, C, D, E, F }
+    tuple_from_req! { TupleFromRequest7; A, B, C, D, E, F, G }
+    tuple_from_req! { TupleFromRequest8; A, B, C, D, E, F, G, H }
+    tuple_from_req! { TupleFromRequest9; A, B, C, D, E, F, G, H, I }
+    tuple_from_req! { TupleFromRequest10; A, B, C, D, E, F, G, H, I, J }
+    tuple_from_req! { TupleFromRequest11; A, B, C, D, E, F, G, H, I, J, K }
+    tuple_from_req! { TupleFromRequest12; A, B, C, D, E, F, G, H, I, J, K, L }
+}

@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RequestContext, Route, AppData, DefaultHeaders,
+    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError,
 };
 use crate::{
     components::{
@@ -11,7 +11,7 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response, Redirect}, routing::PathRouter, types::BoxFuture,
+    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture,
 };
 use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
@@ -27,16 +27,24 @@ pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxedFuture<Html> + Send + 
 pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response> + Send + Sync>);
 
 impl PageHandler {
-    pub fn new<H, R, Fut>(handler: H) -> Self
+    pub fn new<H, Args>(handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut : Send
     {
-        PageHandler(Box::new(move |ctx| {
-            let ret = handler(ctx);
+        PageHandler(Box::new(move |ctx| {      
+            let handler = handler.clone();
             Box::pin(async move {
-                let ret = ret.await;
+                let args = match Args::from_request(&ctx).await {
+                    Ok(x) => x,
+                    Err(err) => {
+                        return ResponseError::with_error(err).into_response();
+                    }
+                };
+                let ret = handler.call(args).await;
                 ret.into_response()
             })
         }))
@@ -203,7 +211,7 @@ where
         {
             use crate::app::RenderContext;
 
-            self.route(Route::get(route, move |ctx| {
+            self.route(Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
@@ -506,7 +514,7 @@ impl<BASE> Default for App<BASE> {
 /// - The from/to are invalid uri
 pub fn redirect(from: &str, to: &str, status: StatusCode) -> Route {
     let to = to.to_owned();
-    Route::any(from, move |_| {
+    Route::any(from, move || {
         let to = to.clone();
         async move {       
             Redirect::new(to, status).expect("invalid redirection")

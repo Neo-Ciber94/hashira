@@ -2,10 +2,10 @@ use std::future::Future;
 
 use http::Method;
 
-use super::{PageHandler, RequestContext};
+use super::{Handler, PageHandler};
 use crate::{
     components::{id::PageId, AnyComponent},
-    web::IntoResponse,
+    web::{FromRequest, IntoResponse},
 };
 
 // Represents a client-side page route, containing a component and a path pattern.
@@ -116,11 +116,13 @@ pub struct Route {
 
 impl Route {
     /// Creates a new `ServerPageRoute` with the given path, HTTP method, and handler function.
-    pub fn new<H, R, Fut>(path: &str, method: Option<HttpMethod>, handler: H) -> Self
+    pub fn new<H, Args>(path: &str, method: Option<HttpMethod>, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Route {
             path: path.to_owned(),
@@ -130,81 +132,97 @@ impl Route {
     }
 
     /// Creates a new `Route` that matches any http method.
-    pub fn any<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn any<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, None, handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to POST.
-    pub fn post<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn post<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::POST), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to GET.
-    pub fn get<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn get<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::GET), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to HEAD.
-    pub fn head<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn head<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::HEAD), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to PUT.
-    pub fn put<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn put<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::PUT), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to DELETE.
-    pub fn delete<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn delete<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::DELETE), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to OPTIONS.
-    pub fn options<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn options<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::OPTIONS), handler)
     }
 
     /// Creates a new `Route` with the HTTP method set to PATCH.
-    pub fn patch<H, R, Fut>(path: &str, handler: H) -> Self
+    pub fn patch<H, Args>(path: &str, handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut: Send,
     {
         Self::new(path, Some(HttpMethod::PATCH), handler)
     }

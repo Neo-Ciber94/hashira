@@ -1,10 +1,11 @@
+use std::ops::Deref;
+
 use super::RenderLayout;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
+use crate::error::Error;
 pub use crate::error::ResponseError;
-use crate::routing::Params;
 use crate::web::{IntoResponse, Redirect};
-use crate::{error::Error, web::Request};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
     web::Response,
@@ -46,21 +47,6 @@ impl RenderContext {
 }
 
 impl RenderContext {
-    /// Returns the path of the current request.
-    pub fn path(&self) -> &str {
-        self.context.path()
-    }
-
-    /// Returns the current request.
-    pub fn request(&self) -> &Request {
-        self.context.request()
-    }
-
-    /// Returns the matching params of the route.
-    pub fn params(&self) -> &Params {
-        self.context.params()
-    }
-
     /// Adds a `<title>` element to the page head.
     pub fn title(&mut self, title: impl Into<String>) {
         self.head.title(title);
@@ -116,7 +102,7 @@ impl RenderContext {
         // Return a text/html response
         match self.render_html::<COMP, BASE>().await {
             Ok(html) => Html(html).into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
+            Err(err) => ResponseError::with_error(err).into_response(),
         }
     }
 
@@ -133,7 +119,7 @@ impl RenderContext {
         // Return a text/html response
         match self.render_html_with_props::<COMP, BASE>(props).await {
             Ok(html) => Html(html).into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
+            Err(err) => ResponseError::with_error(err).into_response(),
         }
     }
 
@@ -154,7 +140,7 @@ impl RenderContext {
             // Return a stream text/html response
             match self.render_html_stream::<COMP, BASE>().await {
                 Ok(stream) => StreamResponse(stream).into_response(),
-                Err(err) => ResponseError::from_error(err).into_response(),
+                Err(err) => ResponseError::with_error(err).into_response(),
             }
         }
     }
@@ -180,7 +166,7 @@ impl RenderContext {
                 .await
             {
                 Ok(stream) => StreamResponse(stream).into_response(),
-                Err(err) => ResponseError::from_error(err).into_response(),
+                Err(err) => ResponseError::with_error(err).into_response(),
             }
         }
     }
@@ -334,5 +320,13 @@ impl RenderContext {
             error_router,
             request_context,
         }
+    }
+}
+
+impl Deref for RenderContext {
+    type Target = RequestContext;
+
+    fn deref(&self) -> &Self::Target {
+        &self.context
     }
 }

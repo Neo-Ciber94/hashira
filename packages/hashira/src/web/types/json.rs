@@ -26,7 +26,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
         let json = match serde_json::to_string(&self.0) {
             Ok(s) => s,
             Err(err) => {
-                return ResponseError::from_error(err).into_response();
+                return ResponseError::with_error(err).into_response();
             }
         };
 

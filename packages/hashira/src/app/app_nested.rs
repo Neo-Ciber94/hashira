@@ -1,4 +1,4 @@
-use super::{ClientPageRoute, Route};
+use super::{ClientPageRoute, Route, RequestContext};
 use crate::components::id::PageId;
 use crate::components::PageComponent;
 use serde::de::DeserializeOwned;
@@ -66,7 +66,7 @@ where
         {
             use crate::app::{RenderLayout, RenderContext};
 
-            self.route(Route::get(route, move |ctx| {
+            self.route(Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);

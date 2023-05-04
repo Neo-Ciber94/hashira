@@ -24,7 +24,7 @@ impl ResponseError {
     }
 
     /// Constructs a new `ResponseError` from an error and the given `StatusCode`.
-    pub fn from_error_with_status<E: Into<Error>>(status: StatusCode, error: E) -> Self {
+    pub fn with_error_and_status<E: Into<Error>>(status: StatusCode, error: E) -> Self {
         let err = error.into();
         match err.downcast::<ResponseError>() {
             Ok(err) => *err,
@@ -36,8 +36,8 @@ impl ResponseError {
     }
 
     /// Constructs a new `ResponseError` from an error.
-    pub fn from_error<E: Into<Error>>(error: E) -> Self {
-        Self::from_error_with_status(StatusCode::INTERNAL_SERVER_ERROR, error)
+    pub fn with_error<E: Into<Error>>(error: E) -> Self {
+        Self::with_error_and_status(StatusCode::INTERNAL_SERVER_ERROR, error)
     }
 
     /// Constructs an error from the given status code.
