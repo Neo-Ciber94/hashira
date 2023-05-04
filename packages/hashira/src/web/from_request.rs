@@ -7,9 +7,10 @@ use std::{
 use crate::{
     app::{RequestContext, ResponseError},
     error::Error,
+    routing::Params,
 };
 use futures::Future;
-use http::{HeaderMap, Method, StatusCode, Version, Uri};
+use http::{HeaderMap, Method, StatusCode, Uri, Version};
 
 use super::{parse_body_to_bytes, ParseBodyOptions};
 
@@ -76,6 +77,15 @@ impl FromRequest for Uri {
 
     fn from_request(ctx: &RequestContext) -> Self::Fut {
         ready(Ok(ctx.request().uri().clone()))
+    }
+}
+
+impl FromRequest for Params {
+    type Error = Infallible;
+    type Fut = Ready<Result<Params, Infallible>>;
+
+    fn from_request(ctx: &RequestContext) -> Self::Fut {
+        ready(Ok(ctx.params().clone()))
     }
 }
 
