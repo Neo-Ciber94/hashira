@@ -4,7 +4,7 @@ mod page;
 mod page_component;
 mod root;
 mod props_with_children;
-
+mod form;
 //
 pub mod error;
 
@@ -18,3 +18,4 @@ pub use page::*;
 pub use page_component::*;
 pub use root::*;
 pub use props_with_children::*;
+pub use form::*;

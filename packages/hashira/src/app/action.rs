@@ -5,7 +5,7 @@ use serde::{de::DeserializeOwned, Serialize};
 /// An action that can be execute on the server.
 pub trait Action {
     /// The output of the action response.
-    type Output: DeserializeOwned + Serialize;
+    type Output: DeserializeOwned + Serialize + 'static;
 
     /// The path of the route.
     fn route() -> &'static str;
@@ -36,7 +36,7 @@ pub mod hooks {
         error::Error,
         web::{Form, Json},
     };
-    use http::header;
+    use http::{header, Method};
     use serde::Serialize;
     use std::marker::PhantomData;
     use thiserror::Error;
@@ -170,7 +170,6 @@ pub mod hooks {
     impl<A, T> UseActionHandle<A, T>
     where
         A: Action,
-        A::Output: 'static,
         T: IntoRequestInit,
     {
         pub fn is_loading(&self) -> bool {
@@ -199,7 +198,19 @@ pub mod hooks {
         }
 
         #[cfg(target_arch = "wasm32")]
+        #[allow(unused_variables)]
         pub fn send(&self, obj: T) -> Result<(), Error> {
+            self.send_with_method(Method::POST, obj)
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[allow(unused_variables)]
+        pub fn send_with_method(&self, method: Method, obj: T) -> Result<(), Error> {
+            unreachable!("client only function")
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        pub fn send_with_method(&self, method: Method, obj: T) -> Result<(), Error> {
             use serde::de::DeserializeOwned;
             use wasm_bindgen_futures::JsFuture;
 
@@ -240,7 +251,7 @@ pub mod hooks {
             let result = self.result.clone();
 
             let mut init = obj.into_request_init()?;
-            init.method("POST");
+            init.method(method.as_str());
 
             let request =
                 web_sys::Request::new_with_str_and_init(A::route(), &init).map_err(JsError::new)?;
@@ -255,11 +266,33 @@ pub mod hooks {
         }
     }
 
+    impl<A, T> Clone for UseActionHandle<A, T>
+    where
+        A: Action,
+    {
+        fn clone(&self) -> Self {
+            Self {
+                loading: self.loading.clone(),
+                result: self.result.clone(),
+                _marker: self._marker.clone(),
+            }
+        }
+    }
+
+    impl<A, T> PartialEq for UseActionHandle<A, T>
+    where
+        A: Action,
+    {
+        fn eq(&self, other: &Self) -> bool {
+            // TODO: Add proper equality implementation
+            self.loading == other.loading && std::ptr::eq(&*self.result, &*other.result)
+        }
+    }
+
     #[hook]
     pub fn use_action<A, T>() -> UseActionHandle<A, T>
     where
         A: Action,
-        A::Output: 'static,
         T: IntoRequestInit,
     {
         let result = use_state(|| None);
