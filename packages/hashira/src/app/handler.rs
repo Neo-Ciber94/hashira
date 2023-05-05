@@ -1,7 +1,7 @@
 use futures::Future;
 
 /// A request handler.
-pub trait Handler<Args> : Clone + 'static {
+pub trait Handler<Args>: Clone + 'static {
     type Output;
     type Future: Future<Output = Self::Output>;
 

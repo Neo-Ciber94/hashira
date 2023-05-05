@@ -8,6 +8,7 @@ use hashira::{
     app::{redirect, App as HashiraApp, AppService, LayoutContext},
     server::{LinkTag, PageLinks},
 };
+use pages::CreateTodoAction;
 use yew::{function_component, html::ChildrenProps};
 
 use crate::components::NavBar;
@@ -16,6 +17,7 @@ use crate::components::NavBar;
 pub fn hashira() -> AppService {
     HashiraApp::<App>::new()
         .use_default_error_pages()
+        .action::<CreateTodoAction>()
         .layout(root_layout)
         .route(redirect("/", "/todos", StatusCode::PERMANENT_REDIRECT))
         .nest("/todos", crate::pages::todos())

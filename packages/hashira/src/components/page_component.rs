@@ -52,7 +52,7 @@ pub mod handler {
     macro_rules! impl_render_handler_tuple ({ $($param:ident)* } => {
         impl<Func, Fut, $($param,)*> RenderHandler<($($param,)*)> for Func
         where
-            Func: Fn(crate::app::RenderContext, $($param),*) -> Fut + Clone + 'static,
+            Func: Fn(RenderContext, $($param),*) -> Fut + Clone + 'static,
             Fut::Output: IntoResponse,
             Fut: Future,
         {
@@ -61,7 +61,7 @@ pub mod handler {
 
             #[inline]
             #[allow(non_snake_case)]
-            fn call(&self, ctx: crate::app::RenderContext, ($($param,)*): ($($param,)*)) -> Self::Future {
+            fn call(&self, ctx: RenderContext, ($($param,)*): ($($param,)*)) -> Self::Future {
                 (self)(ctx, $($param,)*)
             }
         }

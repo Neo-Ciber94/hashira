@@ -11,6 +11,7 @@ mod render_context;
 mod request_context;
 mod route;
 
+pub use action::handler::call_action;
 pub use action::*;
 pub use app::*;
 pub use app_data::*;

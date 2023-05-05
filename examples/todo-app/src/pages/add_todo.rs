@@ -1,6 +1,26 @@
-use hashira::{app::RenderContext, page_component, web::Response};
+use std::future::ready;
+
+use hashira::{
+    app::{hooks::use_action, Action, RenderContext},
+    page_component,
+    web::{Json, Response},
+};
 
 use crate::App;
+
+pub struct CreateTodoAction;
+impl Action for CreateTodoAction {
+    type Data = Json<String>;
+    type Output = String;
+
+    fn route() -> &'static str {
+        "/api/todo/create"
+    }
+
+    fn call(ctx: hashira::app::RequestContext) -> hashira::types::BoxFuture<Self::Output> {
+        Box::pin(ready(String::from("hello world")))
+    }
+}
 
 async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
     ctx.title("Todo App | Add");
@@ -10,6 +30,12 @@ async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
 
 #[page_component("/add", render = "render")]
 pub fn AddTodoPage() -> yew::Html {
+    let action = use_action::<CreateTodoAction>();
+
+    let on_submit = move |_| {
+        action.send(Json(String::from("hello"))).unwrap();
+    };
+
     yew::html! {
         <div class="mt-10">
             <form class="border rounded p-4" method="POST" action="/api/todos">
@@ -36,7 +62,8 @@ pub fn AddTodoPage() -> yew::Html {
                 </div>
                 <div class="flex flex-row gap-4 justify-end">
                     <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                        type={"submit"}>
+                        type={"submit"}
+                        onsubmit={on_submit}>
                         {"Create Todo"}
                     </button>
                     <a href="/" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"

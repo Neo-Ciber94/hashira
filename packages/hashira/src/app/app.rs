@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError,
+    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError, Action,
 };
 use crate::{
     components::{
@@ -11,8 +11,9 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture,
+    web::{IntoResponse, Response, Redirect, FromRequest, Body}, routing::PathRouter, types::BoxFuture,
 };
+
 use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
@@ -290,6 +291,25 @@ where
     {
         self.error_page::<NotFoundPage>(StatusCode::NOT_FOUND)
             .error_page_fallback::<ErrorPage>()
+    }
+
+    /// Register a server action.
+    pub fn action<A: Action>(self) -> Self {
+        #[cfg(not(feature = "client"))]
+        {
+            let route = A::route().to_string();
+            let method = Some(A::method());
+            self.route(Route::new(&route, method, |ctx: RequestContext| async move {
+                let res = crate::try_response!(A::call(ctx).await);
+                let (parts, data) = res.into_parts();
+                let bytes = crate::try_response!(serde_json::to_vec(&data));
+                let body = Body::from(bytes);
+                Response::from_parts(parts, body)
+            }))
+        }
+
+        #[cfg(feature = "client")]
+        self
     }
 
     /// Adds a shared state that will be shared between server and client.

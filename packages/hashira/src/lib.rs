@@ -62,3 +62,17 @@ pub mod consts {
     #[cfg(feature = "client")]
     pub const IS_SERVER: bool = false;
 }
+
+
+/// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
+#[macro_export]
+macro_rules! try_response {
+    ($result:expr) => {
+        match $result {
+            Ok(res) => res,
+            Err(err) => {
+                return $crate::error::ResponseError::with_error(err).into_response();
+            }
+        }
+    };
+}
