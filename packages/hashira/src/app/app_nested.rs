@@ -1,4 +1,5 @@
-use super::{ClientPageRoute, Route, RequestContext};
+use super::{ClientPageRoute, Route};
+use crate::action::Action;
 use crate::components::id::PageId;
 use crate::components::PageComponent;
 use serde::de::DeserializeOwned;
@@ -64,7 +65,7 @@ where
 
         #[cfg(not(feature = "client"))]
         {
-            use crate::app::{RenderLayout, RenderContext};
+            use crate::app::{RenderContext, RenderLayout, RequestContext};
 
             self.route(Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
@@ -77,6 +78,35 @@ where
         }
 
         // In the client we don't add pages, just the component
+        #[cfg(feature = "client")]
+        self
+    }
+
+    /// Register a server action.
+    pub fn action<A>(self) -> Self
+    where
+        A: Action,
+    {
+        #[cfg(not(feature = "client"))]
+        {
+            use crate::app::RequestContext;
+            use crate::web::{Body, IntoJsonResponse, Response};
+
+            let route = A::route().to_string();
+            let method = Some(A::method());
+            self.route(Route::new(
+                &route,
+                method,
+                |ctx: RequestContext| async move {
+                    let res = crate::try_response!(A::call(ctx).await.into_json_response());
+                    let (parts, data) = res.into_parts();
+                    let bytes = crate::try_response!(serde_json::to_vec(&data));
+                    let body = Body::from(bytes);
+                    Response::from_parts(parts, body)
+                },
+            ))
+        }
+
         #[cfg(feature = "client")]
         self
     }

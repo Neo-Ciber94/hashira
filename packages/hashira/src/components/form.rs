@@ -1,9 +1,9 @@
-use http::Method;
-use yew::TargetCast;
+use http::{header, Method};
 use web_sys::FormData;
+use yew::TargetCast;
 use yew::{function_component, Children, Properties};
 
-use crate::app::{hooks::UseActionHandle, Action};
+use crate::action::{Action, RequestOptions, UseActionHandle};
 
 #[derive(Properties)]
 pub struct FormProps<A>
@@ -60,13 +60,24 @@ where
 {
     let action = props.action.clone();
     let method = props.method.clone();
+    let enc_type = props.enc_type.clone();
     let on_submit = move |event: yew::html::onsubmit::Event| {
         event.prevent_default();
 
         let form = event.target_dyn_into().unwrap();
         let form_data = FormData::new_with_form(&form).unwrap();
+        let opts = RequestOptions::new().method(method.clone());
+
+        // By default FormData is set to `multipart/form-data` so we let the browser handle it
+        if enc_type.as_str() != "multipart/form-data" {
+            opts.header(
+                header::CONTENT_TYPE,
+                header::HeaderValue::from_str(&enc_type).expect("invalid enc type"),
+            );
+        }
+
         action
-            .send_with_method(method.clone(), form_data)
+            .send_with_options(form_data, opts)
             .expect("failed to send form");
     };
 
@@ -77,7 +88,7 @@ where
             class={props.class.clone()}
             style={props.style.clone()}
             action={A::route()}
-            enctype={props.enc_type.clone()}
+            enctype={props.enc_type.clone()} // this is ignored if we had JS, we send the form manually
         >
             {for props.children.iter()}
         </form>

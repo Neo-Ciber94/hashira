@@ -1,3 +1,6 @@
+mod fetch_json;
+pub use fetch_json::*;
+
 use crate::app::AppService;
 use crate::components::{PageData, PageProps};
 use crate::context::ServerContext;
@@ -52,8 +55,8 @@ where
 }
 
 // TODO: during development show a modal with the error,
-// this way the error is not just shallowed by the console
-#[cfg_attr(not(feature = "hooks"), allow(dead_code, unused_variables))]
+// this way the error is not just hidden by the console
+#[allow(dead_code, unused_variables)]
 fn set_panic_hook(service: &AppService) {
     #[cfg(feature = "hooks")]
     {

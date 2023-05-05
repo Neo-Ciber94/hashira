@@ -1,3 +1,6 @@
+mod js_error;
+pub use js_error::*;
+
 use crate::web::{FromRequest, IntoResponse, Json, Response};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};

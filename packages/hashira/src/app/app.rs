@@ -2,7 +2,7 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError, Action,
+    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError,
 };
 use crate::{
     components::{
@@ -11,7 +11,7 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response, Redirect, FromRequest, Body}, routing::PathRouter, types::BoxFuture,
+    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture, action::Action,
 };
 
 use http::{status::StatusCode, HeaderMap};
@@ -294,13 +294,15 @@ where
     }
 
     /// Register a server action.
-    pub fn action<A: Action>(self) -> Self {
+    pub fn action<A>(self) -> Self where A: Action {
         #[cfg(not(feature = "client"))]
         {
+            use crate::web::{Body, IntoJsonResponse};
+
             let route = A::route().to_string();
             let method = Some(A::method());
             self.route(Route::new(&route, method, |ctx: RequestContext| async move {
-                let res = crate::try_response!(A::call(ctx).await);
+                let res = crate::try_response!(A::call(ctx).await.into_json_response());
                 let (parts, data) = res.into_parts();
                 let bytes = crate::try_response!(serde_json::to_vec(&data));
                 let body = Body::from(bytes);

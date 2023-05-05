@@ -33,7 +33,7 @@ impl Action for CreateTodoAction {
 
 // #[action("/api/todo/create")]
 #[cfg(not(target_arch = "wasm32"))]
-async fn create_todo_action() -> hashira::Result<Response<String>> {
+async fn CreateTodoAction() -> hashira::Result<Response<String>> {
     tokio::time::sleep(Duration::from_secs(2)).await;
     let res = Response::new("Hello World!".to_owned());
     Ok(res)

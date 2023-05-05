@@ -1,4 +1,3 @@
-mod action;
 #[allow(clippy::module_inception)]
 mod app;
 mod app_data;
@@ -11,8 +10,6 @@ mod render_context;
 mod request_context;
 mod route;
 
-pub use action::handler::call_action;
-pub use action::*;
 pub use app::*;
 pub use app_data::*;
 pub use app_nested::*;

@@ -23,6 +23,9 @@ pub mod routing;
 pub mod server;
 pub mod web;
 
+/// Server actions.
+pub mod action;
+
 // Allow public?
 pub(crate) mod context;
 
