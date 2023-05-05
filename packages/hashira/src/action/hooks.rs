@@ -109,6 +109,7 @@ impl IntoRequestInit for FormData {
     }
 }
 
+/// Additional options to set to a client request.
 #[derive(Debug, Clone)]
 pub struct RequestOptions {
     headers: HeaderMap,
@@ -116,6 +117,7 @@ pub struct RequestOptions {
 }
 
 impl RequestOptions {
+    /// Constructs a default instance.
     pub fn new() -> Self {
         RequestOptions {
             headers: HeaderMap::new(),
@@ -123,6 +125,10 @@ impl RequestOptions {
         }
     }
 
+    /// Append a header.
+    /// 
+    /// # Panic
+    /// If the name or value are invalid.
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
@@ -140,6 +146,10 @@ impl RequestOptions {
         self
     }
 
+    /// Attempts to append a header.
+    /// 
+    /// # Returns
+    /// An error if the header name or value are invalid.
     pub fn try_header<K, V>(mut self, key: K, value: V) -> Result<Self, Error>
     where
         HeaderName: TryFrom<K>,
@@ -153,6 +163,7 @@ impl RequestOptions {
         Ok(self)
     }
 
+    /// Changes the method used to send the request.
     pub fn method(mut self, method: Method) -> Self {
         self.method = method;
         self
