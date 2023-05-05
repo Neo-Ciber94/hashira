@@ -319,25 +319,25 @@ where
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(not(feature="wasm32"))]
+    #[cfg(not(target_arch="wasm32"))]
     pub fn server_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(feature="wasm32")]
+    #[cfg(target_arch="wasm32")]
     pub fn server_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(feature="wasm32")]
+    #[cfg(target_arch="wasm32")]
     pub fn client_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(not(feature="wasm32"))]
+    #[cfg(not(target_arch="wasm32"))]
     pub fn client_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }

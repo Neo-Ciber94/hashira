@@ -84,7 +84,7 @@ pub mod hooks {
             headers
                 .set(
                     header::CONTENT_TYPE.as_str(),
-                    mime::APPLICATION_JAVASCRIPT_UTF_8.essence_str(),
+                    mime::APPLICATION_JSON.essence_str(),
                 )
                 .map_err(JsError::new)?;
 
@@ -192,13 +192,13 @@ pub mod hooks {
             self.result.as_ref().and_then(|x| x.as_ref().err())
         }
 
-        #[cfg(not(feature = "wasm32"))]
+        #[cfg(not(target_arch = "wasm32"))]
         #[allow(unused_variables)]
         pub fn send(&self, obj: T) -> Result<(), Error> {
             unreachable!("client only function")
         }
 
-        #[cfg(feature = "wasm32")]
+        #[cfg(target_arch = "wasm32")]
         pub fn send(&self, obj: T) -> Result<(), Error> {
             use serde::de::DeserializeOwned;
             use wasm_bindgen_futures::JsFuture;
@@ -239,7 +239,9 @@ pub mod hooks {
             let _guard = OnDrop(Some(move || loading.set(false)));
             let result = self.result.clone();
 
-            let init = obj.into_request_init()?;
+            let mut init = obj.into_request_init()?;
+            init.method("POST");
+
             let request =
                 web_sys::Request::new_with_str_and_init(A::route(), &init).map_err(JsError::new)?;
 
@@ -273,25 +275,29 @@ pub mod hooks {
 
 // A handler for server actions.
 pub mod handler {
+    use serde::{de::DeserializeOwned, Serialize};
+
     use crate::{
         app::{Handler, RequestContext},
-        web::{FromRequest, IntoResponse, Response},
+        web::{FromRequest, Response},
     };
 
     /// Calls an action handler.
-    pub async fn call_action<H, Args>(ctx: RequestContext, handler: H) -> crate::Result<Response>
+    pub async fn call_action<T, H, Args>(
+        ctx: RequestContext,
+        handler: H,
+    ) -> crate::Result<Response<T>>
     where
         Args: FromRequest,
-        H: Handler<Args>,
-        H::Output: IntoResponse,
+        H: Handler<Args, Output = crate::Result<Response<T>>>,
+        T: Serialize + DeserializeOwned,
     {
         let args = match Args::from_request(&ctx).await {
             Ok(x) => x,
             Err(err) => return Err(err.into()),
         };
 
-        let ret = handler.call(args).await;
-        let res = ret.into_response();
+        let res = handler.call(args).await?;
         Ok(res)
     }
 }
