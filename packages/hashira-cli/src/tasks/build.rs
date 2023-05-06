@@ -19,6 +19,9 @@ use tokio::io::BufReader;
 use tokio::process::{Child, Command};
 use tokio::sync::broadcast::Sender;
 use wasm_opt::OptimizationOptions;
+
+pub(crate) const STYLE_SHEET_FILES: &[&str] = &["global.css", "global.scss", "global.sass", "global.less"];
+
 #[derive(Debug)]
 struct IncludeFiles {
     path: PathBuf,
@@ -518,7 +521,6 @@ async fn process_assets(
 }
 
 fn detect_stylesheet_file() -> anyhow::Result<Option<PathBuf>> {
-    const STYLE_SHEET_FILES: &[&str] = &["global.css", "global.scss", "global.sass", "global.less"];
     let cwd = std::env::current_dir().context("failed to get current working directory")?;
 
     for file in STYLE_SHEET_FILES {

@@ -15,17 +15,14 @@ use notify::RecursiveMode;
 use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicBool;
-use std::{
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::{
     broadcast::{channel, Receiver, Sender},
     Mutex,
 };
 use tokio_stream::wrappers::BroadcastStream;
+
+use super::build::STYLE_SHEET_FILES;
 
 pub struct DevTask {
     // Options for running the application in watch mode
@@ -203,25 +200,20 @@ impl DevTask {
         let mut debouncer = new_debouncer(Duration::from_secs(1), None, tx_debounced)
             .with_context(|| "failed to start watcher")?;
 
-        let watch_path = Path::new(".").canonicalize()?;
-        tracing::info!("Watching: {}", watch_path.display());
-
-        // Watch base path
-        debouncer
-            .watcher()
-            .watch(&watch_path, RecursiveMode::Recursive)
-            .expect("failed to watch directory");
+        let mut watch_paths = self.get_default_watcher_paths()?;
+        watch_paths.extend(self.watch.clone());
 
         // Watch any additional path
-        for watch in &self.watch {
+        for watch in watch_paths {
             anyhow::ensure!(
                 watch.exists(),
                 "path to watch `{}` was not found",
                 watch.display()
             );
+
             debouncer
                 .watcher()
-                .watch(watch, RecursiveMode::Recursive)
+                .watch(&watch, RecursiveMode::Recursive)
                 .unwrap();
 
             tracing::info!("Watching: {}", watch.display());
@@ -249,6 +241,36 @@ impl DevTask {
         });
 
         Ok(())
+    }
+
+    fn get_default_watcher_paths(&self) -> anyhow::Result<Vec<PathBuf>> {
+        let mut paths = vec![];
+        let cwd = std::env::current_dir()?;
+        let src = cwd.join("src");
+
+        paths.push(src);
+
+        for style_file in STYLE_SHEET_FILES {
+            let path = cwd.join(style_file);
+
+            // We can only had 1, but the build take care of that
+            if path.exists() {
+                paths.push(path)
+            }
+        }
+
+        let public_dir = cwd.join(&self.options.public_dir);
+
+        if public_dir.exists() {
+            paths.push(public_dir);
+        }
+
+        let cargo_toml = cwd.join("Cargo.toml");
+        if cargo_toml.exists() {
+            paths.push(cargo_toml);
+        }
+
+        Ok(paths)
     }
 }
 
@@ -308,6 +330,10 @@ struct RestartOptions {
 }
 
 fn change_inside_src(events: &[DebouncedEvent]) -> bool {
+    if events.is_empty() {
+        return false;
+    }
+
     let cwd = std::env::current_dir().unwrap();
     let src_dir = dunce::canonicalize(cwd.join("src")).unwrap();
 
@@ -339,6 +365,15 @@ async fn restart(opts: Arc<RestartOptions>, mut events: Vec<DebouncedEvent>, is_
     // Remove any ignored path
     remove_ignored_paths(&opts, &mut events);
 
+    if events.is_empty() && !is_first_run {
+        return;
+    }
+
+    let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
+    if !paths.is_empty() {
+        tracing::info!("Change detected on: {:#?}", paths);
+    }
+
     if !is_first_run {
         // Only assets changed, reload
         if !change_inside_src(&events) {
@@ -361,27 +396,20 @@ async fn restart(opts: Arc<RestartOptions>, mut events: Vec<DebouncedEvent>, is_
         }
     }
 
-    // // A guard to prevent concurrent access to build the app
-    let lock = match BUILD_LOCK.try_lock() {
+    // A guard to prevent concurrent access to build the app
+    let _lock = match BUILD_LOCK.try_lock() {
         Ok(x) => {
-            // Interrupt the current build task, if any
-            tracing::debug!("src changed, sending interrupt signal...");
-            let _ = opts.interrupt_signal.send(());
+            if !is_first_run {
+                tracing::debug!("src changed, sending interrupt signal...");
+                let _ = opts.interrupt_signal.send(());
+            }
             x
         }
-        Err(_) => {
+        Err(err) => {
+            tracing::debug!("lock error: {err}");
             return;
         }
     };
-
-    if events.is_empty() && !is_first_run {
-        return;
-    }
-
-    let paths = events.iter().map(|e| &e.path).cloned().collect::<Vec<_>>();
-    if !paths.is_empty() {
-        tracing::info!("Change detected on: {:#?}", paths);
-    }
 
     // Run task
     let mut run_task = RunTask {
@@ -416,9 +444,6 @@ async fn restart(opts: Arc<RestartOptions>, mut events: Vec<DebouncedEvent>, is_
             tracing::error!("Failed: {err}");
         }
     }
-
-    // Release the lock
-    drop(lock);
 
     // Execute binary
     if let Err(err) = run_task.exec().await {
