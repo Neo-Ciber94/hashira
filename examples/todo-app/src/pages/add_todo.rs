@@ -4,13 +4,15 @@ use crate::{
 };
 use hashira::{
     action,
-    actions::use_action,
+    actions::{use_action, use_action_with_callback},
     app::RenderContext,
     components::Form,
     page_component,
+    utils::redirect_to,
     web::Inject,
     web::{Json, Response},
 };
+use yew::classes;
 
 #[action("/api/todos/create")]
 #[cfg(feature = "client")]
@@ -53,14 +55,21 @@ async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
 
 #[page_component("/add", render = "render")]
 pub fn AddTodoPage() -> yew::Html {
-    let action = use_action();
+    let action = use_action_with_callback(|ret| {
+        if ret.is_ok() {
+            redirect_to("/");
+        }
+    });
+
+    let loading_class = if action.is_loading {
+        "animation-pulse"
+    } else {
+        ""
+    };
 
     yew::html! {
         <div class="mt-10 w-11/12 md:w-2/3 lg:w-[700px] mx-auto">
-            if action.is_loading() {
-                <div>{"Loading..."}</div>
-            }
-            <Form<CreateTodoAction> action={action.clone()} class="border rounded p-4">
+            <Form<CreateTodoAction> action={action.clone()} class={classes!("border rounded p-4", loading_class)}>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2" for="title">
                     {"Title"}

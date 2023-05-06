@@ -5,4 +5,5 @@
     "tailwindCSS.includeLanguages": {
         "rust": "html",
     },
+    "rust-analyzer.checkOnSave": false,
 }

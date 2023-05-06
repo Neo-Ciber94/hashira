@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// An action that can be execute on the server.
-pub trait Action {
+pub trait Action: 'static {
     /// The type of the body of the action response.
     type Response: IntoJsonResponse + 'static;
 

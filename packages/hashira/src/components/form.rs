@@ -1,6 +1,6 @@
 use http::Method;
 use web_sys::{window, FormData};
-use yew::TargetCast;
+use yew::{TargetCast, Classes};
 use yew::{function_component, Children, Properties};
 
 use crate::actions::{Action, AnyForm, RequestOptions, UseActionHandle};
@@ -20,7 +20,7 @@ where
 
     /// Classes of the form.
     #[prop_or_default]
-    pub class: Option<String>,
+    class: Classes,
 
     /// Styles of the form.
     #[prop_or_default]

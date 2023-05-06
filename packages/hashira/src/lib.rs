@@ -80,3 +80,21 @@ macro_rules! try_response {
         }
     };
 }
+
+/// Client side utilities.
+pub mod utils {
+
+    // FIXME: When we implement the client routing this should be done with a router hook.
+    /// Redirects to the given route.
+    #[allow(unused_variables)]
+    pub fn redirect_to(route: &str) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::{window, Window};
+
+            let window = window().unwrap();
+            let location = window.location();
+            location.assign(route);
+        }
+    }
+}

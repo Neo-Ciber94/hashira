@@ -9,10 +9,10 @@ use http::{
 };
 use js_sys::Array;
 use serde::Serialize;
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, marker::PhantomData, ops::Deref};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{FormData, Headers, RequestInit, UrlSearchParams};
-use yew::{hook, use_state, UseStateHandle};
+use yew::{hook, use_state, Callback, UseStateHandle};
 
 /// Initialization params for a request.
 #[derive(Default, Debug, Clone)]
@@ -260,13 +260,30 @@ impl Default for RequestOptions {
     }
 }
 
+#[allow(type_alias_bounds)]
+type ActionData<A: Action> = <A::Response as IntoJsonResponse>::Data;
+
+#[allow(type_alias_bounds)]
+type ActionResult<A: Action> = crate::Result<ActionData<A>>;
+
+pub struct UseActionRef<A: Action>(UseStateHandle<Option<ActionResult<A>>>);
+
+impl<A: Action> Deref for UseActionRef<A> {
+    type Target = ActionResult<A>;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("action value was not ready")
+    }
+}
+
 /// A handle for a server action.
 pub struct UseActionHandle<A, T>
 where
     A: Action,
 {
     loading: UseStateHandle<bool>,
-    result: UseStateHandle<Option<Result<<A::Response as IntoJsonResponse>::Data, Error>>>,
+    result: UseStateHandle<Option<ActionResult<A>>>,
+    on_complete: Option<Callback<UseActionRef<A>>>,
     _marker: PhantomData<T>,
 }
 
@@ -350,7 +367,7 @@ where
             Err(err) => {
                 log::debug!("failed to get `RequestInit::headers`: {err:?}");
                 Headers::new().map_err(JsError::new)?
-            },
+            }
         };
 
         let mut last_name = None;
@@ -375,11 +392,16 @@ where
         }
 
         let request = web_sys::Request::new_with_str_and_init(&url, &init).map_err(JsError::new)?;
+        let on_complete = self.on_complete.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             let _guard = _guard;
             let ret = fetch_json(request).await;
             result.set(Some(ret));
+
+            if let Some(on_complete) = on_complete {
+                on_complete.emit(UseActionRef(result.clone()));
+            }
         });
 
         Ok(())
@@ -394,6 +416,7 @@ where
         Self {
             loading: self.loading.clone(),
             result: self.result.clone(),
+            on_complete: self.on_complete.clone(),
             _marker: self._marker,
         }
     }
@@ -418,11 +441,12 @@ where
         f.debug_struct("UseActionHandle")
             .field("loading", &self.loading)
             .field("result", &self.result)
+            .field("on_complete", &self.on_complete)
             .finish()
     }
 }
 
-/// Returns a handle to execute an action on ths server.
+/// Returns a handle to execute an action on the server.
 #[hook]
 pub fn use_action<A, T>() -> UseActionHandle<A, T>
 where
@@ -435,6 +459,27 @@ where
     UseActionHandle {
         result,
         loading,
+        on_complete: None,
+        _marker: PhantomData,
+    }
+}
+
+/// Returns a handle to execute an action on the server and takes a callback that is called when an action completes.
+#[hook]
+pub fn use_action_with_callback<A, T>(
+    on_complete: Callback<UseActionRef<A>>,
+) -> UseActionHandle<A, T>
+where
+    A: Action,
+    T: IntoRequestInit,
+{
+    let result = use_state(|| None);
+    let loading = use_state(|| false);
+
+    UseActionHandle {
+        result,
+        loading,
+        on_complete: Some(on_complete),
         _marker: PhantomData,
     }
 }

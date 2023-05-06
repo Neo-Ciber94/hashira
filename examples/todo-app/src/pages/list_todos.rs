@@ -5,9 +5,7 @@ use hashira::{
     web::{Inject, Response},
 };
 use serde::{Deserialize, Serialize};
-
 use yew::{function_component, Properties};
-
 use crate::{models::Todo, App};
 
 #[cfg(feature = "client")]

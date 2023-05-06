@@ -1,7 +1,7 @@
 mod fetch_json;
 pub use fetch_json::*;
-use wasm_bindgen::JsCast;
 
+use wasm_bindgen::JsCast;
 use crate::app::AppService;
 use crate::components::{PageData, PageProps, HASHIRA_WASM_LOADER};
 use crate::context::ServerContext;
@@ -39,6 +39,7 @@ where
 
     // Notify the wasm is loaded
     if let Ok(wasm_loader) = find_element_by_id(HASHIRA_WASM_LOADER) {
+        // The name is different: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset#name_conversion
         let wasm_loader: web_sys::HtmlElement = wasm_loader.dyn_into().unwrap();
         wasm_loader.dataset().set("wasmLoaded", "true").unwrap();
     }

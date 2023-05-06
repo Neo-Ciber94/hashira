@@ -111,6 +111,8 @@ pub fn WasmLoadingBase(props: &ChildrenProps) -> yew::Html {
         }
     }
 
+    // The `data-wasm-loaded` should be set different on the client:
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset#name_conversion
     yew::html! {
         <div id={HASHIRA_WASM_LOADER} data-wasm-loaded="false">
             {for props.children.iter()}
