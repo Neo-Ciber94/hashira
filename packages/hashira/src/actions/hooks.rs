@@ -7,26 +7,91 @@ use http::{
     header::{self},
     HeaderMap, HeaderName, HeaderValue, Method,
 };
+use js_sys::Array;
 use serde::Serialize;
 use std::{fmt::Debug, marker::PhantomData};
-use wasm_bindgen::JsValue;
-use web_sys::{FormData, Headers, RequestInit};
+use wasm_bindgen::{JsCast, JsValue};
+use web_sys::{FormData, Headers, RequestInit, UrlSearchParams};
 use yew::{hook, use_state, UseStateHandle};
 
-/// Converts a type info a javascript `RequestInit`.
+/// Initialization params for a request.
+#[derive(Default, Debug, Clone)]
+pub struct RequestParameters {
+    /// The initial request state.
+    pub init: Option<RequestInit>,
+
+    /// Search params for the url.
+    pub search_params: Option<UrlSearchParams>,
+}
+
+/// Creates an object to initialize a request.
 pub trait IntoRequestInit {
-    /// Returns a new `RequestInit` to create a request.
-    fn into_request_init(self) -> Result<RequestInit, Error>;
+    /// Returns an object used to initialize a request.
+    fn into_request_init(self) -> Result<RequestParameters, Error>;
 }
 
 impl IntoRequestInit for RequestInit {
-    fn into_request_init(self) -> Result<RequestInit, Error> {
-        Ok(self)
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
+        Ok(RequestParameters {
+            init: Some(self),
+            search_params: None,
+        })
+    }
+}
+
+impl IntoRequestInit for UrlSearchParams {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
+        Ok(RequestParameters {
+            init: None,
+            search_params: Some(self),
+        })
+    }
+}
+
+impl IntoRequestInit for String {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
+        let mut init = RequestInit::new();
+        let headers = Headers::new().map_err(JsError::new)?;
+        headers
+            .set(
+                header::CONTENT_TYPE.as_str(),
+                mime::TEXT_PLAIN_UTF_8.essence_str(),
+            )
+            .map_err(JsError::new)?;
+
+        init.headers(&headers);
+        init.body(Some(&JsValue::from_str(&self)));
+
+        Ok(RequestParameters {
+            init: Some(init),
+            search_params: None,
+        })
+    }
+}
+
+impl IntoRequestInit for &'static str {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
+        let mut init = RequestInit::new();
+        let headers = Headers::new().map_err(JsError::new)?;
+        headers
+            .set(
+                header::CONTENT_TYPE.as_str(),
+                mime::TEXT_PLAIN_UTF_8.essence_str(),
+            )
+            .map_err(JsError::new)?;
+
+        init.headers(&headers);
+        init.body(Some(&JsValue::from_str(self)));
+
+        Ok(RequestParameters {
+            init: Some(init),
+            search_params: None,
+        })
     }
 }
 
 impl<T: Serialize> IntoRequestInit for Json<T> {
-    fn into_request_init(self) -> Result<RequestInit, Error> {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -41,12 +106,15 @@ impl<T: Serialize> IntoRequestInit for Json<T> {
         init.headers(&headers);
         init.body(Some(&JsValue::from_str(&json)));
 
-        Ok(init)
+        Ok(RequestParameters {
+            init: Some(init),
+            search_params: None,
+        })
     }
 }
 
 impl<T: Serialize> IntoRequestInit for Form<T> {
-    fn into_request_init(self) -> Result<RequestInit, Error> {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -56,56 +124,62 @@ impl<T: Serialize> IntoRequestInit for Form<T> {
             )
             .map_err(JsError::new)?;
 
-        let json = serde_urlencoded::to_string(&self.0)?;
-
         init.headers(&headers);
-        init.body(Some(&JsValue::from_str(&json)));
 
-        Ok(init)
-    }
-}
+        let params = serde_urlencoded::to_string(&self.0)?;
+        let search_params = UrlSearchParams::new_with_str(&params).map_err(JsError::new)?;
 
-impl IntoRequestInit for String {
-    fn into_request_init(self) -> Result<RequestInit, Error> {
-        let mut init = RequestInit::new();
-        let headers = Headers::new().map_err(JsError::new)?;
-        headers
-            .set(
-                header::CONTENT_TYPE.as_str(),
-                mime::TEXT_PLAIN_UTF_8.essence_str(),
-            )
-            .map_err(JsError::new)?;
-
-        init.headers(&headers);
-        init.body(Some(&JsValue::from_str(&self)));
-
-        Ok(init)
-    }
-}
-
-impl IntoRequestInit for &'static str {
-    fn into_request_init(self) -> Result<RequestInit, Error> {
-        let mut init = RequestInit::new();
-        let headers = Headers::new().map_err(JsError::new)?;
-        headers
-            .set(
-                header::CONTENT_TYPE.as_str(),
-                mime::TEXT_PLAIN_UTF_8.essence_str(),
-            )
-            .map_err(JsError::new)?;
-
-        init.headers(&headers);
-        init.body(Some(&JsValue::from_str(self)));
-
-        Ok(init)
+        Ok(RequestParameters {
+            init: Some(init),
+            search_params: Some(search_params),
+        })
     }
 }
 
 impl IntoRequestInit for FormData {
-    fn into_request_init(self) -> Result<RequestInit, Error> {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         init.body(Some(&self));
-        Ok(init)
+        Ok(RequestParameters {
+            init: Some(init),
+            search_params: None,
+        })
+    }
+}
+
+/// A form that can be multipart or url-encoded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AnyForm {
+    /// A multipart form.
+    Multipart(FormData),
+
+    /// An url-encoded form.
+    UrlEncoded(FormData),
+}
+
+impl IntoRequestInit for AnyForm {
+    fn into_request_init(self) -> Result<RequestParameters, Error> {
+        match self {
+            AnyForm::Multipart(form) => form.into_request_init(),
+            AnyForm::UrlEncoded(form) => {
+                let iter = js_sys::try_iter(&form).map_err(JsError::new)?;
+                let mut params = Vec::new();
+                if let Some(iter) = iter {
+                    for x in iter {
+                        let x = x.map_err(JsError::new)?;
+                        let arr = x.dyn_into::<Array>().map_err(JsError::new)?;
+                        let key = arr.at(0).as_string().unwrap();
+                        let Some(value) = arr.at(1).as_string() else {
+                            return Err("FormData value was not a string, use a multipart form instead".to_owned().into());
+                        };
+
+                        params.push((key, value));
+                    }
+                }
+
+                Form(params).into_request_init()
+            }
+        }
     }
 }
 
@@ -126,7 +200,7 @@ impl RequestOptions {
     }
 
     /// Append a header.
-    /// 
+    ///
     /// # Panic
     /// If the name or value are invalid.
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
@@ -147,7 +221,7 @@ impl RequestOptions {
     }
 
     /// Attempts to append a header.
-    /// 
+    ///
     /// # Returns
     /// An error if the header name or value are invalid.
     pub fn try_header<K, V>(mut self, key: K, value: V) -> Result<Self, Error>
@@ -254,8 +328,15 @@ where
         let _guard = OnDrop(Some(move || loading.set(false)));
         let result = self.result.clone();
 
-        let mut init = obj.into_request_init()?;
+        let request_parameters = obj.into_request_init()?;
+        let RequestParameters {
+            init,
+            search_params,
+        } = request_parameters;
+
+        let mut init = init.unwrap_or_else(|| RequestInit::new());
         let headers = Headers::new().map_err(JsError::new)?;
+
         let mut last_name = None;
         for (name, value) in options.headers {
             if let Some(name) = name {
@@ -271,8 +352,13 @@ where
         init.headers(&headers);
         init.method(options.method.as_str());
 
-        let request =
-            web_sys::Request::new_with_str_and_init(A::route(), &init).map_err(JsError::new)?;
+        let mut url = A::route().to_owned();
+
+        if let Some(search_params) = search_params {
+            url.push_str(&format!("?{search}", search = search_params.to_string()));
+        }
+
+        let request = web_sys::Request::new_with_str_and_init(&url, &init).map_err(JsError::new)?;
 
         wasm_bindgen_futures::spawn_local(async move {
             let _guard = _guard;

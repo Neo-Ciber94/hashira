@@ -2,7 +2,7 @@
 pub async fn fetch_json<S: serde::de::DeserializeOwned>(
     request: web_sys::Request,
 ) -> Result<S, crate::error::Error> {
-    use crate::JsError;
+    use crate::error::JsError;
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
 
