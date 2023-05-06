@@ -16,7 +16,7 @@ use std::{
 };
 
 use super::{Json, Response};
-use crate::app::ResponseError;
+use crate::{app::ResponseError, error::Error};
 use http::{header, response::Parts, HeaderMap, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -37,14 +37,19 @@ impl IntoJsonResponse for () {
     }
 }
 
-impl<T> IntoJsonResponse for crate::Result<Response<T>>
+/// This type is a workaround to allow to return `crate::Result<Response<T>>` as a 
+/// type that implements `IntoJsonResponse`. When specialization get stabilized
+/// we can just implement `IntoJsonResponse` directly.
+pub struct ResultResponse<T>(pub crate::Result<Response<T>>);
+
+impl<T> IntoJsonResponse for ResultResponse<T>
 where
     T: Serialize + DeserializeOwned,
 {
     type Data = T;
 
     fn into_json_response(self) -> crate::Result<Response<Self::Data>> {
-        self
+        self.0
     }
 }
 
@@ -84,20 +89,20 @@ where
     }
 }
 
-// impl<T, E> IntoJsonResponse for Result<T, E>
-// where
-//     T: Serialize + DeserializeOwned,
-//     E: Into<Error>,
-// {
-//     type Data = T;
+impl<T, E> IntoJsonResponse for Result<T, E>
+where
+    T: Serialize + DeserializeOwned,
+    E: Into<Error>,
+{
+    type Data = T;
 
-//     fn into_json_response(self) -> crate::Result<Response<Self::Data>> {
-//         match self {
-//             Ok(x) => Ok(make_json_response(x)),
-//             Err(err) => Err(err.into()),
-//         }
-//     }
-// }
+    fn into_json_response(self) -> crate::Result<Response<Self::Data>> {
+        match self {
+            Ok(x) => Ok(make_json_response(x)),
+            Err(err) => Err(err.into()),
+        }
+    }
+}
 
 impl IntoJsonResponse for serde_json::Value {
     type Data = serde_json::Value;
