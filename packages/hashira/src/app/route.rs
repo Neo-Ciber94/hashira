@@ -1,6 +1,7 @@
-use std::future::Future;
+use std::{future::Future, str::FromStr};
 
 use http::Method;
+use thiserror::Error;
 
 use super::{Handler, PageHandler};
 use crate::{
@@ -70,6 +71,28 @@ impl HttpMethod {
     /// If the result is non-zero, the two methods match.
     pub fn matches(&self, other: &HttpMethod) -> bool {
         (self.0 & other.0) != 0
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("invalid http method: {0}")]
+pub struct InvalidHttpMethod(String);
+
+impl FromStr for HttpMethod {
+    type Err = InvalidHttpMethod;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_uppercase().as_str() {
+            "GET" => Ok(HttpMethod::GET),
+            "POST" => Ok(HttpMethod::POST),
+            "PUT" => Ok(HttpMethod::PUT),
+            "PATCH" => Ok(HttpMethod::PATCH),
+            "DELETE" => Ok(HttpMethod::DELETE),
+            "HEAD" => Ok(HttpMethod::HEAD),
+            "OPTIONS" => Ok(HttpMethod::OPTIONS),
+            "TRACE" => Ok(HttpMethod::TRACE),
+            _ => Err(InvalidHttpMethod(s.to_owned())),
+        }
     }
 }
 
