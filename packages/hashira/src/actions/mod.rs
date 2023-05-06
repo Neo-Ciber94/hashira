@@ -19,13 +19,6 @@ pub trait Action {
     fn route() -> &'static str;
 
     /// Returns the methods this action can be called:
-    ///
-    /// # Examples
-    /// ```no_run
-    /// fn method() -> HttpMethod {
-    ///     HttpMethod::POST | HttpMethod::PUT
-    /// }
-    /// ```
     fn method() -> HttpMethod {
         HttpMethod::GET
             | HttpMethod::POST
