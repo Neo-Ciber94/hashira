@@ -1,42 +1,23 @@
 use std::time::Duration;
 
 use hashira::{
-    app::{hooks::use_action, Action, RenderContext},
-    components::Form,
-    page_component,
-    web::Response,
+    actions::use_action, app::RenderContext, components::Form, page_component, web::Response,
 };
 
 use crate::App;
 
-pub struct CreateTodoAction;
-impl Action for CreateTodoAction {
-    type Output = String;
-
-    fn route() -> &'static str {
-        "/api/todo/create"
+#[hashira::action("/api/todo/create")]
+pub async fn CreateTodoAction() -> String {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        //let res = Response::new("Hello World!".to_owned());
+        return String::from("hello world!");
+        //return Ok(res);
     }
 
-    fn call(
-        ctx: hashira::app::RequestContext,
-    ) -> hashira::types::BoxFuture<hashira::Result<Response<Self::Output>>> {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let fut = hashira::app::call_action(ctx, create_todo_action);
-            Box::pin(fut)
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        unreachable!()
-    }
-}
-
-// #[action("/api/todo/create")]
-#[cfg(not(target_arch = "wasm32"))]
-async fn CreateTodoAction() -> hashira::Result<Response<String>> {
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    let res = Response::new("Hello World!".to_owned());
-    Ok(res)
+    #[cfg(target_arch = "wasm32")]
+    unreachable!()
 }
 
 async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {

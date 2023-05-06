@@ -182,7 +182,7 @@ where
     A: Action,
 {
     loading: UseStateHandle<bool>,
-    result: UseStateHandle<Option<Result<<A::Res as IntoJsonResponse>::Data, Error>>>,
+    result: UseStateHandle<Option<Result<<A::Data as IntoJsonResponse>::Data, Error>>>,
     _marker: PhantomData<T>,
 }
 
@@ -205,7 +205,7 @@ where
     }
 
     /// Returns the response value if any.
-    pub fn data(&self) -> Option<&<A::Res as IntoJsonResponse>::Data> {
+    pub fn data(&self) -> Option<&<A::Data as IntoJsonResponse>::Data> {
         self.result.as_ref().and_then(|x| x.as_ref().ok())
     }
 
@@ -310,7 +310,7 @@ where
 impl<A, T> Debug for UseActionHandle<A, T>
 where
     A: Action,
-    <A::Res as IntoJsonResponse>::Data: Debug,
+    <A::Data as IntoJsonResponse>::Data: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UseActionHandle")
@@ -320,7 +320,7 @@ where
     }
 }
 
-/// Returns a handle to execute an action on ths erver.
+/// Returns a handle to execute an action on ths server.
 #[hook]
 pub fn use_action<A, T>() -> UseActionHandle<A, T>
 where

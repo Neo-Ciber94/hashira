@@ -3,7 +3,7 @@ use web_sys::{window, FormData};
 use yew::TargetCast;
 use yew::{function_component, Children, Properties};
 
-use crate::action::{Action, RequestOptions, UseActionHandle};
+use crate::actions::{Action, RequestOptions, UseActionHandle};
 
 #[derive(Properties)]
 pub struct FormProps<A>
@@ -78,11 +78,11 @@ where
 
         let form = event.target_dyn_into().unwrap();
         let form_data = FormData::new_with_form(&form).unwrap();
-        let opts = RequestOptions::new().method(method.clone());
+        let mut opts = RequestOptions::new().method(method.clone());
 
         // By default FormData is set to `multipart/form-data` so we let the browser handle it
         if enc_type.as_str() != "multipart/form-data" {
-            opts.header(
+            opts = opts.header(
                 header::CONTENT_TYPE,
                 header::HeaderValue::from_str(&enc_type).expect("invalid enc type"),
             );
@@ -99,7 +99,7 @@ where
     };
 
     yew::html! {
-        <form method={props.method.clone().as_str()}
+        <form method={props.method.clone().to_string()}
             onsubmit={on_submit}
             id={props.id.clone()}
             class={props.class.clone()}

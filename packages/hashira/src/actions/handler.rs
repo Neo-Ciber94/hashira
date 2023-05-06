@@ -1,25 +1,23 @@
-use serde::{de::DeserializeOwned, Serialize};
-
 use crate::{
     app::{Handler, RequestContext},
-    web::{FromRequest, Response},
+    web::{FromRequest, IntoJsonResponse, Response},
 };
 
 /// Calls an action handler.
-pub async fn call_action<T, H, Args>(
+pub async fn call_action<H, Args>(
     ctx: RequestContext,
     handler: H,
-) -> crate::Result<Response<T>>
+) -> crate::Result<Response<<H::Output as IntoJsonResponse>::Data>>
 where
     Args: FromRequest,
-    H: Handler<Args, Output = crate::Result<Response<T>>>,
-    T: Serialize + DeserializeOwned,
+    H: Handler<Args>,
+    H::Output: IntoJsonResponse,
 {
     let args = match Args::from_request(&ctx).await {
         Ok(x) => x,
         Err(err) => return Err(err.into()),
     };
 
-    let res = handler.call(args).await?;
+    let res = handler.call(args).await.into_json_response()?;
     Ok(res)
 }

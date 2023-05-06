@@ -19,12 +19,12 @@ pub mod hooks;
 /// Base routing.
 pub mod routing;
 
-/// Server related. 
+/// Server related.
 pub mod server;
 pub mod web;
 
 /// Server actions.
-pub mod action;
+pub mod actions;
 
 // Allow public?
 pub(crate) mod context;
@@ -44,9 +44,9 @@ pub mod types;
 pub type Result<T> = std::result::Result<T, crate::error::Error>;
 
 /// Macro attribute for declaring [`PageComponent`]s.
-/// 
+///
 /// [`PageComponent`]: ./components/trait.PageComponent.html
-pub use hashira_macros::*;
+pub use hashira_macros::{action, page_component};
 
 mod reexports {
     /// Reexport of `async_trait`
@@ -66,7 +66,6 @@ pub mod consts {
     pub const IS_SERVER: bool = false;
 }
 
-
 /// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
 #[macro_export]
 macro_rules! try_response {
@@ -74,7 +73,9 @@ macro_rules! try_response {
         match $result {
             Ok(res) => res,
             Err(err) => {
-                return $crate::error::ResponseError::with_error(err).into_response();
+                return $crate::web::IntoResponse::into_response(
+                    $crate::error::ResponseError::with_error(err),
+                );
             }
         }
     };

@@ -1,5 +1,5 @@
 use super::{ClientPageRoute, Route};
-use crate::action::Action;
+use crate::actions::Action;
 use crate::components::id::PageId;
 use crate::components::PageComponent;
 use serde::de::DeserializeOwned;
@@ -94,17 +94,15 @@ where
 
             let route = A::route().to_string();
             let method = Some(A::method());
-            self.route(Route::new(
-                &route,
-                method,
-                |ctx: RequestContext| async move {
-                    let res = crate::try_response!(A::call(ctx).await.into_json_response());
-                    let (parts, data) = res.into_parts();
-                    let bytes = crate::try_response!(serde_json::to_vec(&data));
-                    let body = Body::from(bytes);
-                    Response::from_parts(parts, body)
-                },
-            ))
+            self.route(Route::new(&route, method, |ctx: RequestContext| async move {
+                let res = crate::try_response!(A::call(ctx).await);
+                let (parts, body) = res.into_parts();
+                let json_res = crate::try_response!(body.into_json_response());
+                let data = json_res.into_body();
+                let bytes = crate::try_response!(serde_json::to_vec(&data));
+                let body = Body::from(bytes);
+                Response::from_parts(parts, body)
+            }))
         }
 
         #[cfg(feature = "client")]

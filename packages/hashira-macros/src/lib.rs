@@ -1,5 +1,5 @@
 mod impls;
-use impls::PageComponentAttr;
+use impls::{PageComponentAttr, ActionAttr};
 use proc_macro::TokenStream;
 
 // FIXME: rename to `#[page]` ?
@@ -36,6 +36,18 @@ pub fn page_component(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr = syn::parse_macro_input!(attr as PageComponentAttr);
 
     match impls::page_component_impl(attr, item_fn) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+/// Mark a function as a server action.
+#[proc_macro_attribute]
+pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
+       let item_fn = syn::parse_macro_input!(item as syn::ItemFn);
+    let attr = syn::parse_macro_input!(attr as ActionAttr);
+
+    match impls::action_impl(attr, item_fn) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.into_compile_error().into(),
     }

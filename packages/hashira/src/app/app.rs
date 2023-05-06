@@ -11,7 +11,7 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture, action::Action,
+    web::{IntoResponse, Response, Redirect, FromRequest, IntoJsonResponse}, routing::PathRouter, types::BoxFuture, actions::Action,
 };
 
 use http::{status::StatusCode, HeaderMap};
@@ -297,13 +297,15 @@ where
     pub fn action<A>(self) -> Self where A: Action {
         #[cfg(not(feature = "client"))]
         {
-            use crate::web::{Body, IntoJsonResponse};
+            use crate::web::Body;
 
             let route = A::route().to_string();
             let method = Some(A::method());
             self.route(Route::new(&route, method, |ctx: RequestContext| async move {
-                let res = crate::try_response!(A::call(ctx).await.into_json_response());
-                let (parts, data) = res.into_parts();
+                let res = crate::try_response!(A::call(ctx).await);
+                let (parts, body) = res.into_parts();
+                let json_res = crate::try_response!(body.into_json_response());
+                let data = json_res.into_body();
                 let bytes = crate::try_response!(serde_json::to_vec(&data));
                 let body = Body::from(bytes);
                 Response::from_parts(parts, body)
