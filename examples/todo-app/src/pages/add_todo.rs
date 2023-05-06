@@ -1,20 +1,15 @@
-use std::time::Duration;
-
+use crate::{models::CreateTodo, App};
 use hashira::{
     action, actions::use_action, app::RenderContext, components::Form, page_component,
     web::Response,
 };
 
-use crate::App;
-
 #[action("/api/todo/create")]
-pub async fn CreateTodoAction() -> String {
+pub async fn CreateTodoAction(form: hashira::web::Form<CreateTodo>) -> String {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        //let res = Response::new("Hello World!".to_owned());
-        return String::from("hello world!");
-        //return Ok(res);
+        let create_todo = form.into_inner();
+        todo!()
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -45,6 +40,7 @@ pub fn AddTodoPage() -> yew::Html {
                         id="title"
                         name="title"
                         type="text"
+                        required={true}
                         placeholder="Enter title" />
                 </div>
                 <div class="mb-4">
@@ -55,6 +51,7 @@ pub fn AddTodoPage() -> yew::Html {
                         id="description"
                         rows={4}
                         name="description"
+                        required={true}
                         placeholder="Enter description">
                     </textarea>
                 </div>

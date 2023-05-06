@@ -50,10 +50,11 @@ impl<T> From<Arc<T>> for Data<T> {
     }
 }
 
+#[doc(hidden)]
 #[derive(Debug, Error)]
 #[error("`{expected}` was not found")]
 pub struct DataNotFoundError {
-    expected: &'static str,
+    pub(crate) expected: &'static str,
 }
 
 impl<T> FromRequest for Data<T>

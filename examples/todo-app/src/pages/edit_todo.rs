@@ -3,7 +3,6 @@ use std::str::FromStr;
 use hashira::web::status::StatusCode;
 use hashira::{app::RenderContext, error::ResponseError, page_component, web::Response};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use yew::Properties;
 
 use crate::{database::get_todos, models::Todo, App};
@@ -14,7 +13,7 @@ async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
     let id = ctx
         .params()
         .get("id")
-        .and_then(|s| Uuid::from_str(s).ok())
+        .and_then(|s| i64::from_str(s).ok())
         .ok_or_else(|| ResponseError::from(StatusCode::UNPROCESSABLE_ENTITY))?;
 
     let todos = get_todos().await;

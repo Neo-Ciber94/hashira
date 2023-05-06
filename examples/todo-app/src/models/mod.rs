@@ -1,15 +1,12 @@
-use hashira::web::time::OffsetDateTime;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(sqlx::FromRow))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Todo {
-    pub id: Uuid,
+    pub id: i64,
     pub title: String,
     pub done: bool,
     pub description: Option<String>,
-    pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime,
 }
 
 impl PartialEq for Todo {
@@ -26,7 +23,7 @@ pub struct CreateTodo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateTodo {
-    pub id: Uuid,
+    pub id: i64,
     pub title: String,
     pub description: Option<String>,
     pub done: bool,

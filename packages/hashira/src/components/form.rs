@@ -70,12 +70,17 @@ where
     A: Action + 'static,
 {
     let action = props.action.clone();
+    let loading = action.is_loading();
     let method = props.method.clone();
     let enc_type = props.enc_type.clone();
     let reload = props.reload;
 
     let on_submit = move |event: yew::html::onsubmit::Event| {
         event.prevent_default();
+
+        if loading {
+            return;
+        }
 
         let form = event.target_dyn_into().unwrap();
         let form_data = FormData::new_with_form(&form).unwrap();

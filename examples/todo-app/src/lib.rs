@@ -3,25 +3,33 @@ mod database;
 mod models;
 mod pages;
 
+use crate::components::NavBar;
 use hashira::web::status::StatusCode;
 use hashira::{
     app::{redirect, App as HashiraApp, AppService, LayoutContext},
     server::{LinkTag, PageLinks},
 };
-use pages::CreateTodoAction;
 use yew::{function_component, html::ChildrenProps};
 
-use crate::components::NavBar;
-
 // Setup all the components
-pub fn hashira() -> AppService {
-    HashiraApp::<App>::new()
+#[allow(unused_mut)]
+pub async fn hashira() -> hashira::Result<AppService> {
+    let mut app = HashiraApp::<App>::new()
         .use_default_error_pages()
-        .action::<CreateTodoAction>()
         .layout(root_layout)
-        .route(redirect("/", "/todos", StatusCode::PERMANENT_REDIRECT))
-        .nest("/todos", crate::pages::todos())
-        .build()
+        .route(redirect("/", "/todos", StatusCode::TEMPORARY_REDIRECT))
+        .nest("/todos", crate::pages::todos());
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Setup the database
+        use sqlx::SqlitePool;
+        let database_url = std::env::var("DATABASE_URL").expect("database is not set");
+        let pool = SqlitePool::connect(&database_url).await?;
+        app = app.app_data(pool);
+    }
+
+    Ok(app.build())
 }
 
 #[function_component]
@@ -67,6 +75,9 @@ async fn root_layout(mut ctx: LayoutContext) -> yew::Html {
 pub fn hydrate() {
     wasm_logger::init(wasm_logger::Config::default());
     log::debug!("Hydrating app...");
-    let service = hashira();
-    hashira::client::mount::<App>(service);
+
+    wasm_bindgen_futures::spawn_local(async move {
+        let service = hashira().await.expect("failed to init hashira");
+        hashira::client::mount::<App>(service);
+    });
 }
