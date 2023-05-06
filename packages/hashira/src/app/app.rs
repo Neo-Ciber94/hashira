@@ -11,7 +11,7 @@ use crate::{
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response, Redirect, FromRequest, IntoJsonResponse}, routing::PathRouter, types::BoxFuture, actions::Action,
+    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture, actions::Action,
 };
 
 use http::{status::StatusCode, HeaderMap};
@@ -297,7 +297,7 @@ where
     pub fn action<A>(self) -> Self where A: Action {
         #[cfg(not(feature = "client"))]
         {
-            use crate::web::Body;
+            use crate::web::{Body, IntoJsonResponse};
 
             let route = A::route().to_string();
             let method = Some(A::method());

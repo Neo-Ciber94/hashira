@@ -1,9 +1,8 @@
-use crate::error::{Error, JsError};
-use serde::de::DeserializeOwned;
-use web_sys::Response;
-
 #[cfg(target_arch = "wasm32")]
-pub async fn fetch_json<S: DeserializeOwned>(request: web_sys::Request) -> Result<S, Error> {
+pub async fn fetch_json<S: serde::de::DeserializeOwned>(
+    request: web_sys::Request,
+) -> Result<S, crate::error::Error> {
+    use crate::JsError;
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
 
