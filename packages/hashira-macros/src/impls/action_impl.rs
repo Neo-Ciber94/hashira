@@ -48,7 +48,9 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
     Ok(quote::quote! {
         #[allow(non_snake_case)]
         #[allow(non_camel_case_types)]
-        #vis struct #name;
+        #vis struct #name {
+            _marker: ::std::marker::PhantomData<()>
+        }
 
         const _: () = {
             #[allow(non_snake_case)]
@@ -56,7 +58,7 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
             #new_item_fn
 
             #[automatically_derived]
-            impl ::hashira::action::Action for #name {
+            impl ::hashira::actions::Action for #name {
                 type Data = <#ret as ::hashira::web::IntoJsonResponse>::Data;
 
                 fn route() -> &'static str {
@@ -65,7 +67,7 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
 
                 fn call(ctx: ::hashira::app::RequestContext)
                 -> ::hashira::types::BoxFuture<::hashira::Result<::hashira::web::Response<Self::Data>>> {
-                    let fut = ::hashira::action::call_action(ctx, #new_item_fn_ident);
+                    let fut = ::hashira::actions::call_action(ctx, #new_item_fn_ident);
                     ::std::boxed::Box::pin(fut)
                 }
             }

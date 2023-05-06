@@ -1,12 +1,13 @@
 use std::time::Duration;
 
 use hashira::{
-    actions::use_action, app::RenderContext, components::Form, page_component, web::Response,
+    action, actions::use_action, app::RenderContext, components::Form, page_component,
+    web::Response,
 };
 
 use crate::App;
 
-#[hashira::action("/api/todo/create")]
+#[action("/api/todo/create")]
 pub async fn CreateTodoAction() -> String {
     #[cfg(not(target_arch = "wasm32"))]
     {
