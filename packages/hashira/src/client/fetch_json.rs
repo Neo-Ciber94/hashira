@@ -31,7 +31,7 @@ pub async fn fetch_json<S: serde::de::DeserializeOwned>(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn get_response_error(resp: Response) -> Error {
+async fn get_response_error(resp: web_sys::Response) -> crate::error::Error {
     use wasm_bindgen_futures::JsFuture;
     debug_assert!(!resp.ok());
 
