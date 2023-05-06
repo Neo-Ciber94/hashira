@@ -4,7 +4,7 @@ use crate::web::FromRequest;
 use super::DataNotFoundError;
 
 /// Extract a value from the `app_data` implements [`Clone`].
-pub struct Inject<T: Clone>(T);
+pub struct Inject<T: Clone>(pub T);
 
 impl<T: Clone> Inject<T> {
     /// Returns the inner value.

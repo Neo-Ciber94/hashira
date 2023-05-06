@@ -1,19 +1,48 @@
-use crate::{models::CreateTodo, App};
+use crate::{
+    models::{CreateTodo, Todo},
+    App,
+};
 use hashira::{
-    action, actions::use_action, app::RenderContext, components::Form, page_component,
-    web::Response,
+    action,
+    actions::use_action,
+    app::RenderContext,
+    components::Form,
+    page_component,
+    web::Inject,
+    web::{Json, Response},
 };
 
-#[action("/api/todo/create")]
-pub async fn CreateTodoAction(form: hashira::web::Form<CreateTodo>) -> String {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let create_todo = form.into_inner();
-        todo!()
-    }
-
-    #[cfg(target_arch = "wasm32")]
+#[action("/api/todos/create")]
+#[cfg(feature = "client")]
+#[allow(dead_code)]
+pub async fn CreateTodoAction() -> hashira::Result<Json<Todo>> {
     unreachable!()
+}
+
+#[action("/api/todos/create")]
+#[cfg(not(feature = "client"))]
+pub async fn CreateTodoAction(
+    form: hashira::web::Form<CreateTodo>,
+    Inject(pool): Inject<sqlx::SqlitePool>,
+) -> hashira::Result<Json<Todo>> {
+    let CreateTodo { title, description } = form.into_inner();
+    let mut conn = pool.acquire().await?;
+
+    let inserted_id = sqlx::query!(
+        "INSERT INTO todos(title, description) VALUES (?1, ?2)",
+        title,
+        description
+    )
+    .execute(&mut conn)
+    .await?
+    .last_insert_rowid();
+
+    let inserted = sqlx::query_as::<_, Todo>("SELECT * FROM todos WHERE id = ?1")
+        .bind(inserted_id)
+        .fetch_one(&mut conn)
+        .await?;
+
+    Ok(Json(inserted))
 }
 
 async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
@@ -27,7 +56,7 @@ pub fn AddTodoPage() -> yew::Html {
     let action = use_action();
 
     yew::html! {
-        <div class="mt-10">
+        <div class="mt-10 w-11/12 md:w-2/3 lg:w-[700px] mx-auto">
             if action.is_loading() {
                 <div>{"Loading..."}</div>
             }
@@ -35,6 +64,7 @@ pub fn AddTodoPage() -> yew::Html {
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2" for="title">
                     {"Title"}
+                    <span class="text-red-500">{"*"}</span>
                     </label>
                     <input class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                         id="title"
@@ -51,7 +81,6 @@ pub fn AddTodoPage() -> yew::Html {
                         id="description"
                         rows={4}
                         name="description"
-                        required={true}
                         placeholder="Enter description">
                     </textarea>
                 </div>

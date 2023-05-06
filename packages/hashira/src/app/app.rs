@@ -19,6 +19,8 @@ use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
 use yew::{html::ChildrenProps, BaseComponent, Html};
 
+
+
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
 
 /// A function that renders the base `index.html`.
@@ -161,6 +163,7 @@ where
     pub fn route(mut self, route: Route) -> Self {
         #[cfg(not(client = "client"))]
         {
+            log::debug!("Registering route: {}", route.path());
             let path = route.path().to_owned(); // To please the borrow checker
             self.server_router.insert(&path, route).expect("failed to add route");
         }
@@ -174,13 +177,16 @@ where
 
         #[cfg(not(feature = "client"))]
         {
-            for (sub, route) in scope.server_router {
-                let path = if sub == "/" {
-                        base_path.to_owned()
-                    } else {
-                        format!("{base_path}{sub}")
-                    };
+            use super::IsBaseRoute;
 
+            for (sub, route) in scope.server_router {
+                let path = match sub.as_str() {
+                    "/" => base_path.to_owned(),
+                    _ if route.extensions().get::<IsBaseRoute>().is_some() => sub.to_owned(),
+                    _ => format!("{base_path}{sub}")
+                };
+                
+                log::debug!("Registering route: {path}");
                 self.server_router.insert(&path, route).expect("failed to add route");
             }
         }
@@ -441,10 +447,7 @@ where
     {
         use crate::components::AnyComponent;
         
-        log::debug!(
-            "Registering component `{}` on {path}",
-            std::any::type_name::<COMP>()
-        );
+        log::debug!("Registering component `{}` on {path}", std::any::type_name::<COMP>());
 
         self.page_router.insert(
             path,

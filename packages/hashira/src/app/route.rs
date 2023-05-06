@@ -1,6 +1,6 @@
 use std::{future::Future, str::FromStr};
 
-use http::Method;
+use http::{Extensions, Method};
 use thiserror::Error;
 
 use super::{Handler, PageHandler};
@@ -131,10 +131,15 @@ impl From<Method> for HttpMethod {
 pub struct Route {
     /// The path that the route matches, e.g. "/users/:id" or "/login".
     path: String,
+
     /// The HTTP method that the route matches, e.g. HttpMethod::GET or HttpMethod::POST.
     method: Option<HttpMethod>,
+        
     /// The handler function that should be called when this route matches a request.
     handler: PageHandler,
+
+    /// Route metadata
+    extensions: Extensions,
 }
 
 impl Route {
@@ -151,6 +156,7 @@ impl Route {
             path: path.to_owned(),
             handler: PageHandler::new(handler),
             method,
+            extensions: Default::default()
         }
     }
 
@@ -263,5 +269,15 @@ impl Route {
     /// Returns a reference to the handler function for this `Route`.
     pub fn handler(&self) -> &PageHandler {
         &self.handler
+    }
+
+    /// Metadata of the route.
+    pub fn extensions(&self) -> &Extensions {
+        &self.extensions
+    }
+
+    /// A mutable reference to the metadata of the route.
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.extensions
     }
 }

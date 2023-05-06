@@ -37,7 +37,7 @@ impl IntoJsonResponse for () {
     }
 }
 
-/// This type is a workaround to allow to return `crate::Result<Response<T>>` as a 
+/// This type is a workaround to allow to return `crate::Result<Response<T>>` as a
 /// type that implements `IntoJsonResponse`. When specialization get stabilized
 /// we can just implement `IntoJsonResponse` directly.
 pub struct ResultResponse<T>(pub crate::Result<Response<T>>);
@@ -77,13 +77,13 @@ where
 
 impl<T> IntoJsonResponse for Option<T>
 where
-    T: Serialize + DeserializeOwned,
+    T: IntoJsonResponse,
 {
-    type Data = T;
+    type Data = T::Data;
 
     fn into_json_response(self) -> crate::Result<Response<Self::Data>> {
         match self {
-            Some(x) => Ok(make_json_response(x)),
+            Some(x) => x.into_json_response(),
             None => Err(ResponseError::from(StatusCode::NOT_FOUND).into()),
         }
     }
@@ -91,14 +91,14 @@ where
 
 impl<T, E> IntoJsonResponse for Result<T, E>
 where
-    T: Serialize + DeserializeOwned,
+    T: IntoJsonResponse,
     E: Into<Error>,
 {
-    type Data = T;
+    type Data = T::Data;
 
     fn into_json_response(self) -> crate::Result<Response<Self::Data>> {
         match self {
-            Ok(x) => Ok(make_json_response(x)),
+            Ok(x) => x.into_json_response(),
             Err(err) => Err(err.into()),
         }
     }

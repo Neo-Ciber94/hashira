@@ -27,11 +27,11 @@ pub struct RequestParameters {
 /// Creates an object to initialize a request.
 pub trait IntoRequestInit {
     /// Returns an object used to initialize a request.
-    fn into_request_init(self) -> Result<RequestParameters, Error>;
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error>;
 }
 
 impl IntoRequestInit for RequestInit {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
         Ok(RequestParameters {
             init: Some(self),
             search_params: None,
@@ -40,7 +40,7 @@ impl IntoRequestInit for RequestInit {
 }
 
 impl IntoRequestInit for UrlSearchParams {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
         Ok(RequestParameters {
             init: None,
             search_params: Some(self),
@@ -49,7 +49,7 @@ impl IntoRequestInit for UrlSearchParams {
 }
 
 impl IntoRequestInit for String {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -70,7 +70,7 @@ impl IntoRequestInit for String {
 }
 
 impl IntoRequestInit for &'static str {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -91,7 +91,7 @@ impl IntoRequestInit for &'static str {
 }
 
 impl<T: Serialize> IntoRequestInit for Json<T> {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -114,7 +114,7 @@ impl<T: Serialize> IntoRequestInit for Json<T> {
 }
 
 impl<T: Serialize> IntoRequestInit for Form<T> {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -127,17 +127,27 @@ impl<T: Serialize> IntoRequestInit for Form<T> {
         init.headers(&headers);
 
         let params = serde_urlencoded::to_string(&self.0)?;
-        let search_params = UrlSearchParams::new_with_str(&params).map_err(JsError::new)?;
 
-        Ok(RequestParameters {
-            init: Some(init),
-            search_params: Some(search_params),
-        })
+        if options.method == Method::GET || options.method == Method::HEAD {
+            let search_params = UrlSearchParams::new_with_str(&params).map_err(JsError::new)?;
+
+            Ok(RequestParameters {
+                init: Some(init),
+                search_params: Some(search_params),
+            })
+        } else {
+            init.body(Some(&JsValue::from_str(&params)));
+
+            Ok(RequestParameters {
+                init: Some(init),
+                search_params: None,
+            })
+        }
     }
 }
 
 impl IntoRequestInit for FormData {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
         let mut init = RequestInit::new();
         init.body(Some(&self));
         Ok(RequestParameters {
@@ -158,9 +168,9 @@ pub enum AnyForm {
 }
 
 impl IntoRequestInit for AnyForm {
-    fn into_request_init(self) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, Error> {
         match self {
-            AnyForm::Multipart(form) => form.into_request_init(),
+            AnyForm::Multipart(form) => form.into_request_init(options),
             AnyForm::UrlEncoded(form) => {
                 let iter = js_sys::try_iter(&form).map_err(JsError::new)?;
                 let mut params = Vec::new();
@@ -177,7 +187,7 @@ impl IntoRequestInit for AnyForm {
                     }
                 }
 
-                Form(params).into_request_init()
+                Form(params).into_request_init(options)
             }
         }
     }
@@ -328,14 +338,20 @@ where
         let _guard = OnDrop(Some(move || loading.set(false)));
         let result = self.result.clone();
 
-        let request_parameters = obj.into_request_init()?;
+        let request_parameters = obj.into_request_init(&options)?;
         let RequestParameters {
             init,
             search_params,
         } = request_parameters;
 
         let mut init = init.unwrap_or_else(|| RequestInit::new());
-        let headers = Headers::new().map_err(JsError::new)?;
+        let headers = match js_sys::Reflect::get(&init, &JsValue::from("headers")) {
+            Ok(x) => x.dyn_into::<Headers>().map_err(JsError::new)?,
+            Err(err) => {
+                log::debug!("failed to get `RequestInit::headers`: {err:?}");
+                Headers::new().map_err(JsError::new)?
+            },
+        };
 
         let mut last_name = None;
         for (name, value) in options.headers {

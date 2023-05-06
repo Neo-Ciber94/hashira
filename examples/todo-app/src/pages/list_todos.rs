@@ -2,37 +2,36 @@ use hashira::{
     app::RenderContext,
     page_component,
     server::Metadata,
-    web::{FromRequest, Inject, Response},
+    web::{Inject, Response},
 };
 use serde::{Deserialize, Serialize};
 
 use yew::{function_component, Properties};
 
-use crate::{database::get_todos, models::Todo, App};
+use crate::{models::Todo, App};
 
-async fn render(mut ctx: RenderContext) -> hashira::Result<Response> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use sqlx::SqlitePool;
-
-        ctx.title("Todo App | List");
-        ctx.metadata(Metadata::new().description("List of all the todos"));
-
-        // Get todos
-        let pool: SqlitePool = Inject::from_request(&ctx).await?.into_inner();
-        let todos = sqlx::query_as::<_, Todo>("SELECT * FROM todos")
-            .fetch_all(&pool)
-            .await?;
-
-        let res = ctx
-            .render_with_props::<ListTodosPage, App>(ListTodosPageProps { todos })
-            .await;
-
-        Ok(res)
-    }
-
-    #[cfg(target_arch = "wasm32")]
+#[cfg(feature = "client")]
+async fn render(_ctx: RenderContext) -> hashira::Result<Response> {
     unreachable!()
+}
+
+#[cfg(not(feature = "client"))]
+async fn render(
+    mut ctx: RenderContext,
+    Inject(pool): Inject<sqlx::SqlitePool>,
+) -> hashira::Result<Response> {
+    ctx.title("Todo App | List");
+    ctx.metadata(Metadata::new().description("List of all the todos"));
+
+    let todos = sqlx::query_as::<_, Todo>("SELECT * FROM todos ORDER BY id desc")
+        .fetch_all(&pool)
+        .await?;
+
+    let res = ctx
+        .render_with_props::<ListTodosPage, App>(ListTodosPageProps { todos })
+        .await;
+
+    Ok(res)
 }
 
 #[derive(Debug, Properties, PartialEq, Serialize, Deserialize)]

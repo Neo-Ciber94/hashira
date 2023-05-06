@@ -2,8 +2,8 @@ mod add_todo;
 mod edit_todo;
 mod list_todos;
 
-use hashira::app::AppNested;
 use crate::App;
+use hashira::app::AppNested;
 
 pub use self::{add_todo::*, edit_todo::*, list_todos::*};
 

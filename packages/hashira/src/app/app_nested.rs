@@ -7,6 +7,13 @@ use std::{collections::HashMap, marker::PhantomData};
 use yew::html::ChildrenProps;
 use yew::BaseComponent;
 
+/// Marker to specify a nested route should be inserted at the root of the router,
+/// and not as a sub route.
+/// 
+/// This is just a workaround for allowing to insert actions in specify path.
+#[allow(dead_code)]
+pub(crate) struct IsBaseRoute;
+
 /// Represents a nested route in a `App`.
 #[derive(Default)]
 pub struct AppNested<BASE> {
@@ -94,15 +101,18 @@ where
 
             let route = A::route().to_string();
             let method = Some(A::method());
-            
-            self.route(Route::new(&route, method, |ctx: RequestContext| async move {
+            let mut route = Route::new(&route, method, |ctx: RequestContext| async move {
                 let output = crate::try_response!(A::call(ctx).await);
                 let json_res = crate::try_response!(output.into_json_response());
                 let (parts, body) = json_res.into_parts();
                 let bytes = crate::try_response!(serde_json::to_vec(&body));
                 let body = Body::from(bytes);
                 Response::from_parts(parts, body)
-            }))
+            });
+
+            route.extensions_mut().insert(IsBaseRoute);
+
+            self.route(route)
         }
 
         #[cfg(feature = "client")]
@@ -115,6 +125,11 @@ where
         COMP::Properties: DeserializeOwned,
     {
         use crate::components::AnyComponent;
+
+        log::debug!(
+            "Registering component `{}` on path: {path}",
+            std::any::type_name::<COMP>()
+        );
 
         self.page_router.insert(
             path.to_owned(),
