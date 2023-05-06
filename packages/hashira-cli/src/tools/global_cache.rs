@@ -60,6 +60,7 @@ impl GlobalCache {
         let bin_name = T::binary_name();
 
         if let Some(bin_path) = cache.get(bin_name).cloned() {
+            tracing::debug!("loaded tool from cache: {bin_name}");
             return Ok(bin_path);
         }
 
@@ -249,7 +250,7 @@ pub async fn install_tool<T: Tool>(opts: InstallToolOptions<'_>) -> anyhow::Resu
                         .as_ref()
                         .cloned()
                         .unwrap_or(T::default_version());
-                    
+
                     tracing::debug!(
                         "`{} {version}` was not found in system: {err}",
                         T::binary_name()

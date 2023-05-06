@@ -1,10 +1,10 @@
 mod cli;
+mod emojis;
 mod env;
 mod pipelines;
 mod tasks;
 mod tools;
 mod utils;
-mod emojis;
 
 #[allow(dead_code)]
 mod config;
@@ -12,7 +12,7 @@ mod config;
 use anyhow::Context;
 use clap::Parser;
 use cli::{Cli, Commands, LogLevel};
-use tasks::{build::BuildTask, dev::DevTask, run::RunTask, new::NewTask};
+use tasks::{build::BuildTask, dev::DevTask, new::NewTask, run::RunTask};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -45,6 +45,7 @@ fn setup_logger(log_level: LogLevel) -> anyhow::Result<()> {
                 tracing_subscriber::fmt::layer()
                     .with_target(true)
                     .with_level(true)
+                    .pretty()
                     .compact(),
             )
             .try_init()

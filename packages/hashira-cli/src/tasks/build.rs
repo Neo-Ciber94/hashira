@@ -148,7 +148,7 @@ If you are trying to run a non-rust server, currently not possible with the hash
     }
 
     async fn cargo_build_wasm(&self) -> anyhow::Result<bool> {
-        tracing::debug!("Running cargo build --target wasm32-unknown-unknown...");
+        tracing::debug!("Running cargo build --features client --target wasm32-unknown-unknown...");
 
         let spawn = self.spawn_cargo_build_wasm()?;
         let result = wait_interruptible(spawn, self.interrupt_signal.clone())
@@ -251,7 +251,7 @@ If you are trying to run a non-rust server, currently not possible with the hash
                 let public_dir = &self.options.public_dir;
                 let out_dir = target_dir.join(public_dir).join(format!("{file_name}.css"));
 
-                tracing::info!("Executing TailwindCSS...");
+                tracing::info!("Running TailwindCSS...");
                 let mut cmd = tailwind.async_cmd();
 
                 cmd.arg("--input") // input
@@ -272,6 +272,7 @@ If you are trying to run a non-rust server, currently not possible with the hash
                             tracing::error!("tailwindcss failed: {err}");
                         }
 
+                        tracing::info!("{}TailwindCSS completed", emojis::DONE);
                         tracing::debug!("written tailwindcss to: {}", out_dir.display());
                     }
                     Err(err) => {
@@ -290,9 +291,12 @@ If you are trying to run a non-rust server, currently not possible with the hash
         let opts = &self.options;
         let mut cmd = Command::new("cargo");
 
-        // args
+        // Build
         cmd.arg("build")
             .args(["--target", "wasm32-unknown-unknown"]);
+
+        // Notify we are building the client
+        cmd.args(["--features", "client"]);
 
         if opts.quiet {
             cmd.arg("--quiet");
