@@ -59,14 +59,13 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
 
             #[automatically_derived]
             impl ::hashira::actions::Action for #name {
-                type Data = <#ret as ::hashira::web::IntoJsonResponse>::Data;
+                type Response = <#ret as ::hashira::web::IntoJsonResponse>::Data;
 
                 fn route() -> &'static str {
                    #route
                 }
 
-                fn call(ctx: ::hashira::app::RequestContext)
-                -> ::hashira::types::BoxFuture<::hashira::Result<::hashira::web::Response<Self::Data>>> {
+                fn call(ctx: ::hashira::app::RequestContext) -> ::hashira::types::BoxFuture<::hashira::Result<Self::Response>> {
                     let fut = ::hashira::actions::call_action(ctx, #new_item_fn_ident);
                     ::std::boxed::Box::pin(fut)
                 }

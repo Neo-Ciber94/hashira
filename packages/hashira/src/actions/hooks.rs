@@ -182,7 +182,7 @@ where
     A: Action,
 {
     loading: UseStateHandle<bool>,
-    result: UseStateHandle<Option<Result<<A::Data as IntoJsonResponse>::Data, Error>>>,
+    result: UseStateHandle<Option<Result<<A::Response as IntoJsonResponse>::Data, Error>>>,
     _marker: PhantomData<T>,
 }
 
@@ -205,7 +205,7 @@ where
     }
 
     /// Returns the response value if any.
-    pub fn data(&self) -> Option<&<A::Data as IntoJsonResponse>::Data> {
+    pub fn data(&self) -> Option<&<A::Response as IntoJsonResponse>::Data> {
         self.result.as_ref().and_then(|x| x.as_ref().ok())
     }
 
@@ -310,7 +310,7 @@ where
 impl<A, T> Debug for UseActionHandle<A, T>
 where
     A: Action,
-    <A::Data as IntoJsonResponse>::Data: Debug,
+    <A::Response as IntoJsonResponse>::Data: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UseActionHandle")

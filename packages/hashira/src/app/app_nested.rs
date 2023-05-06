@@ -94,12 +94,12 @@ where
 
             let route = A::route().to_string();
             let method = Some(A::method());
+            
             self.route(Route::new(&route, method, |ctx: RequestContext| async move {
-                let res = crate::try_response!(A::call(ctx).await);
-                let (parts, body) = res.into_parts();
-                let json_res = crate::try_response!(body.into_json_response());
-                let data = json_res.into_body();
-                let bytes = crate::try_response!(serde_json::to_vec(&data));
+                let output = crate::try_response!(A::call(ctx).await);
+                let json_res = crate::try_response!(output.into_json_response());
+                let (parts, body) = json_res.into_parts();
+                let bytes = crate::try_response!(serde_json::to_vec(&body));
                 let body = Body::from(bytes);
                 Response::from_parts(parts, body)
             }))

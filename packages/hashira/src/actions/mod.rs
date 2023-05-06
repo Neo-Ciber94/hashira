@@ -7,13 +7,13 @@ pub use hooks::*;
 use crate::{
     app::{HttpMethod, RequestContext},
     types::BoxFuture,
-    web::{IntoJsonResponse, Response},
+    web::IntoJsonResponse,
 };
 
 /// An action that can be execute on the server.
 pub trait Action {
     /// The type of the body of the action response.
-    type Data: IntoJsonResponse + 'static;
+    type Response: IntoJsonResponse + 'static;
 
     /// The path of the route.
     fn route() -> &'static str;
@@ -35,5 +35,5 @@ pub trait Action {
     }
 
     /// Call this action and returns a response.
-    fn call(ctx: RequestContext) -> BoxFuture<crate::Result<Response<Self::Data>>>;
+    fn call(ctx: RequestContext) -> BoxFuture<crate::Result<Self::Response>>;
 }
