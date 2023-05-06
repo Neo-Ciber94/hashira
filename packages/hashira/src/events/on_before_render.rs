@@ -21,6 +21,7 @@ where
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub struct BoxOnBeforeRender(
     Box<dyn Fn(String, RequestContext) -> BoxFuture<Result<String, Error>> + Send + Sync>,
 );

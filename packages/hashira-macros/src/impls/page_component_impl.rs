@@ -19,7 +19,7 @@ impl Parse for PageComponentAttr {
         let route = {
             if input.peek(syn::Ident) {
                 let none: Ident = input.parse()?;
-                if none.to_string() == "None" {
+                if none == "None" {
                     None
                 } else {
                     return Err(syn::Error::new(input.span(), EXPECTED_ROUTE));
@@ -61,10 +61,10 @@ impl Parse for PageComponentAttr {
         let render_str: LitStr = input.parse()?;
         let render = Ident::new(&render_str.value(), Span::call_site());
 
-        return Ok(PageComponentAttr {
+        Ok(PageComponentAttr {
             route,
             render: Some(render),
-        });
+        })
     }
 }
 

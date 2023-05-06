@@ -71,7 +71,7 @@ where
     let action = props.action.clone();
     let method = props.method.clone();
     let enc_type = props.enc_type.clone();
-    let reload = props.reload.clone();
+    let reload = props.reload;
 
     let on_submit = move |event: yew::html::onsubmit::Event| {
         event.prevent_default();

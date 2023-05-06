@@ -292,7 +292,7 @@ where
         Self {
             loading: self.loading.clone(),
             result: self.result.clone(),
-            _marker: self._marker.clone(),
+            _marker: self._marker,
         }
     }
 }

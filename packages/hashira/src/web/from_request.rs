@@ -67,7 +67,7 @@ impl FromRequest for Version {
     type Fut = Ready<Result<Version, Infallible>>;
 
     fn from_request(ctx: &RequestContext) -> Self::Fut {
-        ready(Ok(ctx.request().version().clone()))
+        ready(Ok(ctx.request().version()))
     }
 }
 

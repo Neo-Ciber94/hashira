@@ -32,7 +32,7 @@ pub mod handler {
         H: RenderHandler<Args>,
         Args: FromRequest,
     {
-        let args = match Args::from_request(&*ctx).await {
+        let args = match Args::from_request(&ctx).await {
             Ok(x) => x,
             Err(err) => return Err(err.into()),
         };
