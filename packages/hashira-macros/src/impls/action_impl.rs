@@ -59,7 +59,7 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
 
             #[automatically_derived]
             impl ::hashira::actions::Action for #name {
-                type Response = <#ret as ::hashira::web::IntoJsonResponse>::Data;
+                type Response = #ret;
 
                 fn route() -> &'static str {
                    #route
