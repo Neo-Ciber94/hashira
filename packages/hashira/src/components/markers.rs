@@ -130,6 +130,7 @@ pub fn WasmLoading() -> yew::Html {
                 {yew::Html::from_html_unchecked(AttrValue::from(format!(r#"
                     #{HASHIRA_WASM_LOADER}[data-wasm-loaded="false"] {{
                         position: absolute;
+                        z-index: 9999;
                         width: 100%;
                         height: 100%;
                         background-color: white;
