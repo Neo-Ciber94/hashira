@@ -1,5 +1,4 @@
-use std::str::FromStr;
-
+#![warn(unused_imports)]
 use crate::{
     models::{Todo, UpdateTodo},
     App,
@@ -68,6 +67,7 @@ async fn render(
     Inject(pool): Inject<sqlx::SqlitePool>,
 ) -> hashira::Result<Response> {
     use hashira::{error::ResponseError, web::status::StatusCode};
+    use std::str::FromStr;
 
     ctx.title("Todo App | Edit");
 

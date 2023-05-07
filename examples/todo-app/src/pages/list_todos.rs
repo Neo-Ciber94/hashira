@@ -6,7 +6,6 @@ use hashira::{
     action,
     actions::{use_action, use_action_with_callback},
     app::RenderContext,
-    components::Form,
     page_component,
     server::Metadata,
     utils::show_alert,
@@ -53,7 +52,7 @@ pub fn ListTodosPage(props: &ListTodosPageProps) -> yew::Html {
             show_alert(format!("failed to add: {err}"));
         }
     });
-    
+
     let on_delete = {
         let todos = todos.clone();
         let delete_action = delete_action.clone();
