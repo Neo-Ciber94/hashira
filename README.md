@@ -48,3 +48,77 @@ More will be added in the future. Or if you want to create an adapter for your o
 
 - Some features are incomplete
 - Some features may be removed
+
+## Features
+
+### SSR (Server Side Rendering)
+
+Allow to render your `yew` components on the server passing down the properties from server side.
+
+```rs
+async fn render_page(ctx: RenderContext) -> Result<Response> {
+    let products = get_products().await?;
+    let res = ctx.render_with_props(ProductsPageProps { products }).await;
+    Ok(res)
+}
+
+#[page_component("/products", render = "render_page")]
+fn ProductsPage(props: &ProductsPageProps) -> yew::Html {
+    yew::html! {
+        // ...
+    }
+}
+```
+
+### Server Actions
+
+Execute code in your server from your components.
+
+```rs
+struct CreateProduct {
+    name: String,
+    price: i64,
+    description: Option<String>
+}
+
+#[action("/api/products/create")]
+async fn CreateProductAction(form: Form<CreateProduct>) -> Json<Product> {
+    // server side logic
+}
+
+#[page_component("/products/add", render = "...")]
+fn CreateProductPage() -> yew::Html {
+    let action = use_action();
+
+    if action.is_loading() {
+        return yew::html! {
+            "Creating product..."
+        };
+    }
+
+    yew::html! {
+        <Form<CreateProductAction> action={action.clone()}>
+            <input name="name" required={true} />
+            <input name="price" required={true} />
+            <textarea name="description" rows={4}></textarea>
+        </Form<CreateProductAction>>
+    }
+}
+```
+
+### Extractors
+
+Render functions and Server actions allow to inject any parameter 
+that implements `FromRequest`.
+
+```rs
+#[action("/api/products/create")]
+async fn CreateProductAction(
+    form: Form<CreateProduct>,
+    headers: HeadersMap,
+    method: Method,
+    Inject(pool): Inject<MySqlPool>) -> Json<Product> {
+    // server side logic
+}
+
+```
