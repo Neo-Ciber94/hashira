@@ -6,6 +6,7 @@ edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
 license = "MIT"
 readme = "../../../README.md"
+keywords = ["yew", "ssr", "axum"]
 
 [dependencies]
 axum = "0.6.15"

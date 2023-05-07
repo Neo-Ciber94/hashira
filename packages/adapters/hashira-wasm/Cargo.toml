@@ -6,6 +6,7 @@ edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
 license = "MIT"
 readme = "../../../README.md"
+keywords = ["yew", "ssr", "wasm", "node", "deno"]
 
 [dependencies]
 hashira = { path = "../../hashira", version = "0.0.1-alpha" }

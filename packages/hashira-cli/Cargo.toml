@@ -4,7 +4,7 @@ description = "A command line utility for building hashira applications"
 repository = "https://github.com/Neo-Ciber94/hashira"
 version = "0.0.1-alpha"
 edition = "2021"
-keywords = ["cli", "web", "web-framework", "server-side-rendering", "yew"]
+keywords = ["cli", "web", "web-framework", "ssr", "yew"]
 license = "MIT"
 readme = "README.md"
 
