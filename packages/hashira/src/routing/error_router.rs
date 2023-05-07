@@ -1,5 +1,4 @@
-use super::ErrorPageHandler;
-use crate::components::AnyComponent;
+use crate::{components::AnyComponent, app::ErrorPageHandler};
 use http::StatusCode;
 use std::collections::HashMap;
 use thiserror::Error;

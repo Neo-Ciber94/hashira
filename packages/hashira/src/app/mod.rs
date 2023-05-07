@@ -20,7 +20,6 @@ pub use render_context::*;
 pub use request_context::*;
 
 //
-pub mod error_router;
 pub mod router;
 
 //

@@ -1,6 +1,9 @@
-use super::{error_router::ErrorRouter, router::PageRouterWrapper, AppData};
+use super::{router::PageRouterWrapper, AppData};
 pub use crate::error::ResponseError;
-use crate::{routing::Params, web::Request};
+use crate::{
+    routing::{ErrorRouter, Params},
+    web::Request,
+};
 use std::sync::Arc;
 
 #[cfg_attr(feature = "client", allow(dead_code))]

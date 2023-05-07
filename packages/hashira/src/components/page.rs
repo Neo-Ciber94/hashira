@@ -1,8 +1,8 @@
 use super::id::PageId;
 use crate::context::{PageDataContextProvider, ServerContext, ServerContextProvider};
-use crate::routing::Params;
+use crate::routing::{ErrorRouter, Params};
 use crate::{
-    app::{error_router::ErrorRouter, router::PageRouterWrapper},
+    app::router::PageRouterWrapper,
     components::error::{ErrorPage, NotFoundPage},
 };
 use http::{StatusCode, Uri};

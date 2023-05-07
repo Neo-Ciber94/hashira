@@ -18,3 +18,6 @@ pub use route_method::*;
 
 mod page_route;
 pub use page_route::*;
+
+mod error_router;
+pub use error_router::*;

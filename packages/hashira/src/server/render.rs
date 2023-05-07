@@ -1,5 +1,5 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
-use crate::app::error_router::ErrorRouter;
+use crate::routing::ErrorRouter;
 use crate::app::page_head::PageHead;
 use crate::app::router::PageRouterWrapper;
 use crate::app::RequestContext;
