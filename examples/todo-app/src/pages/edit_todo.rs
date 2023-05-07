@@ -9,7 +9,7 @@ use hashira::{
     actions::use_action_with_callback,
     components::Form,
     utils::{redirect_to, show_alert},
-    web::{status::StatusCode, Json},
+    web::Json,
 };
 use hashira::{app::RenderContext, page_component, web::Response};
 use serde::{Deserialize, Serialize};

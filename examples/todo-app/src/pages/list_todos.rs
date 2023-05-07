@@ -53,7 +53,7 @@ pub fn ListTodosPage(props: &ListTodosPageProps) -> yew::Html {
             show_alert(format!("failed to add: {err}"));
         }
     });
-
+    
     let on_delete = {
         let todos = todos.clone();
         let delete_action = delete_action.clone();
