@@ -6,4 +6,5 @@
         "rust": "html",
     },
     "rust-analyzer.checkOnSave": false,
+    "dotenv.enableAutocloaking": false,
 }

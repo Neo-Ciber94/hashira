@@ -1,6 +1,0 @@
-{
-    // Required to get tailwindcss highlight
-    "tailwindCSS.includeLanguages": {
-        "rust": "html",
-    },
-}
