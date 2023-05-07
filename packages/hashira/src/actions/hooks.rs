@@ -9,7 +9,7 @@ use http::{
 };
 use js_sys::Array;
 use serde::Serialize;
-use std::{fmt::Debug, marker::PhantomData, ops::Deref};
+use std::{fmt::Debug, marker::PhantomData, ops::Deref, rc::Rc};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{FormData, Headers, RequestInit, UrlSearchParams};
 use yew::{hook, use_state, Callback, UseStateHandle};
@@ -266,13 +266,14 @@ type ActionData<A: Action> = <A::Response as IntoJsonResponse>::Data;
 #[allow(type_alias_bounds)]
 type ActionResult<A: Action> = crate::Result<ActionData<A>>;
 
-pub struct UseActionRef<A: Action>(UseStateHandle<Option<ActionResult<A>>>);
+/// Allow to read the value of a action result.
+pub struct UseActionRef<A: Action>(Rc<ActionResult<A>>);
 
 impl<A: Action> Deref for UseActionRef<A> {
     type Target = ActionResult<A>;
 
     fn deref(&self) -> &Self::Target {
-        self.0.as_ref().expect("action value was not ready")
+        self.0.as_ref()
     }
 }
 
@@ -282,7 +283,7 @@ where
     A: Action,
 {
     loading: UseStateHandle<bool>,
-    result: UseStateHandle<Option<ActionResult<A>>>,
+    result: UseStateHandle<Option<Rc<ActionResult<A>>>>,
     on_complete: Option<Callback<UseActionRef<A>>>,
     _marker: PhantomData<T>,
 }
@@ -307,12 +308,12 @@ where
 
     /// Returns the response value if any.
     pub fn data(&self) -> Option<&<A::Response as IntoJsonResponse>::Data> {
-        self.result.as_ref().and_then(|x| x.as_ref().ok())
+        self.result.as_deref().and_then(|x| x.as_ref().ok())
     }
 
     /// Returns the response error if any.
     pub fn error(&self) -> Option<&Error> {
-        self.result.as_ref().and_then(|x| x.as_ref().err())
+        self.result.as_deref().and_then(|x| x.as_ref().err())
     }
 
     /// Sends a request to the server.
@@ -326,7 +327,7 @@ where
     #[cfg(target_arch = "wasm32")]
     #[allow(unused_variables)]
     pub fn send(&self, obj: T) -> Result<(), Error> {
-        self.send_with_options(obj, RequestOptions::new().method(Method::POST))
+        self.send_with_options(obj, RequestOptions::new())
     }
 
     /// Sends a request to the server using the given options.
@@ -396,12 +397,13 @@ where
 
         wasm_bindgen_futures::spawn_local(async move {
             let _guard = _guard;
-            let ret = fetch_json(request).await;
-            result.set(Some(ret));
+            let ret = Rc::new(fetch_json(request).await);
 
             if let Some(on_complete) = on_complete {
-                on_complete.emit(UseActionRef(result.clone()));
+                on_complete.emit(UseActionRef(ret.clone()));
             }
+
+            result.set(Some(ret));
         });
 
         Ok(())
@@ -466,12 +468,11 @@ where
 
 /// Returns a handle to execute an action on the server and takes a callback that is called when an action completes.
 #[hook]
-pub fn use_action_with_callback<A, T>(
-    on_complete: Callback<UseActionRef<A>>,
-) -> UseActionHandle<A, T>
+pub fn use_action_with_callback<A, T, F>(on_complete: F) -> UseActionHandle<A, T>
 where
     A: Action,
     T: IntoRequestInit,
+    F: Fn(UseActionRef<A>) + 'static,
 {
     let result = use_state(|| None);
     let loading = use_state(|| false);
@@ -479,7 +480,7 @@ where
     UseActionHandle {
         result,
         loading,
-        on_complete: Some(on_complete),
+        on_complete: Some(on_complete.into()),
         _marker: PhantomData,
     }
 }

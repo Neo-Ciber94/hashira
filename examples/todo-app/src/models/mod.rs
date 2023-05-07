@@ -26,5 +26,15 @@ pub struct UpdateTodo {
     pub id: i64,
     pub title: String,
     pub description: Option<String>,
-    pub done: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteTodo {
+    pub id: i64,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToggleTodo {
+    pub id: i64,
 }

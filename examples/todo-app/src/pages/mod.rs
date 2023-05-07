@@ -10,6 +10,9 @@ pub use self::{add_todo::*, edit_todo::*, list_todos::*};
 pub fn todos() -> AppNested<App> {
     hashira::app::nested()
         .action::<CreateTodoAction>()
+        .action::<EditTodoAction>()
+        .action::<DeleteTodoAction>()
+        .action::<ToggleDoneAction>()
         .page::<AddTodoPage>()
         .page::<EditTodoPage>()
         .page::<ListTodosPage>()

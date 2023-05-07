@@ -1,12 +1,11 @@
 mod components;
-mod database;
 mod models;
 mod pages;
 
 use crate::components::NavBar;
 use hashira::web::status::StatusCode;
 use hashira::{
-    app::{redirect, App as HashiraApp, AppService, LayoutContext},
+    app::{redirection, App as HashiraApp, AppService, LayoutContext},
     server::{LinkTag, PageLinks},
 };
 use yew::{function_component, html::ChildrenProps};
@@ -17,7 +16,7 @@ pub async fn hashira() -> hashira::Result<AppService> {
     let mut app = HashiraApp::<App>::new()
         .use_default_error_pages()
         .layout(root_layout)
-        .route(redirect("/", "/todos", StatusCode::TEMPORARY_REDIRECT))
+        .route(redirection("/", "/todos", StatusCode::TEMPORARY_REDIRECT))
         .nest("/todos", crate::pages::todos());
 
     #[cfg(not(target_arch = "wasm32"))]

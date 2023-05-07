@@ -79,15 +79,15 @@ impl RenderContext {
     /// # Panic
     /// - If the status is not a valid redirection
     /// - the `to` is no a valid uri
-    pub fn redirect(self, to: &str, status: StatusCode) -> Response {
+    pub fn redirect(self, to: &str, status: StatusCode) -> Result<Response, Error> {
         assert!(
             status.is_redirection(),
             "invalid redirection status code: {status}"
         );
 
-        Redirect::new(to, status)
+        Ok(Redirect::new(to, status)
             .expect("redirection error")
-            .into_response()
+            .into_response())
     }
 
     /// Render the page and returns the `text/html` response.

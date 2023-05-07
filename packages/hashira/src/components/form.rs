@@ -1,9 +1,10 @@
 use http::Method;
-use web_sys::{window, FormData};
-use yew::{TargetCast, Classes};
+use web_sys::FormData;
 use yew::{function_component, Children, Properties};
+use yew::{Classes, TargetCast};
 
 use crate::actions::{Action, AnyForm, RequestOptions, UseActionHandle};
+use crate::utils::refresh_window;
 
 #[derive(Properties)]
 pub struct FormProps<A>
@@ -20,7 +21,7 @@ where
 
     /// Classes of the form.
     #[prop_or_default]
-    class: Classes,
+    pub class: Classes,
 
     /// Styles of the form.
     #[prop_or_default]
@@ -101,8 +102,7 @@ where
             .expect("failed to send form");
 
         if reload {
-            let window = window().unwrap();
-            window.location().reload().unwrap();
+            refresh_window();
         }
     };
 

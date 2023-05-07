@@ -539,7 +539,7 @@ impl<BASE> Default for App<BASE> {
 /// # Panic
 /// - If the status code is not a redirection
 /// - The from/to are invalid uri
-pub fn redirect(from: &str, to: &str, status: StatusCode) -> Route {
+pub fn redirection(from: &str, to: &str, status: StatusCode) -> Route {
     let to = to.to_owned();
     Route::any(from, move || {
         let to = to.clone();

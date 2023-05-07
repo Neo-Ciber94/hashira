@@ -136,7 +136,7 @@ pub fn WasmLoading() -> yew::Html {
                         width: 100%;
                         height: 100%;
                         background-color: white;
-                        opacity: 0.3;
+                        opacity: 0;
                         cursor: wait;
                     }}
                 "#)))}

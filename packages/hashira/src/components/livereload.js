@@ -9,7 +9,7 @@ const pollInterval = 2000;
 function showLoadingIndicator() {
   const loadingElement = document.createElement("div");
   loadingElement.innerText = "Loading...";
-  loadingElement.style.position = "absolute";
+  loadingElement.style.position = "fixed";
   loadingElement.style.bottom = "10px";
   loadingElement.style.left = "10px";
   loadingElement.style.backgroundColor = "white";
