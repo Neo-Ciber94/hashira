@@ -6,7 +6,7 @@ version = "0.0.1-alpha"
 edition = "2021"
 keywords = ["cli", "web", "web-framework", "server-side-rendering", "yew"]
 license = "MIT"
-readme = "../../README.md"
+readme = "README.md"
 
 [[bin]]
 name = "hashira"
