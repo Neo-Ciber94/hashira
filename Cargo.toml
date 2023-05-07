@@ -1,7 +1,7 @@
 [workspace]
-members = ["packages/*", "packages/adapters/*", "examples/*", "tests/*"]
+members = ["packages/*", "adapters/*", "examples/*", "tests/*"]
 default-members = ["packages/*"]
-exclude = ["packages/adapters", "templates"]
+exclude = ["templates"]
 resolver = "2"
 
 [profile.release]

@@ -6,7 +6,7 @@ edition = "2021"
 [dev-dependencies]
 yew = { version = "0.20.0" }
 hashira = { path = "../../packages/hashira", features = ["hooks"] }
-hashira-axum = { path = "../../packages/adapters/hashira-axum" }
+hashira-axum = { path = "../../adapters/hashira-axum" }
 axum = "0.6.18"
 portpicker = "0.1.1"
 tokio = { version = "1.28.0", features = ["macros", "rt"] }

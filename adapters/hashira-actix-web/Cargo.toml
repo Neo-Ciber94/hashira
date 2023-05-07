@@ -5,11 +5,11 @@ version = "0.0.1-alpha"
 edition = "2021"
 repository = "https://github.com/Neo-Ciber94/hashira"
 license = "MIT"
-readme = "../../../README.md"
+readme = "../../README.md"
 keywords = ["yew", "ssr", "actix-web"]
 
 [dependencies]
-hashira = { path = "../../hashira", version = "0.0.1-alpha" }
+hashira = { path = "../../packages/hashira", version = "0.0.1-alpha" }
 actix-web = "4.3.1"
 futures = "0.3.28"
 actix-files = "0.6.2"
