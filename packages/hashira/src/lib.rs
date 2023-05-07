@@ -21,6 +21,8 @@ pub mod routing;
 
 /// Server related.
 pub mod server;
+
+/// Web types.
 pub mod web;
 
 /// Server actions.

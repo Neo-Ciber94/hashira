@@ -19,7 +19,7 @@ hashira-actix-web = { version = "0.0.1-alpha" }
 tokio = { version = "1.28.0", features = ["macros"] }
 
 [dependencies]
-hashira = { path = "../../packages/hashira", version = "0.0.1-alpha", optional = true }
+hashira = { version = "0.0.1-alpha", optional = true }
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }

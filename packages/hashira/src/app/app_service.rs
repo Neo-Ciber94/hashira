@@ -493,6 +493,17 @@ mod tests {
             .build();
     }
 
+    #[test]
+    fn app_data_test() {
+        let service = App::<Base>::new()
+            .app_data(String::from("hello world!"))
+            .app_data(Arc::new(69420_i32))
+            .build();
+
+        assert!(service.app_data().get::<String>().is_some());
+        assert!(service.app_data().get::<Arc<i32>>().is_some());
+    }
+
     // Helpers
 
     #[function_component]
