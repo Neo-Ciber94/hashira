@@ -149,7 +149,7 @@ impl FromRequest for ResponseError {
             .extensions()
             .get::<ResponseError>()
             .cloned()
-            .ok_or_else(|| format!("request does not contains an error").into());
+            .ok_or_else(|| "request does not contains an error".to_owned().into());
 
         std::future::ready(err)
     }

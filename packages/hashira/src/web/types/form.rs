@@ -82,7 +82,7 @@ where
         let method = request.method();
         if method == Method::GET || method == Method::HEAD {
             return match request.uri().query() {
-                Some(query) => match serde_urlencoded::from_str::<T>(&query) {
+                Some(query) => match serde_urlencoded::from_str::<T>(query) {
                     Ok(x) => Poll::Ready(Ok(Form(x))),
                     Err(err) => Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
                         "failed to deserialize uri query: {err}"
