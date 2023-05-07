@@ -1,4 +1,4 @@
-use crate::components::{AnyComponent, id::PageId};
+use crate::components::{id::PageId, AnyComponent};
 
 // Represents a client-side page route, containing a component and a path pattern.
 #[derive(Clone)]
@@ -9,6 +9,15 @@ pub struct ClientPageRoute {
 }
 
 impl ClientPageRoute {
+    /// Returns this route with a new path.
+    pub fn with_path(self, path: impl Into<String>) -> Self {
+        ClientPageRoute {
+            page_id: self.page_id,
+            component: self.component,
+            path: path.into(),
+        }
+    }
+
     /// Returns the id of the page of this route.
     pub fn id(&self) -> &PageId {
         &self.page_id

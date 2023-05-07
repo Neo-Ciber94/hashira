@@ -137,7 +137,6 @@ impl ServerRouter {
                     .map_err(InsertServerRouteError::MethodConflict)
             }
             None => {
-                
                 let id = RouteId::next();
                 let mut method_router = MethodRouter::default();
                 method_router.push(route).unwrap(); // SAFETY: This is the first route, so no conflicts
@@ -181,11 +180,33 @@ mod tests {
     }
 
     #[test]
-    fn insert_method_conflict_test() {
+    fn insert_method_conflict_test_1() {
         let mut router = ServerRouter::new();
 
         let route1 = Route::new("/", RouteMethod::GET, noop);
         let route2 = Route::new("/", RouteMethod::GET, noop);
+
+        assert!(router.insert(route1).is_ok());
+        assert!(router.insert(route2).is_err());
+    }
+
+    #[test]
+    fn insert_method_conflict_test_2() {
+        let mut router = ServerRouter::new();
+
+        let route1 = Route::new("/", RouteMethod::POST, noop);
+        let route2 = Route::new("/", RouteMethod::POST | RouteMethod::GET, noop);
+
+        assert!(router.insert(route1).is_ok());
+        assert!(router.insert(route2).is_err());
+    }
+
+    #[test]
+    fn insert_method_conflict_test_3() {
+        let mut router = ServerRouter::new();
+
+        let route1 = Route::new("/", RouteMethod::all(), noop);
+        let route2 = Route::new("/", RouteMethod::HEAD, noop);
 
         assert!(router.insert(route1).is_ok());
         assert!(router.insert(route2).is_err());

@@ -42,6 +42,16 @@ impl Route {
         }
     }
 
+    /// Returns this route with a new path.
+    pub fn with_path(self, new_path: impl Into<String>) -> Self {
+        Route {
+            path: new_path.into(),
+            handler: self.handler,
+            method: self.method,
+            extensions: self.extensions,
+        }
+    }
+
     /// Creates a new `Route` that matches any http method.
     pub fn any<H, Args>(path: &str, handler: H) -> Self
     where

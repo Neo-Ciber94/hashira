@@ -5,14 +5,14 @@ use super::{
 };
 use crate::{
     error::ResponseError,
-    routing::{Params, PathRouter, Route},
+    routing::{Params, ServerRouter, ServerRouterMatchError},
     web::{Body, IntoResponse, Request, Response, ResponseExt},
 };
 use http::{HeaderMap, StatusCode};
 use std::sync::Arc;
 
 pub(crate) struct AppServiceInner {
-    pub(crate) server_router: PathRouter<Route>,
+    pub(crate) server_router: ServerRouter,
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) server_error_router: ServerErrorRouter,
     pub(crate) client_error_router: Arc<ErrorRouter>,
@@ -136,16 +136,11 @@ impl AppService {
             path = path.trim_end_matches('/');
         }
 
-        match self.0.server_router.find(path) {
+        let method = req.method().into();
+
+        match self.0.server_router.at(path, method) {
             Ok(mtch) => {
                 let route = mtch.value;
-
-                // Check if the methods matches
-                let method = req.method().into();
-                if !route.method().matches(&method) {
-                    return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
-                }
-
                 let params = mtch.params;
                 let ctx = self.create_context(req.clone(), params, None);
 
@@ -157,7 +152,11 @@ impl AppService {
 
                 res
             }
+            Err(ServerRouterMatchError::MethodMismatch) => {
+                Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default())
+            }
             Err(_) => {
+                // we treat any other error as 404
                 let src = ErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
                 self.handle_error(req, src).await
             }
@@ -219,5 +218,128 @@ impl AppService {
 impl Clone for AppService {
     fn clone(&self) -> Self {
         AppService(self.0.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use http::{Method, StatusCode};
+    use yew::{function_component, html::ChildrenProps};
+
+    use crate::{
+        app::{nested, App},
+        routing::Route,
+        web::{Body, Request},
+    };
+
+    #[test]
+    #[should_panic]
+    fn invalid_route_test_1() {
+        let _ = App::<Base>::new().route(Route::get("", noop));
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_route_test_2() {
+        let _ = App::<Base>::new().route(Route::get("/path/", noop));
+    }
+
+    #[tokio::test]
+    async fn router_test() {
+        let service = App::<Base>::new()
+            .route(Route::get("/a", noop))
+            .route(Route::post("/b", noop))
+            .route(Route::delete("/c", noop))
+            .build();
+
+        let res1 = service.handle_request(create_req("/a", Method::GET)).await;
+        assert_eq!(res1.status(), StatusCode::OK);
+
+        let res2 = service.handle_request(create_req("/b", Method::POST)).await;
+        assert_eq!(res2.status(), StatusCode::OK);
+
+        let res3 = service
+            .handle_request(create_req("/c", Method::DELETE))
+            .await;
+        assert_eq!(res3.status(), StatusCode::OK);
+
+        let res4 = service.handle_request(create_req("/d", Method::GET)).await;
+        assert_eq!(res4.status(), StatusCode::NOT_FOUND);
+
+        let res5 = service.handle_request(create_req("/a", Method::POST)).await;
+        assert_eq!(res5.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn nested_route_test() {
+        let service = App::<Base>::new()
+            .nest(
+                "/vowels",
+                nested()
+                    .route(Route::post("/a", noop))
+                    .route(Route::post("/b", noop))
+                    .route(Route::post("/c", noop)),
+            )
+            .nest(
+                "/xyz",
+                nested()
+                    .route(Route::post("/x", noop))
+                    .route(Route::post("/y", noop))
+                    .route(Route::post("/z", noop)),
+            )
+            .build();
+
+        // Test requests to nested routes
+        let res1 = service
+            .handle_request(create_req("/vowels/a", Method::POST))
+            .await;
+        assert_eq!(res1.status(), StatusCode::OK);
+
+        let res2 = service
+            .handle_request(create_req("/xyz/z", Method::POST))
+            .await;
+        assert_eq!(res2.status(), StatusCode::OK);
+
+        // Test requests to non-existent nested routes
+        let res3 = service
+            .handle_request(create_req("/vowels/d", Method::POST))
+            .await;
+        assert_eq!(res3.status(), StatusCode::NOT_FOUND);
+
+        let res4 = service
+            .handle_request(create_req("/xyz/w", Method::POST))
+            .await;
+        assert_eq!(res4.status(), StatusCode::NOT_FOUND);
+
+        // Test requests to nested routes with invalid methods
+        let res5 = service
+            .handle_request(create_req("/vowels/b", Method::GET))
+            .await;
+        assert_eq!(res5.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+        let res6 = service
+            .handle_request(create_req("/xyz/x", Method::DELETE))
+            .await;
+        assert_eq!(res6.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[function_component]
+    fn Base(props: &ChildrenProps) -> yew::Html {
+        yew::html! {
+            {for props.children.iter()}
+        }
+    }
+
+    async fn noop() {}
+
+    fn create_req(path: &str, method: Method) -> Arc<Request> {
+        Request::builder()
+            .method(method)
+            .uri(path)
+            .body(Body::empty())
+            .unwrap()
+            .into()
     }
 }

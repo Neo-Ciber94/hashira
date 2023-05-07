@@ -10,17 +10,15 @@ use crate::{
         id::PageId,
         PageComponent,
     },
-    routing::{Route, ClientPageRoute},
+    routing::{Route, ClientPageRoute, ServerRouter},
     error::Error,
-    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture, actions::Action,
+    web::{IntoResponse, Response, Redirect, FromRequest}, types::BoxFuture, actions::Action,
 };
 
 use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
 use yew::{html::ChildrenProps, BaseComponent, Html};
-
-
 
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
 
@@ -89,7 +87,7 @@ impl ErrorPageHandler {
 /// A builder for a `hashira` application.
 pub struct App<BASE> {
     layout: Option<RenderLayout>,
-    server_router: PathRouter<Route>,
+    server_router: ServerRouter,
     page_router: PageRouter,
     client_error_router: ErrorRouter,
     server_error_router: ServerErrorRouter,
@@ -106,7 +104,7 @@ impl<BASE> App<BASE> {
     pub fn new() -> Self {
         App {
             layout: None,
-            server_router: PathRouter::new(),
+            server_router: ServerRouter::new(),
             page_router: PageRouter::new(),
             client_error_router: ErrorRouter::new(),
             server_error_router: ServerErrorRouter::new(),
@@ -165,8 +163,7 @@ where
         #[cfg(not(client = "client"))]
         {
             log::debug!("Registering route: {}", route.path());
-            let path = route.path().to_owned(); // To please the borrow checker
-            self.server_router.insert(&path, route).expect("failed to add route");
+            self.server_router.insert(route).expect("failed to add route");
         }
 
         self
@@ -188,7 +185,7 @@ where
                 };
                 
                 log::debug!("Registering route: {path}");
-                self.server_router.insert(&path, route).expect("failed to add route");
+                self.server_router.insert(route.with_path(path)).expect("failed to add route");
             }
         }
 
@@ -199,7 +196,7 @@ where
                     format!("{base_path}{sub}")
                 };
         
-            self.page_router.insert(&path, route);
+            self.page_router.insert(&path, route.with_path(path.clone()));
         }
 
         self
