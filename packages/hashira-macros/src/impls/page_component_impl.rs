@@ -5,7 +5,7 @@ use syn::{parse::Parse, ItemFn, LitStr, Result};
 // #[page_component("/route", render = "path::to::function")]
 // #[page_component(None, render = "path::to::function")]
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PageComponentAttr {
     route: Option<LitStr>,
     render: Option<Ident>,

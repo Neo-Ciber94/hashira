@@ -3,7 +3,7 @@
 use proc_macro2::TokenStream;
 use syn::{parse::Parse, spanned::Spanned, ItemFn, LitStr};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ActionAttr {
     route: String,
 }
