@@ -96,11 +96,10 @@ where
 mod tests {
     use crate::{
         app::{
-            error_router::ErrorRouter,
             router::{PageRouter, PageRouterWrapper},
             AppData, RequestContext,
         },
-        routing::Params,
+        routing::{Params, ErrorRouter},
         web::{Body, FromRequest, Json, Request},
     };
     use http::header;

@@ -1,5 +1,5 @@
 use futures::Future;
-use http::{header, HeaderValue};
+use http::{header, HeaderValue, Method};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, task::Poll};
 
@@ -72,11 +72,28 @@ where
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = validate_content_type(
-            mime::APPLICATION_WWW_FORM_URLENCODED,
-            self.ctx.request(),
-        ) {
+        if let Err(err) =
+            validate_content_type(mime::APPLICATION_WWW_FORM_URLENCODED, self.ctx.request())
+        {
             return Poll::Ready(Err(ResponseError::unprocessable_entity(err).into()));
+        }
+
+        let request = self.ctx.request();
+        let method = request.method();
+        if method == Method::GET || method == Method::HEAD {
+            return match request.uri().query() {
+                Some(query) => match serde_urlencoded::from_str::<T>(&query) {
+                    Ok(x) => Poll::Ready(Ok(Form(x))),
+                    Err(err) => Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
+                        "failed to deserialize uri query: {err}"
+                    ))
+                    .into())),
+                },
+                None => Poll::Ready(Err(ResponseError::unprocessable_entity(
+                    "uri query not found",
+                )
+                .into())),
+            };
         }
 
         let opts = ParseBodyOptions { allow_empty: false };
@@ -99,19 +116,18 @@ where
 mod tests {
     use crate::{
         app::{
-            error_router::ErrorRouter,
             router::{PageRouter, PageRouterWrapper},
             AppData, RequestContext,
         },
-        routing::Params,
+        routing::{ErrorRouter, Params},
         web::{Body, Form, FromRequest, Request},
     };
-    use http::header;
+    use http::{header, Method};
     use serde::Deserialize;
-    use std::sync::Arc;
+    use std::{sync::Arc};
 
     #[tokio::test]
-    async fn test_form_from_request() {
+    async fn test_form_from_request_body() {
         #[derive(Debug, Deserialize, PartialEq)]
         struct MagicGirl {
             name: String,
@@ -121,7 +137,37 @@ mod tests {
 
         let req = Request::builder()
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .method(Method::POST)
             .body(Body::from("name=Homura%20Akemi&age=14&dead=false"))
+            .unwrap();
+
+        let ctx = create_request_context(req);
+        let form = Form::<MagicGirl>::from_request(&ctx).await.unwrap();
+
+        assert_eq!(
+            form.0,
+            MagicGirl {
+                name: String::from("Homura Akemi"),
+                age: 14,
+                dead: false
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_form_from_request_uri() {
+        #[derive(Debug, Deserialize, PartialEq)]
+        struct MagicGirl {
+            name: String,
+            age: u32,
+            dead: bool,
+        }
+
+        let req = Request::builder()
+            .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .uri("/path/to/route?name=Homura%20Akemi&age=14&dead=false")
+            .method(Method::GET)
+            .body(Body::empty())
             .unwrap();
 
         let ctx = create_request_context(req);
