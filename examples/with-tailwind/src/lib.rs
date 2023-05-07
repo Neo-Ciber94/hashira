@@ -2,8 +2,9 @@ use hashira::{
     app::{App as HashiraApp, AppService, LayoutContext, RenderContext},
     page_component,
     server::{LinkTag, Metadata, PageLinks},
+    web::{IntoResponse, Response},
 };
-use yew::{html::ChildrenProps, BaseComponent};
+use yew::{function_component, html::ChildrenProps, BaseComponent};
 
 pub async fn root_layout(_: LayoutContext) -> yew::Html {
     use hashira::components::*;
@@ -28,27 +29,36 @@ pub async fn root_layout(_: LayoutContext) -> yew::Html {
     }
 }
 
-#[page_component]
+#[function_component]
 pub fn App(props: &ChildrenProps) -> yew::Html {
     yew::html! {
         <>{for props.children.iter()}</>
     }
 }
 
-#[page_component]
+async fn hello_page_loader(mut ctx: RenderContext) -> Result<Response, hashira::error::Error> {
+    ctx.title("Hashira x TailwindCSS");
+    ctx.metadata(Metadata::new().description("A Hashira x TailwindCSS example"));
+    ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
+
+    let res = ctx.render::<HomePage, App>().await;
+    Ok(res.into_response())
+}
+
+#[page_component("/", render = "hello_page_loader")]
 pub fn HomePage() -> yew::Html {
     yew::html! {
-    <div class="bg-gray-900 font-bold rounded-lg shadow-lg w-11/12 h-[400px]
-    flex flex-row justify-center items-center">
-        <h1 class="text-center text-white text-4xl flex md:flex-row items-center flex-col md:gap-0 gap-2">
-            <span>{"Hashira"}</span>
-            <span class="mx-5">{'\u{00D7}'}</span>
-            <span class="h-auto w-[250px]">
-                <img alt="TailwindCSS" src="/static/tailwindcss-logo.svg"/>
+        <div class="bg-gray-900 font-bold rounded-lg shadow-lg w-11/12 h-[400px]
+        flex flex-row justify-center items-center">
+            <h1 class="text-center text-white text-4xl flex md:flex-row items-center flex-col md:gap-0 gap-2">
+                <span>{"Hashira"}</span>
+                <span class="mx-5">{'\u{00D7}'}</span>
+                <span class="h-auto w-[250px]">
+                    <img alt="TailwindCSS" src="/static/tailwindcss-logo.svg"/>
 
-            </span>
-        </h1>
-    </div>
+                </span>
+            </h1>
+        </div>
     }
 }
 
@@ -60,14 +70,7 @@ where
     HashiraApp::<BASE>::new()
         .layout(root_layout)
         .use_default_error_pages()
-        .page("/", |mut ctx: RenderContext| async {
-            ctx.title("Hashira x TailwindCSS");
-            ctx.metadata(Metadata::new().description("A Hashira x TailwindCSS example"));
-            ctx.links(PageLinks::new().insert(LinkTag::stylesheet("/static/global.css")));
-
-            let res = ctx.render::<HomePage, BASE>().await;
-            Ok(res)
-        })
+        .page::<HomePage>()
         .build()
 }
 

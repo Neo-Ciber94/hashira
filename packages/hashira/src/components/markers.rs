@@ -1,4 +1,4 @@
-use yew::{AttrValue, Properties, Children};
+use yew::{html::ChildrenProps, AttrValue, Children, Properties};
 
 pub const HASHIRA_TITLE_MARKER: &str = "<!--hashira_title-->";
 pub const HASHIRA_META_MARKER: &str = "<!--hashira_meta-->";
@@ -7,6 +7,7 @@ pub const HASHIRA_LINKS_MARKER: &str = "<!--hashira_links-->";
 pub const HASHIRA_SCRIPTS_MARKER: &str = "<!--hashira_scripts-->";
 pub const HASHIRA_ROOT: &str = "__hashira__root__";
 pub const HASHIRA_PAGE_DATA: &str = "__hashira__page_data__";
+pub const HASHIRA_WASM_LOADER: &str = "__hashira_wasm_loader";
 
 #[derive(Debug, Clone, PartialEq, Properties)]
 pub struct MainProps {
@@ -96,4 +97,50 @@ pub fn LiveReload() -> yew::Html {
 #[yew::function_component]
 pub fn LiveReload() -> yew::Html {
     yew::Html::default()
+}
+
+/// WASM could take time to load specially if is no optimized,
+/// This is the base component used to notify when the wasm is loaded,
+/// the hydration script update this component after is loaded.
+#[yew::function_component]
+pub fn WasmLoadingBase(props: &ChildrenProps) -> yew::Html {
+    // If the wasm bundle is not available we don't need to render this component.
+    if crate::consts::IS_SERVER {
+        if crate::env::get_client_name().is_none() {
+            return yew::Html::default();
+        }
+    }
+
+    // The `data-wasm-loaded` should be set different on the client:
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset#name_conversion
+    yew::html! {
+        <div id={HASHIRA_WASM_LOADER} data-wasm-loaded="false">
+            {for props.children.iter()}
+        </div>
+    }
+}
+
+/// A loading screen while the wasm is loading.
+///
+/// FIXME: Remove this in production? in production the wasm load really fast,
+/// maybe we should remove this for production.
+#[yew::function_component]
+pub fn WasmLoading() -> yew::Html {
+    yew::html! {
+        <WasmLoadingBase>
+            <style>
+                {yew::Html::from_html_unchecked(AttrValue::from(format!(r#"
+                    #{HASHIRA_WASM_LOADER}[data-wasm-loaded="false"] {{
+                        position: fixed;
+                        z-index: 9999;
+                        width: 100%;
+                        height: 100%;
+                        background-color: white;
+                        opacity: 0;
+                        cursor: wait;
+                    }}
+                "#)))}
+            </style>
+        </WasmLoadingBase>
+    }
 }

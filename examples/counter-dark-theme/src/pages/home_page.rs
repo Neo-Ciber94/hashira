@@ -1,6 +1,14 @@
-use hashira::page_component;
+use hashira::{app::RenderContext, error::Error, page_component, server::Metadata, web::Response};
 
-#[page_component]
+use crate::App;
+
+async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
+    ctx.metadata(Metadata::new().description("A Hashira sample app"));
+    let res = ctx.render::<HomePage, App>().await;
+    Ok(res)
+}
+
+#[page_component("/", render = "render")]
 pub fn HomePage() -> yew::Html {
     yew::html! {
         <div class="container">

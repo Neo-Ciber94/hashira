@@ -106,7 +106,7 @@ where
     fn into_response(self) -> Response {
         match self {
             Ok(x) => x.into_response(),
-            Err(err) => ResponseError::from_error(err).into_response(),
+            Err(err) => ResponseError::with_error(err).into_response(),
         }
     }
 }

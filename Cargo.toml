@@ -1,10 +1,11 @@
 [workspace]
-members = [
-    "packages/*",
-    "packages/adapters/*",
-    "examples/*",
-    "tests/*",
-]
+members = ["packages/*", "packages/adapters/*", "examples/*", "tests/*"]
 default-members = ["packages/*"]
 exclude = ["packages/adapters", "templates"]
 resolver = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = "z"

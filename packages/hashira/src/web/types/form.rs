@@ -36,7 +36,7 @@ where
                     .body(Body::from(s))
                     .unwrap()
             }
-            Err(err) => ResponseError::from_error(err).into_response(),
+            Err(err) => ResponseError::with_error(err).into_response(),
         }
     }
 }

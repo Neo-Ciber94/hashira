@@ -59,7 +59,7 @@ pub(crate) async fn render_page_to_stream<COMP, ROOT>(
 ) -> Result<TryBoxStream<Bytes>, RenderError>
 where
     COMP: PageComponent,
-    COMP::Properties: Serialize + Send + Clone,
+    COMP::Properties: Serialize + Send,
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let RenderPageOptions {
@@ -195,7 +195,7 @@ pub(crate) async fn render_page_to_html<COMP, ROOT>(
 ) -> Result<String, RenderError>
 where
     COMP: PageComponent,
-    COMP::Properties: Serialize + Send + Clone,
+    COMP::Properties: Serialize + Send,
     ROOT: BaseComponent<Properties = ChildrenProps>,
 {
     let mut html_stream = render_page_to_stream::<COMP, ROOT>(props, options).await?;

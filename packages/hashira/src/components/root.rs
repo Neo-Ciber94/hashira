@@ -1,6 +1,6 @@
 use crate::{
     app::LayoutContext,
-    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title},
+    components::{Content, Links, LiveReload, Main, Meta, Scripts, Title, WasmLoading},
 };
 
 /// Renders the default root component.
@@ -24,6 +24,9 @@ pub async fn root_layout(_ctx: LayoutContext) -> yew::Html {
 
             // The <body>
             <body>
+                // Show a loader while the wasm is not ready
+                <WasmLoading/>
+
                 // Renders a <main> element where the page will be rendered and hydrated
                 <Main>
                     // Were the page will be inserted after rendered

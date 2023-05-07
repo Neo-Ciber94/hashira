@@ -1,9 +1,12 @@
-use crate::web::{IntoResponse, Json, Response};
+mod js_error;
+pub use js_error::*;
+
+use crate::web::{FromRequest, IntoResponse, Json, Response};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{fmt::Display, future::Ready};
 
-/// A convenient error type.
+/// A boxed error.
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// A error that occurred while processing a request.
@@ -16,15 +19,15 @@ pub struct ResponseError {
 
 impl ResponseError {
     /// Constructs a new `ResponseError`.
-    pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
+    pub fn new(status: StatusCode, message: impl Display) -> Self {
         ResponseError {
             status,
-            message: Some(message.into()),
+            message: Some(message.to_string()),
         }
     }
 
     /// Constructs a new `ResponseError` from an error and the given `StatusCode`.
-    pub fn from_error_with_status<E: Into<Error>>(status: StatusCode, error: E) -> Self {
+    pub fn with_error_and_status<E: Into<Error>>(status: StatusCode, error: E) -> Self {
         let err = error.into();
         match err.downcast::<ResponseError>() {
             Ok(err) => *err,
@@ -36,8 +39,8 @@ impl ResponseError {
     }
 
     /// Constructs a new `ResponseError` from an error.
-    pub fn from_error<E: Into<Error>>(error: E) -> Self {
-        Self::from_error_with_status(StatusCode::INTERNAL_SERVER_ERROR, error)
+    pub fn with_error<E: Into<Error>>(error: E) -> Self {
+        Self::with_error_and_status(StatusCode::INTERNAL_SERVER_ERROR, error)
     }
 
     /// Constructs an error from the given status code.
@@ -66,33 +69,33 @@ impl ResponseError {
 
 impl ResponseError {
     /// Returns a `400` bad request response error
-    pub fn bad_request(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::BAD_REQUEST, error)
+    pub fn bad_request(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::BAD_REQUEST, error)
     }
 
     /// Returns a `401` unauthorized response error
-    pub fn unauthorized(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::UNAUTHORIZED, error)
+    pub fn unauthorized(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::UNAUTHORIZED, error)
     }
 
     /// Returns a `403` forbidden response error
-    pub fn forbidden(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::FORBIDDEN, error)
+    pub fn forbidden(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::FORBIDDEN, error)
     }
 
     /// Returns a `404` not found response error
-    pub fn not_found(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::NOT_FOUND, error)
+    pub fn not_found(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::NOT_FOUND, error)
     }
 
     /// Returns a `422` unprocessable entity response error
-    pub fn unprocessable_entity(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::UNPROCESSABLE_ENTITY, error)
+    pub fn unprocessable_entity(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::UNPROCESSABLE_ENTITY, error)
     }
 
     /// Returns a `500` internal server error response error
-    pub fn internal_server_error(error: impl Into<Error>) -> Self {
-        ResponseError::from_error_with_status(StatusCode::INTERNAL_SERVER_ERROR, error)
+    pub fn internal_server_error(error: impl Display) -> Self {
+        ResponseError::new(StatusCode::INTERNAL_SERVER_ERROR, error)
     }
 }
 
@@ -131,6 +134,24 @@ impl IntoResponse for ResponseError {
         // We also insert the error as an extension in the response
         res.extensions_mut().insert(this);
         res
+    }
+}
+
+// ResponseError is available for error handlers if an error ocurred,
+// checkout `AppService::handle_error`
+impl FromRequest for ResponseError {
+    type Error = Error;
+    type Fut = Ready<Result<ResponseError, Error>>;
+
+    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+        let err = ctx
+            .request()
+            .extensions()
+            .get::<ResponseError>()
+            .cloned()
+            .ok_or_else(|| format!("request does not contains an error").into());
+
+        std::future::ready(err)
     }
 }
 

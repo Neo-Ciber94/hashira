@@ -2,22 +2,24 @@ use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RenderContext, RequestContext, Route, AppData, page_head::PageHead, DefaultHeaders,
+    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError,
 };
 use crate::{
     components::{
-        error::{ErrorPage, ErrorPageProps, NotFoundPage},
+        error::{ErrorPage, NotFoundPage},
         id::PageId,
         PageComponent,
     },
     error::Error,
-    web::{IntoResponse, Response, Redirect}, routing::PathRouter, types::BoxFuture,
+    web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture, actions::Action,
 };
-use super::PageResponse;
+
 use http::{status::StatusCode, HeaderMap};
 use serde::de::DeserializeOwned;
 use std::{future::Future, marker::PhantomData, sync::Arc, pin::Pin};
 use yew::{html::ChildrenProps, BaseComponent, Html};
+
+
 
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
 
@@ -28,16 +30,24 @@ pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxedFuture<Html> + Send + 
 pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response> + Send + Sync>);
 
 impl PageHandler {
-    pub fn new<H, R, Fut>(handler: H) -> Self
+    pub fn new<H, Args>(handler: H) -> Self
     where
-        H: Fn(RequestContext) -> Fut + Send + Sync + 'static,
-        R: IntoResponse,
-        Fut: Future<Output = R> + Send + 'static,
+        Args: FromRequest + Send + 'static,
+        H: Handler<Args> + Sync + Send,
+        H::Future: Future + Send + 'static,
+        H::Output: IntoResponse,
+        <Args as FromRequest>::Fut : Send
     {
-        PageHandler(Box::new(move |ctx| {
-            let ret = handler(ctx);
+        PageHandler(Box::new(move |ctx| {      
+            let handler = handler.clone();
             Box::pin(async move {
-                let ret = ret.await;
+                let args = match Args::from_request(&ctx).await {
+                    Ok(x) => x,
+                    Err(err) => {
+                        return ResponseError::with_error(err).into_response();
+                    }
+                };
+                let ret = handler.call(args).await;
                 ret.into_response()
             })
         }))
@@ -111,7 +121,7 @@ impl<BASE> App<BASE> {
 
 impl<BASE> App<BASE>
 where
-    BASE: 'static,
+    BASE: BaseComponent<Properties = ChildrenProps> + 'static, 
 {
     /// Adds a handler that renders the base `index.html` for the requests.
     ///
@@ -153,6 +163,7 @@ where
     pub fn route(mut self, route: Route) -> Self {
         #[cfg(not(client = "client"))]
         {
+            log::debug!("Registering route: {}", route.path());
             let path = route.path().to_owned(); // To please the borrow checker
             self.server_router.insert(&path, route).expect("failed to add route");
         }
@@ -166,13 +177,16 @@ where
 
         #[cfg(not(feature = "client"))]
         {
-            for (sub, route) in scope.server_router {
-                let path = if sub == "/" {
-                        base_path.to_owned()
-                    } else {
-                        format!("{base_path}{sub}")
-                    };
+            use super::IsBaseRoute;
 
+            for (sub, route) in scope.server_router {
+                let path = match sub.as_str() {
+                    "/" => base_path.to_owned(),
+                    _ if route.extensions().get::<IsBaseRoute>().is_some() => sub.to_owned(),
+                    _ => format!("{base_path}{sub}")
+                };
+                
+                log::debug!("Registering route: {path}");
                 self.server_router.insert(&path, route).expect("failed to add route");
             }
         }
@@ -192,24 +206,25 @@ where
 
     /// Adds a page for the given route.
     #[cfg_attr(feature = "client", allow(unused_variables))]
-    pub fn page<COMP, H, Fut>(mut self, path: &str, handler: H) -> Self
+    pub fn page<COMP>(mut self) -> Self
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
-        self.add_component::<COMP>(path);
+        let route = COMP::route().unwrap_or_else(|| panic!("`{}` is not declaring a route", std::any::type_name::<COMP>()));
+        self.add_component::<COMP>(route);
 
         #[cfg(not(feature = "client"))]
         {
-            self.route(Route::get(path, move |ctx| {
+            use crate::app::RenderContext;
+
+            self.route(Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
-                
+
                 // Returns the future
-                handler(render_ctx)
+                COMP::render::<BASE>(render_ctx)
             }))
         }
 
@@ -220,26 +235,25 @@ where
 
     /// Adds an error page for teh given status code.
     #[cfg_attr(feature="client", allow(unused_variables))]
-    pub fn error_page<COMP, H, Fut>(mut self, status: StatusCode, handler: H) -> Self
+    pub fn error_page<COMP>(mut self, status: StatusCode) -> Self
     where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
     {
         #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
+            use crate::app::RenderContext;
 
             self.server_error_router.insert(
                 status,
-                ErrorPageHandler::new(move |ctx, status| {
+                ErrorPageHandler::new(move |ctx, _status| {
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                     // Returns the future
-                    handler(render_ctx, status).map_ok(|x| x.into_response())
+                    COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response())
                 }),
             );
         }
@@ -250,23 +264,24 @@ where
 
     /// Register a page to handle any error.
     #[cfg_attr(feature="client", allow(unused_variables))]
-    pub fn error_page_fallback<COMP, H, Fut>(mut self, handler: H) -> Self
+    pub fn error_page_fallback<COMP>(mut self) -> Self
     where
         COMP: PageComponent,
-        COMP::Properties: DeserializeOwned,
-        H: Fn(RenderContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<PageResponse<COMP, BASE>, Error>> + Send + 'static,
+        COMP::Properties: DeserializeOwned
     {
         #[cfg(not(feature = "client"))]
         {
             use futures::TryFutureExt;
+            use crate::app::RenderContext;
 
             self.server_error_router
-                .fallback(ErrorPageHandler(Box::new(move |ctx, status| {
+                .fallback(ErrorPageHandler(Box::new(move |ctx, _status| {
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
-                    let res = handler(render_ctx, status).map_ok(|x| x.into_response());
+                    let res = COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response());
+
+                    // Returns the future
                     Box::pin(res)
                 })));
         }
@@ -280,38 +295,31 @@ where
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
     {
-        self.error_page(
-            StatusCode::NOT_FOUND,
-            move |mut ctx: RenderContext, status: StatusCode| async move {
-                ctx.title(format!(
-                    "{} | {}",
-                    status.as_u16(),
-                    status.canonical_reason().unwrap_or("Not Found")
-                ));
+        self.error_page::<NotFoundPage>(StatusCode::NOT_FOUND)
+            .error_page_fallback::<ErrorPage>()
+    }
 
-                let mut res = ctx.render::<NotFoundPage, BASE>().await;
-                *res.status_mut() = status;
-                Ok(res)
-            },
-        )
-        .error_page_fallback(
-            move |mut ctx: RenderContext, status| async move {
-                ctx.title(format!(
-                    "{} | {}",
-                    status.as_u16(),
-                    status.canonical_reason().unwrap_or("Page Error")
-                ));
+    /// Register a server action.
+    pub fn action<A>(self) -> Self where A: Action {
+        #[cfg(not(feature = "client"))]
+        {
+            use crate::web::{Body, IntoJsonResponse};
 
-                let mut res = ctx
-                    .render_with_props::<ErrorPage, BASE>(ErrorPageProps {
-                        status,
-                        message: None,
-                    })
-                    .await;
-                *res.status_mut() = status;
-                Ok(res)
-            },
-        )
+            let route = A::route().to_string();
+            let method = Some(A::method());
+
+            self.route(Route::new(&route, method, |ctx: RequestContext| async move {
+                let output = crate::try_response!(A::call(ctx).await);
+                let json_res = crate::try_response!(output.into_json_response());
+                let (parts, body) = json_res.into_parts();
+                let bytes = crate::try_response!(serde_json::to_vec(&body));
+                let body = Body::from(bytes);
+                Response::from_parts(parts, body)
+            }))
+        }
+
+        #[cfg(feature = "client")]
+        self
     }
 
     /// Adds a shared state that will be shared between server and client.
@@ -321,25 +329,25 @@ where
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(not(feature="wasm32"))]
+    #[cfg(not(target_arch="wasm32"))]
     pub fn server_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the server.
-    #[cfg(feature="wasm32")]
+    #[cfg(target_arch="wasm32")]
     pub fn server_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(feature="wasm32")]
+    #[cfg(target_arch="wasm32")]
     pub fn client_data<T>(self, data: T) -> Self where T: Send + Sync + 'static {
         self.app_data(data)
     }
 
     /// Adds a shared state that will be available on the client.
-    #[cfg(not(feature="wasm32"))]
+    #[cfg(not(target_arch="wasm32"))]
     pub fn client_data<T>(self, _: T) -> Self where T: Send + Sync + 'static {
         self
     }
@@ -439,10 +447,7 @@ where
     {
         use crate::components::AnyComponent;
         
-        log::debug!(
-            "Registering component `{}` on {path}",
-            std::any::type_name::<COMP>()
-        );
+        log::debug!("Registering component `{}` on {path}", std::any::type_name::<COMP>());
 
         self.page_router.insert(
             path,
@@ -534,46 +539,12 @@ impl<BASE> Default for App<BASE> {
 /// # Panic
 /// - If the status code is not a redirection
 /// - The from/to are invalid uri
-pub fn redirect(from: &str, to: &str, status: StatusCode) -> Route {
+pub fn redirection(from: &str, to: &str, status: StatusCode) -> Route {
     let to = to.to_owned();
-    Route::any(from, move |_| {
+    Route::any(from, move || {
         let to = to.clone();
         async move {       
             Redirect::new(to, status).expect("invalid redirection")
         }
-    })
-}
-
-/// Returns a route that renders the given component with the given `<head>`.
-pub fn render<COMP, BASE>(route: &str, head: PageHead) -> Route     
-    where
-        BASE: BaseComponent<Properties = ChildrenProps>,
-        COMP: PageComponent,
-        COMP::Properties: Default + serde::Serialize + Send + Sync + Clone {
-    Route::get(route, move |ctx| {
-        let head = head.clone();
-        let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-        let render_ctx = RenderContext::new(ctx, head, render_layout);
-
-        // Returns the future
-        render_ctx.render::<COMP, BASE>()
-    })
-}
-
-/// Returns a route that renders the given component with props, with the given `<head>`.
-pub fn render_with_props<COMP, BASE>(route: &str, props: COMP::Properties, head: PageHead) -> Route     
-    where
-        BASE: BaseComponent<Properties = ChildrenProps>,
-        COMP: PageComponent,
-        COMP::Properties: serde::Serialize + Send + Sync + Clone {
-    Route::get(route, move |ctx| {
-        let head = head.clone();
-        let props = props.clone();
-
-        let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
-        let render_ctx = RenderContext::new(ctx, head, render_layout);
-
-        // Returns the future
-        render_ctx.render_with_props::<COMP, BASE>(props)
     })
 }

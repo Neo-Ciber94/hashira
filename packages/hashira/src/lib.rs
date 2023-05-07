@@ -19,9 +19,12 @@ pub mod hooks;
 /// Base routing.
 pub mod routing;
 
-/// Server related. 
+/// Server related.
 pub mod server;
 pub mod web;
+
+/// Server actions.
+pub mod actions;
 
 // Allow public?
 pub(crate) mod context;
@@ -34,12 +37,16 @@ pub mod client;
 #[cfg(feature = "hooks")]
 pub mod events;
 
-pub(crate) mod types;
+#[doc(hidden)]
+pub mod types;
+
+/// A result type.
+pub type Result<T> = std::result::Result<T, crate::error::Error>;
 
 /// Macro attribute for declaring [`PageComponent`]s.
-/// 
+///
 /// [`PageComponent`]: ./components/trait.PageComponent.html
-pub use hashira_macros::page_component;
+pub use hashira_macros::{action, page_component};
 
 mod reexports {
     /// Reexport of `async_trait`
@@ -57,4 +64,62 @@ pub mod consts {
     /// A constants indicating whether if the application is running on the server.
     #[cfg(feature = "client")]
     pub const IS_SERVER: bool = false;
+}
+
+/// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
+#[macro_export]
+macro_rules! try_response {
+    ($result:expr) => {
+        match $result {
+            Ok(res) => res,
+            Err(err) => {
+                return $crate::web::IntoResponse::into_response(
+                    $crate::error::ResponseError::with_error(err),
+                );
+            }
+        }
+    };
+}
+
+/// Client side utilities.
+pub mod utils {
+
+    // FIXME: When we implement the client routing this should be done with a router hook.
+    /// Redirects to the given route.
+    #[allow(unused_variables)]
+    pub fn redirect_to<S: Into<String>>(route: S) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::window;
+
+            let window = window().unwrap();
+            let location = window.location();
+            location.assign(&route.into()).unwrap();
+        }
+    }
+
+    /// Shows a message in the browser.
+    #[allow(unused_variables)]
+    pub fn show_alert<S: Into<String>>(message: S) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::window;
+
+            let window = window().unwrap();
+            window.alert_with_message(&message.into()).unwrap();
+        }
+    }
+
+    /// Reload the current page.
+    #[allow(unused_variables)]
+    pub fn refresh_window() {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use web_sys::window;
+
+            let window = window().unwrap();
+            let location = window.location();
+            location.reload().unwrap();
+        }
+    }
 }

@@ -1,4 +1,6 @@
-use yew::BaseComponent;
+use yew::{html::ChildrenProps, BaseComponent};
+
+use crate::{app::RenderContext, error::Error, types::BoxFuture, web::Response};
 
 /// Represents a page of a web app.
 pub trait PageComponent: BaseComponent {
@@ -6,101 +8,76 @@ pub trait PageComponent: BaseComponent {
     fn id() -> &'static str {
         std::any::type_name::<Self>()
     }
+
+    /// The route of this page.
+    fn route() -> Option<&'static str>;
+
+    /// A function that renders this page component.
+    fn render<BASE>(ctx: RenderContext) -> BoxFuture<Result<Response, Error>>
+    where
+        BASE: BaseComponent<Properties = ChildrenProps>;
 }
 
-#[allow(dead_code)]
-mod x {
+// A handler that renders a page component.
+pub mod handler {
     use crate::{
-        app::{page_head::PageHead, RequestContext},
-        error::Error,
+        app::RenderContext,
+        web::{FromRequest, IntoResponse, Response},
     };
-    use serde::{de::DeserializeOwned, Serialize};
-    use std::future::Future;
-    use yew::{BaseComponent, Properties};
+    use futures::Future;
 
-    trait IntoHead {
-        fn into_head(self) -> PageHead;
-    }
-
-    /// Loads data for the current page.
-    trait PageLoader {
-        /// The data to load.
-        type Data: Serialize + DeserializeOwned;
-
-        /// A future that resolves to the data.
-        type Fut: Future<Output = Result<Self::Data, Error>>;
-
-        /// Loads data for the current page.
-        fn load(ctx: RequestContext) -> Self::Fut;
-    }
-
-    /// Provides the current page `<head>`.
-    trait ComponentHead {
-        /// A type that can be converted to a `<head>`.
-        type Head: IntoHead;
-
-        /// Returns the current page `<head>` elements.
-        fn head(ctx: RequestContext) -> Self::Head;
-    }
-
-    #[derive(Debug, Default, Clone, PartialEq, Eq, Properties)]
-    struct ServerProps<P>
+    /// Calls the render function of a handler.
+    pub async fn call_render<H, Args>(ctx: RenderContext, handler: H) -> crate::Result<Response>
     where
-        P: PartialEq,
+        H: RenderHandler<Args>,
+        Args: FromRequest,
     {
-        data: P,
+        let args = match Args::from_request(&ctx).await {
+            Ok(x) => x,
+            Err(err) => return Err(err.into()),
+        };
+        let ret = handler.call(ctx, args).await;
+        let res = ret.into_response();
+        Ok(res)
     }
 
-    /// Represents a page of a web app.
-    trait PageComponent: BaseComponent<Properties = ServerProps<Self::Data>> {
-        type Data: Serialize + DeserializeOwned + PartialEq;
-        type Loader: PageLoader<Data = Self::Data>;
-        type Head: ComponentHead;
+    /// A function that renders a page component.
+    pub trait RenderHandler<Args>: Clone + 'static {
+        type Output: IntoResponse;
+        type Future: Future<Output = Self::Output>;
 
-        /// Returns the path of this page component.
-        fn path(&self) -> Option<&'static str> {
-            None
-        }
-
-        /// Returns an unique identifier of this component.
-        fn id() -> &'static str {
-            std::any::type_name::<Self>()
-        }
+        fn call(&self, ctx: crate::app::RenderContext, args: Args) -> Self::Future;
     }
 
-    /*
-       #[loader]
-       async fn GetUsers(ctx: RequestContext) -> Result<User, Error> {
-           let pool = ctx.app_data::<DbPool>().unwrap();
-           let users : Vec<User> = sqlx::query_as!("SELECT * FROM users")?;
-           Ok(users)
-       }
+    macro_rules! impl_render_handler_tuple ({ $($param:ident)* } => {
+        impl<Func, Fut, $($param,)*> RenderHandler<($($param,)*)> for Func
+        where
+            Func: Fn(RenderContext, $($param),*) -> Fut + Clone + 'static,
+            Fut::Output: IntoResponse,
+            Fut: Future,
+        {
+            type Output = Fut::Output;
+            type Future = Fut;
 
-       #[head]
-       async fn UserPageHead(ctx: RequestContext) -> PageHead {
-           PageHead::new()
-               .title("Application | Users")
-               .description("Show all the users of the app")
-               .meta(
-                   Metadata::new()
-               )
-               .links(
-                   PageLinks::new()
-               )
-               .scripts(
-                   PageScripts::new()
-               )
-       }
+            #[inline]
+            #[allow(non_snake_case)]
+            fn call(&self, ctx: RenderContext, ($($param,)*): ($($param,)*)) -> Self::Future {
+                (self)(ctx, $($param,)*)
+            }
+        }
+    });
 
-       #[page_component("/users")]
-       #[page_loader(GetUsers)]
-       #[page_head(UserPageHead)]
-       fn UserPage(props: &ServerProps<Vec<User>>) -> yew::Html {
-           let users = props.data.clone();
-
-           yew::html! {
-               // ...
-           }
-       }
-    */
+    impl_render_handler_tuple! {}
+    impl_render_handler_tuple! { A }
+    impl_render_handler_tuple! { A B }
+    impl_render_handler_tuple! { A B C }
+    impl_render_handler_tuple! { A B C D }
+    impl_render_handler_tuple! { A B C D E }
+    impl_render_handler_tuple! { A B C D E F }
+    impl_render_handler_tuple! { A B C D E F G }
+    impl_render_handler_tuple! { A B C D E F G H }
+    impl_render_handler_tuple! { A B C D E F G H I }
+    impl_render_handler_tuple! { A B C D E F G H I J }
+    impl_render_handler_tuple! { A B C D E F G H I J K }
+    impl_render_handler_tuple! { A B C D E F G H I J K L }
 }

@@ -37,7 +37,7 @@ async function serveStaticFile(request: Request): Promise<Response> {
     ? pathname.slice(STATIC_PATH.length)
     : pathname;
   const ext = denoPath.extname(pathname);
-  const filePath = `${PUBLIC_DIR}/${path}`;
+  const filePath = denoPath.join(PUBLIC_DIR, path);
 
   if (!(await denoFs.exists(filePath))) {
     console.warn(`⚠️  File not found: ${filePath}`);

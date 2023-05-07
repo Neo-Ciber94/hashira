@@ -6,7 +6,7 @@ BUILD_CMD = "build --release"
 
 [tasks.deno-run.env]
 HASHIRA_WASM_LIB = "{{crate_name}}"
-HASHIRA_STATIC_DIR = "static/"
+HASHIRA_STATIC_DIR = "/static"
 HASHIRA_HOST = "127.0.0.1"
 HASHIRA_PORT = 5000
 

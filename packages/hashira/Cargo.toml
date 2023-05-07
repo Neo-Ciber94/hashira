@@ -13,7 +13,6 @@ readme = "../../README.md"
 yew = { version = "0.20.0", features = ["ssr", "hydration"] }
 hashira-macros = { path = "../hashira-macros", version = "0.0.1-alpha" }
 cookie = { version = "0.17.0", features = ["percent-encode"] }
-web-sys = "0.3.61"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 http = "0.2.9"
@@ -32,11 +31,14 @@ mime = "0.3.17"
 serde_urlencoded = "0.7.1"
 pin-project-lite = "0.2.9"
 console_error_panic_hook = "0.1.7"
+js-sys = "0.3.61"
+wasm-bindgen = "0.2.84"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-# We use this dependencies to safely render the html layout on wasm without blocking
 prokio = "0.1.0"
 fragile = "2.0.0"
+wasm-bindgen-futures = "0.4.34"
+serde-wasm-bindgen = "0.5.0"
 
 [features]
 # Enable hooks to the hashira steps
@@ -44,6 +46,22 @@ hooks = []
 
 # Tells hashira is running on a client side
 client = []
+
+[dependencies.web-sys]
+version = "0.3.61"
+features = [
+    'HtmlElement',
+    'DomStringMap',
+    'FormData',
+    'HtmlFormElement',
+    'UrlSearchParams',
+    'Headers',
+    'Request',
+    'RequestInit',
+    'RequestMode',
+    'Response',
+    'Window',
+]
 
 [dev-dependencies]
 tokio = { version = "1.28.0", features = ["macros", "rt"] }

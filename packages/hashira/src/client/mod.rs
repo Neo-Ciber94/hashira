@@ -1,5 +1,9 @@
+mod fetch_json;
+pub use fetch_json::*;
+
+use wasm_bindgen::JsCast;
 use crate::app::AppService;
-use crate::components::{PageData, PageProps};
+use crate::components::{PageData, PageProps, HASHIRA_WASM_LOADER};
 use crate::context::ServerContext;
 
 use yew::html::ChildrenProps;
@@ -12,7 +16,7 @@ pub fn mount<BASE>(service: AppService)
 where
     BASE: BaseComponent<Properties = ChildrenProps>,
 {
-    let page_data_element = find_element_by_id(HASHIRA_PAGE_DATA);
+    let page_data_element = find_element_by_id(HASHIRA_PAGE_DATA).unwrap();
     let content = page_data_element
         .text_content()
         .expect("unable to get page data");
@@ -29,9 +33,16 @@ where
     };
 
     // Find the element to hydrate the page
-    let root = find_element_by_id(HASHIRA_ROOT);
+    let root = find_element_by_id(HASHIRA_ROOT).unwrap();
     let renderer = Renderer::<Page<BASE>>::with_root_and_props(root, props);
     renderer.hydrate();
+
+    // Notify the wasm is loaded
+    if let Ok(wasm_loader) = find_element_by_id(HASHIRA_WASM_LOADER) {
+        // The name is different: https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset#name_conversion
+        let wasm_loader: web_sys::HtmlElement = wasm_loader.dyn_into().unwrap();
+        wasm_loader.dataset().set("wasmLoaded", "true").unwrap();
+    }
 
     // Initialize
     #[cfg(feature = "hooks")]
@@ -52,8 +63,8 @@ where
 }
 
 // TODO: during development show a modal with the error,
-// this way the error is not just shallowed by the console
-#[cfg_attr(not(feature = "hooks"), allow(dead_code, unused_variables))]
+// this way the error is not just hidden by the console
+#[allow(dead_code, unused_variables)]
 fn set_panic_hook(service: &AppService) {
     #[cfg(feature = "hooks")]
     {
@@ -78,7 +89,7 @@ fn set_panic_hook(service: &AppService) {
     }
 }
 
-fn find_element_by_id(id: &str) -> web_sys::Element {
+fn find_element_by_id(id: &str) -> Result<web_sys::Element, String> {
     let window = web_sys::window().expect("unable to get `window`");
     let document = window.document().expect("unable to get `document`");
 
@@ -86,5 +97,5 @@ fn find_element_by_id(id: &str) -> web_sys::Element {
     document
         .query_selector(&selector)
         .expect("failed to select element")
-        .unwrap_or_else(|| panic!("unable to find '{id}'"))
+        .ok_or_else(|| format!("unable to find '{id}'"))
 }

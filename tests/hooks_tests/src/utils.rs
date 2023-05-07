@@ -12,13 +12,10 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
 }
 
 pub fn create_app() -> Hashira<App> {
-    Hashira::<App>::new().page("/home", |ctx| async {
-        let res = ctx.render::<HelloWorldPage, _>().await;
-        Ok(res)
-    })
+    Hashira::<App>::new().page::<HelloWorldPage>()
 }
 
-#[hashira::page_component]
+#[hashira::page_component("/home")]
 fn HelloWorldPage() -> yew::Html {
     yew::html! {
         "Hello World"
