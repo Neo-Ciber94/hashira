@@ -9,18 +9,17 @@ name = "counter_dark_theme"
 crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-hashira = { path = "../../packages/hashira", features = ["client"] }
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hashira = { path = "../../packages/hashira", features = [] }
 env_logger = "0.10.0"
 actix-web = "4.3.1"
 actix-files = "0.6.2"
-hashira-actix-web = { path = "../../packages/adapters/hashira-actix-web" }
+hashira-actix-web = { version = "0.0.1-alpha" }
 tokio = { version = "1.28.0", features = ["macros"] }
 
 [dependencies]
+hashira = { version = "0.0.1-alpha", optional = true }
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }
@@ -31,3 +30,7 @@ web-sys = { version = "0.3.61", features = [
     "WorkerGlobalScope",
 ] }
 wasm-bindgen-futures = "0.4.34"
+
+[features]
+default = ["hashira"]
+client = ["hashira/client"]

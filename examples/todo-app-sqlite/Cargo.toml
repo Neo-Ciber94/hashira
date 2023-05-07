@@ -22,7 +22,7 @@ wasm-bindgen-futures = "0.4.34"
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hashira-axum = { path = "../../packages/adapters/hashira-axum", version = "0.0.1-alpha" }
+hashira-axum = { version = "0.0.1-alpha" }
 env_logger = "0.10.0"
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread", "time"] }
 axum = "0.6.15"
@@ -30,7 +30,7 @@ tower-http = { version = "0.4.0", features = ["fs"] }
 sqlx = { version = "0.6.3", features = ["runtime-tokio-rustls", "sqlite"] }
 
 [dependencies]
-hashira = { path = "../../packages/hashira", version = "0.0.1-alpha", optional = true }
+hashira = { version = "0.0.1-alpha", optional = true }
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }

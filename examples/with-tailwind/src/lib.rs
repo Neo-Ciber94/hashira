@@ -74,7 +74,7 @@ where
         .build()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "client")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
     wasm_logger::init(wasm_logger::Config::default());
