@@ -1,3 +1,7 @@
+// We let a lot of unused imports when compiling for the client and server,
+// some imports are only available for the server and other for the client
+#![allow(unused_imports)]
+
 mod add_todo;
 mod edit_todo;
 mod list_todos;

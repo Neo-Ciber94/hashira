@@ -1,5 +1,3 @@
-#![warn(unused_imports)]
-
 use crate::{
     models::{DeleteTodo, Todo, ToggleTodo},
     App,

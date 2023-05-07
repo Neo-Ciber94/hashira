@@ -1,8 +1,10 @@
-#![warn(unused_imports)]
+use std::ops::Deref;
+
 use crate::{
     models::{Todo, UpdateTodo},
     App,
 };
+use hashira::web::Inject;
 use hashira::{
     action,
     actions::use_action_with_callback,
@@ -12,10 +14,8 @@ use hashira::{
 };
 use hashira::{app::RenderContext, page_component, web::Response};
 use serde::{Deserialize, Serialize};
-use yew::{classes, Properties};
-
-#[allow(unused_imports)]
-use hashira::web::Inject;
+use yew::{classes, use_state, Properties, TargetCast};
+use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 
 #[action("/api/todos/update")]
 #[cfg(feature = "client")]
@@ -100,7 +100,9 @@ pub struct EditTodoPageProps {
 #[page_component("/edit/:id", render = "render")]
 pub fn EditTodoPage(props: &EditTodoPageProps) -> yew::Html {
     let action = use_action_with_callback(|ret| match &*ret {
-        Ok(_) => redirect_to("/"),
+        Ok(_) => {
+            redirect_to("/");
+        }
         Err(err) => show_alert(format!("failed to update: {err}")),
     });
 
@@ -110,8 +112,11 @@ pub fn EditTodoPage(props: &EditTodoPageProps) -> yew::Html {
         ""
     };
 
+    let title = use_state(|| props.todo.title.clone());
+    let description = use_state(|| props.todo.description.clone());
+
     yew::html! {
-        <div class="mt-10">
+        <div class="mt-10 w-11/12 md:w-2/3 lg:w-[700px] mx-auto">
             <Form<EditTodoAction> action={action.clone()} class={classes!("border", "rounded", "p-4", loading_class)}>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2" for="id">
@@ -133,8 +138,16 @@ pub fn EditTodoPage(props: &EditTodoPageProps) -> yew::Html {
                         id="title"
                         name="title"
                         type="text"
-                        value={props.todo.title.clone()}
-                        placeholder="Enter title" />
+                        placeholder="Enter title"
+                        value={title.deref().clone()}
+                        onchange={{
+                            let title = title.clone();
+                            move |e: yew::html::onchange::Event| {
+                                let el : HtmlInputElement  = e.target_dyn_into().unwrap();
+                                title.set(el.value());
+                            }
+                        }}
+                         />
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 font-bold mb-2" for="description">
@@ -144,14 +157,22 @@ pub fn EditTodoPage(props: &EditTodoPageProps) -> yew::Html {
                         id="description"
                         rows={4}
                         name="description"
-                        value={props.todo.description.clone().unwrap_or_default()}
-                        placeholder="Enter description">
+                        placeholder="Enter description"
+                        value={description.deref().clone()}
+                        onchange={{
+                            let description = description.clone();
+                            move |e: yew::html::onchange::Event| {
+                                let el : HtmlTextAreaElement  = e.target_dyn_into().unwrap();
+                                description.set(Some(el.value()));
+                            }
+                        }}
+                        >
                     </textarea>
                 </div>
                 <div class="flex flex-row gap-4 justify-end">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    <button disabled={action.is_loading()} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                         type={"submit"}>
-                        {"Update Todo"}
+                        {"Update"}
                     </button>
                     <a href="/" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                         type={"submit"}>

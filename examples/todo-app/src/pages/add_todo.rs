@@ -61,7 +61,7 @@ pub fn AddTodoPage() -> yew::Html {
     });
 
     let loading_class = if action.is_loading() {
-        "animation-pulse"
+        "animate-pulse"
     } else {
         ""
     };
@@ -93,10 +93,10 @@ pub fn AddTodoPage() -> yew::Html {
                     </textarea>
                 </div>
                 <div class="flex flex-row gap-4 justify-end">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    <button disabled={action.is_loading()} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                         type={"submit"}
                         >
-                        {"Create Todo"}
+                        {"Create"}
                     </button>
                     <a href="/" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                         type={"submit"}>
