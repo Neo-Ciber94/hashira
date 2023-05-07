@@ -41,3 +41,10 @@ There are the templates available at the moment:
 - deno
 
 More will be added in the future. Or if you want to create an adapter for your own, look at the code, most of the templates just use an adapter which starts the server, you can check the adapters in `/packages/adapters`.
+
+## This project still on alpha
+
+`hashira` still on alpha that means:
+
+- Some features are incomplete
+- Some features may be removed
