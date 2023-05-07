@@ -12,17 +12,12 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    name: Build
     steps:
       - uses: actions/checkout@v3
-
-      # Build project
-      - name: Build
-        run: cargo build --all-features --verbose
-
-      # Run clippy
-      - name: Run clippy
-        run: cargo clippy
+      - run: cargo build --verbose
+      - run: cargo build --features client --verbose
+      - run: cargo clippy -- -D warnings
 
   # Run tests
   test:
@@ -34,5 +29,5 @@ jobs:
     name: Test | ${{ matrix.os}}
     steps:
       - uses: actions/checkout@v3
-      - name: Run Test (${{ matrix.os}})
-        run: cargo test --all-features --verbose
+      - run: cargo test --verbose
+      - run: cargo test --features client --verbose

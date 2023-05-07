@@ -105,10 +105,8 @@ pub fn LiveReload() -> yew::Html {
 #[yew::function_component]
 pub fn WasmLoadingBase(props: &ChildrenProps) -> yew::Html {
     // If the wasm bundle is not available we don't need to render this component.
-    if crate::consts::IS_SERVER {
-        if crate::env::get_client_name().is_none() {
-            return yew::Html::default();
-        }
+    if crate::consts::IS_SERVER && crate::env::get_client_name().is_none(){
+        return yew::Html::default();
     }
 
     // The `data-wasm-loaded` should be set different on the client:

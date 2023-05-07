@@ -226,6 +226,7 @@ impl Clone for AppService {
 
 #[cfg(test)]
 mod tests {
+    #![allow(dead_code, unused_imports)]
     use std::{str::FromStr, sync::Arc};
 
     use bytes::Bytes;
@@ -233,7 +234,7 @@ mod tests {
     use yew::{function_component, html::ChildrenProps};
 
     use crate::{
-        app::{nested, App},
+        app::App,
         routing::Route,
         web::{Body, Request, Response},
     };
@@ -279,7 +280,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(feature = "client"))]
     async fn nested_route_test() {
+        use crate::app::nested;
+
         let service = App::<Base>::new()
             .nest(
                 "/vowels",
@@ -332,6 +336,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(feature = "client"))]
     async fn page_route_test() {
         #[function_component]
         fn CompA() -> yew::Html {
@@ -370,6 +375,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg(not(feature = "client"))]
     async fn error_route_test() {
         #[function_component]
         fn NotFoundTest() -> yew::Html {
