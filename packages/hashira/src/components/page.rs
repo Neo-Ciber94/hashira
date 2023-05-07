@@ -54,7 +54,7 @@ where
     let page_data = &props.page_data;
 
     if let Some(error) = &page_data.error {
-        return match error_router.find_match(&error.status) {
+        return match error_router.find(&error.status) {
             Some(comp) => {
                 let props = page_data.props.clone();
                 yew::html! {
@@ -84,7 +84,7 @@ where
                 </ROOT>
             }
         }
-        None => match error_router.find_match(&StatusCode::NOT_FOUND) {
+        None => match error_router.find(&StatusCode::NOT_FOUND) {
             Some(comp) => {
                 let props = page_data.props.clone();
                 yew::html! {

@@ -2,6 +2,11 @@ use super::ErrorPageHandler;
 use crate::components::AnyComponent;
 use http::StatusCode;
 use std::collections::HashMap;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+#[error("failed to insert error page for `{0}`, it already exists")]
+pub struct ErrorPageConflictError(StatusCode);
 
 /// Contains the error routes for the client.
 #[derive(Default, Clone, PartialEq)]
@@ -20,8 +25,16 @@ impl ErrorRouter {
     }
 
     /// Adds a component for the given `StatusCode`.
-    pub fn insert(&mut self, status: StatusCode, component: AnyComponent<serde_json::Value>) {
-        self.routes.insert(status, component);
+    pub fn insert(
+        &mut self,
+        status: StatusCode,
+        component: AnyComponent<serde_json::Value>,
+    ) -> Result<(), ErrorPageConflictError> {
+        if self.routes.insert(status, component).is_some() {
+            return Err(ErrorPageConflictError(status));
+        }
+
+        Ok(())
     }
 
     /// Adds a handler for any status code.
@@ -30,7 +43,7 @@ impl ErrorRouter {
     }
 
     /// Returns the component to render for the given `StatusCode`.
-    pub fn find_match(&self, status: &StatusCode) -> Option<&AnyComponent<serde_json::Value>> {
+    pub fn find(&self, status: &StatusCode) -> Option<&AnyComponent<serde_json::Value>> {
         self.routes.get(status).or(self.fallback.as_ref())
     }
 }
@@ -52,8 +65,16 @@ impl ServerErrorRouter {
     }
 
     /// Adds a handler for the given `StatusCode`.
-    pub fn insert(&mut self, status: StatusCode, handler: ErrorPageHandler) {
-        self.routes.insert(status, handler);
+    pub fn insert(
+        &mut self,
+        status: StatusCode,
+        handler: ErrorPageHandler,
+    ) -> Result<(), ErrorPageConflictError> {
+        if self.routes.insert(status, handler).is_some() {
+            return Err(ErrorPageConflictError(status));
+        }
+
+        Ok(())
     }
 
     /// Adds a component to handle for error status code.
@@ -62,7 +83,10 @@ impl ServerErrorRouter {
     }
 
     /// Returns the handler for the given `StatusCode`.
-    pub fn find_match(&self, status: &StatusCode) -> Option<&ErrorPageHandler> {
-        self.routes.get(status)
+    pub fn find(&self, status: &StatusCode) -> Option<&ErrorPageHandler> {
+        match self.routes.get(status) {
+            Some(handler) => Some(handler),
+            None => self.fallback.as_ref(),
+        }
     }
 }

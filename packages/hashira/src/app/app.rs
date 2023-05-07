@@ -253,7 +253,7 @@ where
                     // Returns the future
                     COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response())
                 }),
-            );
+            ).expect("failed to add error handler")
         }
 
         self.add_error_component::<COMP>(status);
@@ -273,15 +273,15 @@ where
             use crate::app::RenderContext;
 
             self.server_error_router
-                .fallback(ErrorPageHandler(Box::new(move |ctx, _status| {
+                .fallback(ErrorPageHandler::new(move |ctx, _status| {
                     let head = super::page_head::PageHead::new();
                     let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                     let render_ctx = RenderContext::new(ctx, head, render_layout);
-                    let res = COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response());
 
                     // Returns the future
-                    Box::pin(res)
-                })));
+                    COMP::render::<BASE>(render_ctx).map_ok(|x| x.into_response())
+                }),
+            );
         }
 
         self.add_error_fallback_component::<COMP>();
@@ -480,21 +480,20 @@ where
             std::any::type_name::<COMP>()
         );
 
-        self.client_error_router.insert(
-            status,
-            AnyComponent::<serde_json::Value>::new(|props_json| {
-                let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
-                    panic!(
-                        "Failed to deserialize `{}` component props. {err}",
-                        std::any::type_name::<COMP>()
-                    )
-                });
+        let component = AnyComponent::<serde_json::Value>::new(|props_json| {
+            let props = serde_json::from_value(props_json).unwrap_or_else(|err| {
+                panic!(
+                    "Failed to deserialize `{}` component props. {err}",
+                    std::any::type_name::<COMP>()
+                )
+            });
 
-                yew::html! {
-                    <COMP ..props/>
-                }
-            }),
-        );
+            yew::html! {
+                <COMP ..props/>
+            }
+        });
+
+        self.client_error_router.insert(status,component).expect("failed to add error page");
     }
 
     fn add_error_fallback_component<COMP>(&mut self)
@@ -524,7 +523,6 @@ where
             }));
     }
 }
-
 
 impl<BASE> Default for App<BASE> {
     fn default() -> Self {

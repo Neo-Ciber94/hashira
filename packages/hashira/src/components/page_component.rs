@@ -81,3 +81,49 @@ pub mod handler {
     impl_render_handler_tuple! { A B C D E F G H I J K }
     impl_render_handler_tuple! { A B C D E F G H I J K L }
 }
+
+pub(crate) mod macros {
+    /// Helper to implement `PageComponent`
+    #[macro_export]
+    macro_rules! impl_page_component {
+        ($component:ty) => {
+            impl $crate::components::PageComponent for $component {
+                fn route() -> Option<&'static str> {
+                    None
+                }
+
+                fn render<BASE>(
+                    ctx: $crate::app::RenderContext,
+                ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::Error>>
+                where
+                    BASE: ::yew::BaseComponent<Properties = ChildrenProps>,
+                {
+                    std::boxed::Box::pin(async move {
+                        let res = ctx.render::<Self, BASE>().await;
+                        Ok(res)
+                    })
+                }
+            }
+        };
+
+        ($component:ty, $path:literal) => {
+            impl $crate::components::PageComponent for $component {
+                fn route() -> Option<&'static str> {
+                    Some($path)
+                }
+
+                fn render<BASE>(
+                    ctx: $crate::app::RenderContext,
+                ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::Error>>
+                where
+                    BASE: ::yew::BaseComponent<Properties = ChildrenProps>,
+                {
+                    std::boxed::Box::pin(async move {
+                        let res = ctx.render::<Self, BASE>().await;
+                        Ok(res)
+                    })
+                }
+            }
+        };
+    }
+}

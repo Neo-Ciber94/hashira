@@ -180,7 +180,7 @@ impl AppService {
         };
 
         let status = err.status();
-        let mut response = match self.0.server_error_router.find_match(&status) {
+        let mut response = match self.0.server_error_router.find(&status) {
             Some(error_handler) => {
                 let params = Params::default();
                 let ctx = self.create_context(req, params, Some(err.clone()));
@@ -197,6 +197,9 @@ impl AppService {
             }
             None => err.clone().into_response(),
         };
+
+        // Ensure the status code of the response
+        *response.status_mut() = status;
 
         // Append the error to the response
         response.extensions_mut().insert(err);
@@ -223,16 +226,19 @@ impl Clone for AppService {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
+    use bytes::Bytes;
     use http::{Method, StatusCode};
     use yew::{function_component, html::ChildrenProps};
 
     use crate::{
         app::{nested, App},
         routing::Route,
-        web::{Body, Request},
+        web::{Body, Request, Response},
     };
+
+    use super::AppService;
 
     #[test]
     #[should_panic]
@@ -325,6 +331,164 @@ mod tests {
         assert_eq!(res6.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
+    #[tokio::test]
+    async fn page_route_test() {
+        #[function_component]
+        fn CompA() -> yew::Html {
+            yew::html! {
+                "test - component (a)"
+            }
+        }
+
+        #[function_component]
+        fn CompB() -> yew::Html {
+            yew::html! {
+                "test - component (b)"
+            }
+        }
+
+        crate::impl_page_component!(CompA, "/a");
+        crate::impl_page_component!(CompB, "/b");
+
+        let service = App::<Base>::new().page::<CompA>().page::<CompB>().build();
+
+        let res1 = send_request_get_text(&service, "/a", "").await;
+        assert_eq!(res1.status(), StatusCode::OK);
+        assert!(
+            res1.body().contains("test - component (a)"),
+            "body: {}",
+            res1.body()
+        );
+
+        let res2 = send_request_get_text(&service, "/b", "").await;
+        assert_eq!(res2.status(), StatusCode::OK);
+        assert!(
+            res2.body().contains("test - component (b)"),
+            "body: {}",
+            res2.body()
+        );
+    }
+
+    #[tokio::test]
+    async fn error_route_test() {
+        #[function_component]
+        fn NotFoundTest() -> yew::Html {
+            yew::html! {
+                "test - not found"
+            }
+        }
+
+        #[function_component]
+        fn NotAllowedTest() -> yew::Html {
+            yew::html! {
+                "test - not allowed"
+            }
+        }
+
+        #[function_component]
+        fn ErrorFallbackTest() -> yew::Html {
+            yew::html! {
+                "test - oh oh"
+            }
+        }
+
+        crate::impl_page_component!(NotFoundTest);
+        crate::impl_page_component!(NotAllowedTest);
+        crate::impl_page_component!(ErrorFallbackTest);
+
+        let service = App::<Base>::new()
+            .error_page::<NotFoundTest>(StatusCode::NOT_FOUND)
+            .error_page::<NotAllowedTest>(StatusCode::METHOD_NOT_ALLOWED)
+            .error_page_fallback::<ErrorFallbackTest>()
+            .route(Route::get("/throw_error", |bytes: Bytes| async move {
+                let status_str = String::from_utf8(bytes.to_vec()).unwrap();
+                let status = StatusCode::from_str(&status_str).unwrap();
+                status
+            }))
+            .build();
+
+        let res1 = send_request_get_text(&service, "/throw_error", "404").await;
+        assert_eq!(res1.status(), StatusCode::NOT_FOUND);
+        assert!(
+            res1.body().contains("test - not found"),
+            "body: {}",
+            res1.body()
+        );
+
+        let res2 = send_request_get_text(&service, "/throw_error", "405").await;
+        assert_eq!(res2.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert!(
+            res2.body().contains("test - not allowed"),
+            "body: {}",
+            res2.body()
+        );
+
+        let res3 = send_request_get_text(&service, "/throw_error", "403").await;
+        assert_eq!(res3.status(), StatusCode::FORBIDDEN);
+        println!("{}", res3.body().len());
+        assert!(
+            res3.body().contains("test - oh oh"),
+            "body: {}",
+            res3.body()
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_page_route_test_1() {
+        #[function_component]
+        fn CompA() -> yew::Html {
+            yew::html! {
+                "test - component (a)"
+            }
+        }
+
+        crate::impl_page_component!(CompA, "");
+        let _ = App::<Base>::new().page::<CompA>().build();
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_page_route_test_2() {
+        #[function_component]
+        fn CompA() -> yew::Html {
+            yew::html! {
+                "test - component (a)"
+            }
+        }
+
+        crate::impl_page_component!(CompA, "/a/");
+        let _ = App::<Base>::new().page::<CompA>().build();
+    }
+
+    #[test]
+    #[should_panic]
+    fn duplicated_error_handler_test() {
+        #[function_component]
+        fn ErrorPage1() -> yew::Html {
+            yew::html! {
+                "test - not found"
+            }
+        }
+
+        #[function_component]
+        fn ErrorPage2() -> yew::Html {
+            yew::html! {
+                "test - not found"
+            }
+        }
+
+        crate::impl_page_component!(ErrorPage1);
+        crate::impl_page_component!(ErrorPage2);
+
+        let _ = App::<Base>::new()
+            .error_page::<ErrorPage1>(StatusCode::NOT_FOUND)
+            .error_page::<ErrorPage2>(StatusCode::NOT_FOUND)
+            .build();
+    }
+
+    // Helpers
+
     #[function_component]
     fn Base(props: &ChildrenProps) -> yew::Html {
         yew::html! {
@@ -341,5 +505,23 @@ mod tests {
             .body(Body::empty())
             .unwrap()
             .into()
+    }
+
+    async fn send_request_get_text(
+        service: &AppService,
+        path: &str,
+        body: &str,
+    ) -> Response<String> {
+        let req = Request::builder()
+            .uri(path)
+            .body(Body::from(body.to_owned()))
+            .unwrap()
+            .into();
+
+        let res = service.handle_request(req).await;
+        let (parts, body) = res.into_parts();
+        let bytes = body.into_bytes().await.unwrap();
+        let body = String::from_utf8(bytes.to_vec()).unwrap();
+        Response::from_parts(parts, body)
     }
 }
