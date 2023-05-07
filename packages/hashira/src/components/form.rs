@@ -1,6 +1,6 @@
 use http::Method;
 use web_sys::FormData;
-use yew::{function_component, Children, Properties};
+use yew::{function_component, Children, Properties, AttrValue};
 use yew::{Classes, TargetCast};
 
 use crate::actions::{Action, AnyForm, RequestOptions, UseActionHandle};
@@ -13,7 +13,7 @@ where
 {
     /// Id of the form.
     #[prop_or_default]
-    pub id: Option<String>,
+    pub id: Option<AttrValue>,
 
     /// Children of the form.
     #[prop_or_default]
@@ -25,13 +25,13 @@ where
 
     /// Styles of the form.
     #[prop_or_default]
-    pub style: Option<String>,
+    pub style: Option<AttrValue >,
 
     /// The mime type to send the form, defaults to `application/x-www-form-urlencoded`.
     ///
     /// Checkout: <https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#attributes_for_form_submission>
-    #[prop_or(String::from("application/x-www-form-urlencoded"))]
-    pub enc_type: String,
+    #[prop_or(AttrValue::from("application/x-www-form-urlencoded"))]
+    pub enc_type: AttrValue ,
 
     /// Action used to upload the form.
     pub action: UseActionHandle<A, AnyForm>,
