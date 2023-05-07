@@ -1,11 +1,11 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::PageRouterWrapper,
-    AppData, RequestContext, Route,
+    AppData, RequestContext,
 };
 use crate::{
     error::ResponseError,
-    routing::{Params, PathRouter},
+    routing::{Params, PathRouter, Route},
     web::{Body, IntoResponse, Request, Response, ResponseExt},
 };
 use http::{HeaderMap, StatusCode};
@@ -136,19 +136,14 @@ impl AppService {
             path = path.trim_end_matches('/');
         }
 
-        match self.0.server_router.find_match(path) {
+        match self.0.server_router.find(path) {
             Ok(mtch) => {
                 let route = mtch.value;
 
                 // Check if the methods matches
-                if let Some(m) = route.method() {
-                    let method = req.method().into();
-                    if !m.matches(&method) {
-                        return Response::with_status(
-                            StatusCode::METHOD_NOT_ALLOWED,
-                            Body::default(),
-                        );
-                    }
+                let method = req.method().into();
+                if !route.method().matches(&method) {
+                    return Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default());
                 }
 
                 let params = mtch.params;

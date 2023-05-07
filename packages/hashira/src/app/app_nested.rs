@@ -1,7 +1,7 @@
-use super::{ClientPageRoute, Route};
 use crate::actions::Action;
 use crate::components::id::PageId;
 use crate::components::PageComponent;
+use crate::routing::{ClientPageRoute, Route};
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, marker::PhantomData};
 use yew::html::ChildrenProps;
@@ -9,7 +9,7 @@ use yew::BaseComponent;
 
 /// Marker to specify a nested route should be inserted at the root of the router,
 /// and not as a sub route.
-/// 
+///
 /// This is just a workaround for allowing to insert actions in specify path.
 #[allow(dead_code)]
 pub(crate) struct IsBaseRoute;
@@ -100,7 +100,7 @@ where
             use crate::web::{Body, IntoJsonResponse, Response};
 
             let route = A::route().to_string();
-            let method = Some(A::method());
+            let method = A::method();
             let mut route = Route::new(&route, method, |ctx: RequestContext| async move {
                 let output = crate::try_response!(A::call(ctx).await);
                 let json_res = crate::try_response!(output.into_json_response());

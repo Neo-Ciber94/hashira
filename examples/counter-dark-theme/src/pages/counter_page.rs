@@ -9,7 +9,7 @@ pub struct CounterPageProps {
     pub counter_start: i32,
 }
 
-async fn render(mut ctx: RenderContext, uri: hashira::web::uri::Uri) -> Result<Response, Error> {
+async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
     ctx.title("Hashira | Counter");
     ctx.metadata(Metadata::new().description("A Hashira sample counter"));
     let props = yew::props! { CounterPageProps {} };

@@ -1,8 +1,8 @@
 use super::{
     error_router::{ErrorRouter, ServerErrorRouter},
     router::{PageRouter, PageRouterWrapper},
-    AppNested, AppService, AppServiceInner,  ClientPageRoute, LayoutContext,
-    RequestContext, Route, AppData, DefaultHeaders, Handler, ResponseError,
+    AppNested, AppService, AppServiceInner, LayoutContext,
+    RequestContext, AppData, DefaultHeaders, Handler, ResponseError,
 };
 use crate::{
     components::{
@@ -10,6 +10,7 @@ use crate::{
         id::PageId,
         PageComponent,
     },
+    routing::{Route, ClientPageRoute},
     error::Error,
     web::{IntoResponse, Response, Redirect, FromRequest}, routing::PathRouter, types::BoxFuture, actions::Action,
 };
@@ -306,7 +307,7 @@ where
             use crate::web::{Body, IntoJsonResponse};
 
             let route = A::route().to_string();
-            let method = Some(A::method());
+            let method = A::method();
 
             self.route(Route::new(&route, method, |ctx: RequestContext| async move {
                 let output = crate::try_response!(A::call(ctx).await);

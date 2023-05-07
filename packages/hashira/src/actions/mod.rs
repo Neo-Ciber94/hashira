@@ -4,11 +4,7 @@ mod hooks;
 pub use handler::*;
 pub use hooks::*;
 
-use crate::{
-    app::{HttpMethod, RequestContext},
-    types::BoxFuture,
-    web::IntoJsonResponse,
-};
+use crate::{app::RequestContext, routing::RouteMethod, types::BoxFuture, web::IntoJsonResponse};
 
 /// An action that can be execute on the server.
 pub trait Action: 'static {
@@ -19,12 +15,12 @@ pub trait Action: 'static {
     fn route() -> &'static str;
 
     /// Returns the methods this action can be called:
-    fn method() -> HttpMethod {
-        HttpMethod::GET
-            | HttpMethod::POST
-            | HttpMethod::PUT
-            | HttpMethod::PATCH
-            | HttpMethod::DELETE
+    fn method() -> RouteMethod {
+        RouteMethod::GET
+            | RouteMethod::POST
+            | RouteMethod::PUT
+            | RouteMethod::PATCH
+            | RouteMethod::DELETE
     }
 
     /// Call this action and returns a response.

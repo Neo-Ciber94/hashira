@@ -31,8 +31,13 @@ impl<T> PathRouter<T> {
     }
 
     /// Returns the match for the given path or error if not found.
-    pub fn find_match(&self, path: impl AsRef<str>) -> Result<RouteMatch<&T>, MatchError> {
-        self.imp.find_match(path)
+    pub fn find(&self, path: impl AsRef<str>) -> Result<RouteMatch<&T>, MatchError> {
+        self.imp.find(path)
+    }
+
+    /// Returns a mutable reference to the match for the given path or error if not found.
+    pub fn find_mut(&mut self, path: impl AsRef<str>) -> Result<RouteMatch<&mut T>, MatchError> {
+        self.imp.find_mut(path)
     }
 }
 
@@ -151,7 +156,7 @@ mod tests {
         let value = "test-value";
         router.insert(route, value).unwrap();
 
-        let result = router.find_match("/test/abc/def");
+        let result = router.find("/test/abc/def");
         assert!(result.is_ok());
 
         let match_result = result.unwrap();
@@ -170,7 +175,7 @@ mod tests {
     fn test_find_match_not_found() {
         let router = PathRouter::<&str>::new();
 
-        let result = router.find_match("/not-found");
+        let result = router.find("/not-found");
         assert!(matches!(result.err().unwrap(), MatchError::NotFound));
     }
 }

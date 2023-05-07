@@ -5,6 +5,6 @@
     "tailwindCSS.includeLanguages": {
         "rust": "html",
     },
-    "rust-analyzer.checkOnSave": false,
+    "rust-analyzer.checkOnSave": true,
     "dotenv.enableAutocloaking": false,
 }

@@ -1,6 +1,5 @@
-use super::ClientPageRoute;
 use crate::components::id::PageId;
-use crate::routing::{PathRouter, RouteMatch};
+use crate::routing::{ClientPageRoute, PathRouter, RouteMatch};
 use std::collections::HashMap;
 use std::{ops::Deref, sync::Arc};
 use yew::Properties;
@@ -10,7 +9,6 @@ use yew::Properties;
 pub struct PageRouterWrapper {
     inner: Arc<PageRouter>,
 }
-
 
 impl From<PageRouter> for PageRouterWrapper {
     fn from(value: PageRouter) -> Self {
@@ -69,7 +67,7 @@ impl PageRouter {
 
     /// Returns the page that matches the given path.
     pub fn find_match<'a>(&'a self, path: &'a str) -> Option<RouteMatch<&ClientPageRoute>> {
-        match self.path_to_id.find_match(path) {
+        match self.path_to_id.find(path) {
             Ok(RouteMatch { value: id, params }) => self
                 .id_to_page
                 .get(id)

@@ -19,9 +19,25 @@ impl<T> BaseRouter<T> {
             .map_err(|e| InsertError(e.into()))
     }
 
-    pub fn find_match(&self, path: impl AsRef<str>) -> Result<RouteMatch<&T>, MatchError> {
+    pub fn find(&self, path: impl AsRef<str>) -> Result<RouteMatch<&T>, MatchError> {
         self.inner
             .at(path.as_ref())
+            .map(|Match { value, params }| RouteMatch {
+                value,
+                params: Params::from_iter(params.iter()),
+            })
+            .map_err(|e| match e {
+                matchit::MatchError::NotFound => MatchError::NotFound,
+                other => MatchError::Other(other.into()),
+            })
+    }
+
+    pub fn find_mut(
+        &mut self,
+        path: impl AsRef<str>,
+    ) -> Result<RouteMatch<&mut T>, MatchError> {
+        self.inner
+            .at_mut(path.as_ref())
             .map(|Match { value, params }| RouteMatch {
                 value,
                 params: Params::from_iter(params.iter()),
