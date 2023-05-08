@@ -1,6 +1,6 @@
 use hashira::adapter::Adapter;
 use hashira_tide::HashiraTide;
-use with_tide::hashira;
+use {{crate_name}}::hashira;
 
 pub async fn start_server() -> Result<(), hashira::error::Error> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));

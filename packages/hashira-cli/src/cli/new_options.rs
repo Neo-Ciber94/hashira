@@ -10,19 +10,25 @@ pub struct NewOptions {
     #[arg(short, long, help = "Path to create the project")]
     pub path: Option<PathBuf>,
 
-    #[arg(long, help = "Use the actix-web template", conflicts_with_all = &[ "axum", "rocket", "deno", "example"])]
+    #[arg(long, help = "Use the actix-web template", conflicts_with_all = &[ "axum", "rocket", "deno", "warp", "tide", "example"])]
     pub actix_web: bool,
 
-    #[arg(long, help = "Use the axum template", conflicts_with_all = &["actix_web", "rocket", "deno", "example"])]
+    #[arg(long, help = "Use the axum template", conflicts_with_all = &["actix_web", "rocket", "deno", "warp", "tide","example"])]
     pub axum: bool,
 
-    #[arg(long, help = "Use the rocket template", conflicts_with_all = &["actix_web", "axum", "deno", "example"])]
+    #[arg(long, help = "Use the warp template", conflicts_with_all = &["actix_web", "axum", "rocket", "deno", "tide","example"])]
+    pub warp: bool,
+
+    #[arg(long, help = "Use the tide template", conflicts_with_all = &["actix_web", "axum", "rocket", "deno", "warp", "example"])]
+    pub tide: bool,
+
+    #[arg(long, help = "Use the rocket template", conflicts_with_all = &["actix_web", "axum", "deno","warp", "tide","example"])]
     pub rocket: bool,
 
-    #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix_web", "axum", "rocket", "example"])]
+    #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix_web", "axum", "rocket", "warp", "tide","example"])]
     pub deno: bool,
 
-    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix_web", "axum", "rocket", "deno"])]
+    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix_web", "axum", "rocket", "warp", "tide", "deno"])]
     pub example: Option<String>,
 
     #[arg(
@@ -54,6 +60,14 @@ impl NewOptions {
             return Some(ProjectTemplate::Rocket);
         }
 
+        if self.warp {
+            return Some(ProjectTemplate::Warp);
+        }
+
+        if self.tide {
+            return Some(ProjectTemplate::Tide);
+        }
+
         if self.deno {
             return Some(ProjectTemplate::Deno);
         }
@@ -67,6 +81,8 @@ pub enum ProjectTemplate {
     ActixWeb,
     Axum,
     Rocket,
+    Warp,
+    Tide,
     Deno,
 }
 
@@ -80,6 +96,8 @@ impl ProjectTemplate {
             ProjectTemplate::ActixWeb => "templates/with-actix-web",
             ProjectTemplate::Axum => "templates/with-axum",
             ProjectTemplate::Rocket => "templates/with-rocket",
+            ProjectTemplate::Warp => "templates/with-warp",
+            ProjectTemplate::Tide => "templates/with-tide",
             ProjectTemplate::Deno => "templates/with-deno",
         }
     }
@@ -91,6 +109,8 @@ impl Display for ProjectTemplate {
             ProjectTemplate::ActixWeb => write!(f, "Actix Web"),
             ProjectTemplate::Axum => write!(f, "Axum"),
             ProjectTemplate::Rocket => write!(f, "Rocket"),
+            ProjectTemplate::Warp => write!(f, "Warp"),
+            ProjectTemplate::Tide => write!(f, "Tide"),
             ProjectTemplate::Deno => write!(f, "Deno"),
         }
     }
