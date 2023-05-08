@@ -44,6 +44,7 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
     let mut new_item_fn = item_fn.clone();
     let new_item_fn_ident = syn::Ident::new(&format!("_{name}"), name.span());
     new_item_fn.sig.ident = new_item_fn_ident.clone();
+    let placeholder = placeholder_item_fn(&new_item_fn);
 
     Ok(quote::quote! {
         #[allow(non_snake_case)]
@@ -55,7 +56,15 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
         const _: () = {
             #[allow(non_snake_case)]
             #[allow(non_camel_case_types)]
+            #[cfg(not(feature = "client"))]
+            #[allow(dead_code, unused_variables)]
             #new_item_fn
+
+            #[allow(non_snake_case)]
+            #[allow(non_camel_case_types)]
+            #[cfg(feature = "client")]
+            #[allow(dead_code)]
+            #placeholder
 
             #[automatically_derived]
             impl ::hashira::actions::Action for #name {
@@ -72,4 +81,25 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
             }
         };
     })
+}
+
+fn placeholder_item_fn(item_fn: &ItemFn) -> ItemFn {
+    /*
+    We replace the body of the function and remove all the parameters:
+        #[action]
+        fn SomeAction(form: From<MyStruct>, pool: Inject<MySqlPool>, method: Method) -> Result<Response> {
+            // logic
+        }
+
+    This is replaced for:
+        #[action]
+        fn SomeAction() -> Result<Response> {
+            unreachable!()
+        }
+    */
+
+    let mut item_fn = item_fn.clone();
+    item_fn.block = syn::parse_str("{ ::std::unreachable!() }").unwrap();
+    item_fn.sig.inputs.clear();
+    item_fn
 }
