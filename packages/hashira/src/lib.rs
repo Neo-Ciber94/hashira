@@ -48,7 +48,7 @@ pub type Result<T> = std::result::Result<T, crate::error::Error>;
 /// Macro attribute for declaring [`PageComponent`]s.
 ///
 /// [`PageComponent`]: ./components/trait.PageComponent.html
-pub use hashira_macros::{action, page_component};
+pub use hashira_macros::*;
 
 mod reexports {
     /// Reexport of `async_trait`
