@@ -12,10 +12,10 @@ pub trait ResponseExt<B> {
 
     // TODO: Return an iterator instead.
     /// Returns all the cookies in the request.
-    fn cookies(&self) -> Result<Vec<Cookie>, cookie::ParseError>;
+    fn cookies(&self) -> Result<Vec<Cookie<'static>>, cookie::ParseError>;
 
     /// Sets a `Cookie`.
-    fn set_cookie(&mut self, cookie: Cookie) -> Result<(), InvalidHeaderValue>;
+    fn set_cookie(&mut self, cookie: Cookie<'static>) -> Result<(), InvalidHeaderValue>;
 
     /// Remove all the cookies in the current request with the given name.
     fn del_cookie(&mut self, name: &str) -> usize;
@@ -28,7 +28,7 @@ impl<B> ResponseExt<B> for Response<B> {
         res
     }
 
-    fn cookies(&self) -> Result<Vec<Cookie>, cookie::ParseError> {
+    fn cookies(&self) -> Result<Vec<Cookie<'static>>, cookie::ParseError> {
         // Adapted from: https://docs.rs/actix-web/latest/src/actix_web/request.rs.html#315-334
 
         let mut cookies = Vec::new();
