@@ -1,6 +1,4 @@
-# Hashira x Axum
-
-A hashira template using `Axum`.
+# Tailwind (Example)
 
 ## Prerequisites
 
@@ -10,8 +8,8 @@ A hashira template using `Axum`.
 
 ## Usage
 
-- Download this template
-  - `hashira new --axum --name {{name}}`
-- Run the example
+- Download this example
+  - `hashira new --example with-tailwind --name {{name}}`
+- Run
   - `hashira dev` **(watch mode)**
   - `hashira run` **(only run)**

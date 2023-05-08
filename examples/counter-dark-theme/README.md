@@ -1,6 +1,4 @@
-# Hashira x Axum
-
-A hashira template using `Axum`.
+# Counter with dark mode (Example)
 
 ## Prerequisites
 
@@ -10,8 +8,8 @@ A hashira template using `Axum`.
 
 ## Usage
 
-- Download this template
-  - `hashira new --axum --name {{name}}`
-- Run the example
+- Download this example
+  - `hashira new --example counter-dark-mode --name {{name}}`
+- Run
   - `hashira dev` **(watch mode)**
   - `hashira run` **(only run)**

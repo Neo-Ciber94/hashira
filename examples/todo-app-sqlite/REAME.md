@@ -1,4 +1,4 @@
-# Todo example
+# Todo List Sqlite (Example)
 
 A hashira `todo` example using:
 
@@ -19,6 +19,8 @@ A hashira `todo` example using:
 
 ## How to run
 
+- Download this template
+  - `hashira new --example todo-app-sqlite --name {{name}}`
 - Install the development node packages
   - `npm install`
 - Create the database:

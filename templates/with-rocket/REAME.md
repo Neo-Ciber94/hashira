@@ -8,11 +8,10 @@ A hashira template using `Rocket`.
   - <https://crates.io/crates/hashira-cli>
     - `cargo install hashira-cli --force`
 
-## How to run
+## Usage
 
-- 1. Starts in watch mode
-  - `hashira dev`
-- 2. **Only** build:
-  - `hashira build`
-- 3. Build and run run:
-  - `hashira run`
+- Download this template
+  - `hashira new --rocket --name {{name}}`
+- Run the example
+  - `hashira dev` **(watch mode)**
+  - `hashira run` **(only run)**
