@@ -25,3 +25,53 @@ impl<Q: DeserializeOwned> FromRequest for Query<Q> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use serde::Deserialize;
+
+    use crate::{
+        app::{
+            router::{PageRouter, PageRouterWrapper},
+            AppData, RequestContext,
+        },
+        routing::{ErrorRouter, Params},
+        web::{Body, FromRequest, Query, Request},
+    };
+
+    #[tokio::test]
+    async fn query_from_request_test() {
+        #[derive(Deserialize)]
+        struct MyStruct {
+            text: String,
+            number: i64,
+        }
+
+        let req = Request::builder()
+            .uri("/path/to/route?text=hello-world&number=999")
+            .body(Body::empty())
+            .unwrap();
+
+        let ctx = create_request_context(req);
+        let query = Query::<MyStruct>::from_request(&ctx)
+            .await
+            .unwrap()
+            .into_inner();
+
+        assert_eq!(query.text, "hello-world");
+        assert_eq!(query.number, 999);
+    }
+
+    fn create_request_context(req: Request) -> RequestContext {
+        RequestContext::new(
+            Arc::new(req),
+            Arc::new(AppData::default()),
+            PageRouterWrapper::from(PageRouter::new()),
+            Arc::new(ErrorRouter::new()),
+            None,
+            Params::default(),
+        )
+    }
+}

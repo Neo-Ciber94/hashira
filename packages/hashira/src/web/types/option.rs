@@ -44,3 +44,40 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use http::Method;
+    use crate::{
+        app::{
+            router::{PageRouter, PageRouterWrapper},
+            AppData, RequestContext,
+        },
+        routing::{ErrorRouter, Params},
+        web::{Body, FromRequest, Inject, Request},
+    };
+
+    #[tokio::test]
+    async fn option_from_request_test() {
+        let req = Request::builder().body(Body::empty()).unwrap();
+
+        let ctx = create_request_context(req);
+        let ret1 = Option::<Inject<String>>::from_request(&ctx).await.unwrap();
+        let ret2 = Option::<Method>::from_request(&ctx).await.unwrap();
+
+        assert!(ret1.is_none());
+        assert!(ret2.is_some());
+    }
+
+    fn create_request_context(req: Request) -> RequestContext {
+        RequestContext::new(
+            Arc::new(req),
+            Arc::new(AppData::default()),
+            PageRouterWrapper::from(PageRouter::new()),
+            Arc::new(ErrorRouter::new()),
+            None,
+            Params::default(),
+        )
+    }
+}

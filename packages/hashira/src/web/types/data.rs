@@ -77,6 +77,34 @@ where
 
 #[cfg(test)]
 mod tests {
-    
+    use std::sync::Arc;
 
+    use crate::app::router::{PageRouter, PageRouterWrapper};
+    use crate::app::{ AppData, RequestContext};
+    use crate::routing::{ErrorRouter, Params};
+    use crate::web::{Body, Data, Request, FromRequest};
+
+    #[tokio::test]
+    async fn data_from_request_test() {
+        let mut app_data = AppData::default();
+        app_data.insert(Data::new(String::from("hello world")));
+        app_data.insert(Data::new(12_i32));
+
+        let ctx = create_request_context(app_data);
+
+        assert!(Data::<String>::from_request(&ctx).await.is_ok());
+        assert!(Data::<i32>::from_request(&ctx).await.is_ok());
+        assert!(Data::<f64>::from_request(&ctx).await.is_err());
+    }
+
+    fn create_request_context(app_data: AppData) -> RequestContext {
+        RequestContext::new(
+            Arc::new(Request::new(Body::empty())),
+            Arc::new(app_data),
+            PageRouterWrapper::from(PageRouter::new()),
+            Arc::new(ErrorRouter::new()),
+            None,
+            Params::default(),
+        )
+    }
 }

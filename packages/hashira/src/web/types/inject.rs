@@ -1,5 +1,5 @@
-use std::future::{ready, Ready};
 use crate::web::FromRequest;
+use std::future::{ready, Ready};
 
 use super::DataNotFoundError;
 
@@ -30,5 +30,45 @@ where
                 }))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use crate::{
+        app::{
+            router::{PageRouter, PageRouterWrapper},
+            AppData, RequestContext,
+        },
+        routing::{ErrorRouter, Params},
+        web::{Body, Request, Inject, FromRequest},
+    };
+
+    #[tokio::test]
+    async fn inject_test() {
+        #[derive(Clone)]
+        struct Number(u32);
+
+        let mut app_data = AppData::default();
+        app_data.insert(String::from("hello world"));
+        app_data.insert(Number(65));
+
+        let ctx = create_request_context(app_data);
+
+        assert!(Inject::<String>::from_request(&ctx).await.is_ok());
+        assert!(Inject::<Number>::from_request(&ctx).await.is_ok());
+        assert!(Inject::<f64>::from_request(&ctx).await.is_err());
+    }
+
+    fn create_request_context(app_data: AppData) -> RequestContext {
+        RequestContext::new(
+            Arc::new(Request::new(Body::empty())),
+            Arc::new(app_data),
+            PageRouterWrapper::from(PageRouter::new()),
+            Arc::new(ErrorRouter::new()),
+            None,
+            Params::default(),
+        )
     }
 }
