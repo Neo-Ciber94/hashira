@@ -126,7 +126,7 @@ mod tests {
         LoadOptions, Tool, ToolExt, Version,
     };
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load_and_version() {
         let temp_dir = tempfile::tempdir().unwrap();
         let node = NodeJs::load_with_options(LoadOptions {
@@ -141,13 +141,13 @@ mod tests {
         assert_eq!(version, default_version);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load() {
         let node = NodeJs::load().await.unwrap();
         assert!(node.test_version().is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_additional_files() {
         let node = NodeJs::load().await.unwrap();
 
@@ -183,7 +183,7 @@ mod tests {
 
     // Download other versions
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load_and_version_20_0_0() {
         let temp_dir = tempfile::tempdir().unwrap();
         let node = NodeJs::load_with_options(LoadOptions {
@@ -197,7 +197,7 @@ mod tests {
         assert_eq!(version, Version::new(20, 0, Some(0)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load_and_version_19_9_0() {
         let temp_dir = tempfile::tempdir().unwrap();
         let node = NodeJs::load_with_options(LoadOptions {
@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(version, Version::new(19, 9, Some(0)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load_and_version_18_16_0() {
         let temp_dir = tempfile::tempdir().unwrap();
         let node = NodeJs::load_with_options(LoadOptions {
@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(version, Version::new(18, 16, Some(0)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load_and_version_17_9_1() {
         let temp_dir = tempfile::tempdir().unwrap();
         let node = NodeJs::load_with_options(LoadOptions {
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(version, Version::new(17, 9, Some(1)));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_linux_bin() {
         test_download_bin(
             "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-linux-x64.tar.gz",
@@ -247,7 +247,7 @@ mod tests {
         .await;
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_macos_bin() {
         test_download_bin(
             "https://nodejs.org/download/release/v16.20.0/node-v16.20.0-darwin-x64.tar.gz",

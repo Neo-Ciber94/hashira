@@ -82,7 +82,7 @@ mod test {
     use crate::tools::utils::cache_dir;
     use std::path::Path;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download() {
         let temp_dir = Path::new("temp/test");
         tokio::fs::create_dir_all(temp_dir).await.unwrap();
@@ -105,7 +105,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_to_file() {
         let file_path = Path::new("temp/test/readme_test.md");
         let dest_path = super::download_to_file(
@@ -123,7 +123,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_to_dir() {
         let dest = Path::new("temp/test");
         let dest_path = super::download_to_dir(
@@ -143,7 +143,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_to_cache_dir() {
         let cache_dir = cache_dir().unwrap();
         let temp_dir = tempfile::tempdir_in(cache_dir).unwrap();
@@ -159,7 +159,7 @@ mod test {
         assert_eq!(contents, "Hello World!\n", "actual contents: `{contents}`")
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_and_tar_gz_archive() {
         let temp_dir = tempfile::tempdir().unwrap();
         let downloaded = super::download_to_dir(
@@ -180,7 +180,7 @@ mod test {
         assert_eq!(contents, "Hello World!\n", "actual `{contents}`");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_and_zip_archive() {
         let temp_dir = tempfile::tempdir().unwrap();
         let downloaded = super::download_to_dir(
@@ -201,7 +201,7 @@ mod test {
         assert_eq!(contents, "Hello World!\n", "actual `{contents}`");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_download_and_none_archive() {
         let temp_dir = tempfile::tempdir().unwrap();
         let downloaded = super::download_to_dir(

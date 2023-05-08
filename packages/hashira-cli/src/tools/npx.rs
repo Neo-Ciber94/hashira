@@ -97,7 +97,7 @@ impl Tool for Npx {
 mod tests {
     use crate::tools::{node_js::NodeJs, npx::Npx, LoadOptions, Tool, ToolExt, Version};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_npx_from_node() {
         let node_js = NodeJs::load_with_options(LoadOptions {
             version: Some(Version::new(16, 20, Some(0))),

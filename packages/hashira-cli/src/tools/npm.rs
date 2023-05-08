@@ -88,7 +88,7 @@ impl Tool for Npm {
 mod tests {
     use crate::tools::{node_js::NodeJs, npm::Npm, LoadOptions, Tool, ToolExt, Version};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_npm_from_node() {
         let node_js = NodeJs::load_with_options(LoadOptions {
             version: Some(Version::new(16, 20, Some(0))),

@@ -93,7 +93,7 @@ fn get_download_url(version: &Version) -> anyhow::Result<String> {
 mod tests {
     use crate::tools::{wasm_bindgen::WasmBindgen, LoadOptions, Tool, ToolExt};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_wasm_bindgen_load_in_path() {
         let temp_dir = tempfile::tempdir().unwrap();
         let download_path = temp_dir.path().to_path_buf();
@@ -111,7 +111,7 @@ mod tests {
         assert_eq!(version, default_version)
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_wasm_bindgen_load() {
         let wasm_bingen = WasmBindgen::load().await.unwrap();
 

@@ -98,7 +98,7 @@ fn get_download_url(version: &Version) -> anyhow::Result<String> {
 mod tests {
     use crate::tools::{sass::Sass, LoadOptions, Tool, ToolExt};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_sass_download_and_version() {
         let temp_dir: tempfile::TempDir = tempfile::tempdir().unwrap();
         let download_path = temp_dir.into_path(); //temp_dir.path().to_path_buf();

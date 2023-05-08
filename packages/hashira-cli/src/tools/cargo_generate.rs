@@ -96,7 +96,7 @@ fn get_url(version: Version) -> anyhow::Result<String> {
 mod tests {
     use crate::tools::{tailwindcss::TailwindCss, LoadOptions, Tool, ToolExt};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_cargo_generate_download_and_version() {
         let temp_dir: tempfile::TempDir = tempfile::tempdir().unwrap();
         let download_path = temp_dir.path().to_path_buf();

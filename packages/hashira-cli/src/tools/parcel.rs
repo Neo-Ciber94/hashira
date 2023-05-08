@@ -119,7 +119,7 @@ fn run_silent(mut cmd: Command) -> anyhow::Result<()> {
 mod tests {
     use crate::tools::{parcel::Parcel, LoadOptions, Tool, ToolExt, Version};
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_parcel_version() {
         let temp_dir = tempfile::tempdir().unwrap();
         let dir = temp_dir.path();
