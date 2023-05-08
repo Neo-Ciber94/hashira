@@ -1,0 +1,10 @@
+[package]
+name = "hashira-warp"
+description = "Warp adapter for hashira"
+version = "0.0.1-alpha"
+edition = "2021"
+
+[dependencies]
+hashira = { path = "../../packages/hashira", version = "0.0.1-alpha" }
+warp = "0.3"
+tokio = { version = "1", features = ["full"] }

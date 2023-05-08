@@ -1,7 +1,6 @@
 pub mod core;
 
 use std::net::SocketAddr;
-
 use actix_web::{web::ServiceConfig, HttpServer};
 use hashira::{adapter::Adapter, app::AppService};
 
@@ -25,7 +24,7 @@ impl Default for HashiraActixWeb<()> {
 #[hashira::async_trait]
 impl<F> Adapter for HashiraActixWeb<F>
 where
-    F: ConfigureActixService + Send + Clone + 'static,
+    F: sealed::ConfigureActixService + Send + Clone + 'static,
 {
     /// Starts the server.
     async fn serve(self, app: AppService) -> Result<(), hashira::error::Error> {
@@ -54,22 +53,14 @@ where
 
 impl<F> From<F> for HashiraActixWeb<F>
 where
-    F: ConfigureActixService + Send + Clone + 'static,
+    F: sealed::ConfigureActixService + Send + Clone + 'static,
 {
     fn from(value: F) -> Self {
         HashiraActixWeb(value)
     }
 }
 
-#[doc(hidden)]
-pub trait ConfigureActixService: sealed::Sealed {
-    fn configure(self, config: &mut ServiceConfig);
-}
-
-impl<F> sealed::Sealed for F where F: FnOnce(&mut ServiceConfig) + Send + Clone + 'static {}
-impl sealed::Sealed for () {}
-
-impl<F> ConfigureActixService for F
+impl<F> sealed::ConfigureActixService for F
 where
     F: FnOnce(&mut ServiceConfig) + Send + Clone + 'static,
 {
@@ -78,11 +69,15 @@ where
     }
 }
 
-impl ConfigureActixService for () {
+impl sealed::ConfigureActixService for () {
     fn configure(self, _: &mut ServiceConfig) {}
 }
 
 #[doc(hidden)]
 pub(crate) mod sealed {
-    pub trait Sealed {}
+    use actix_web::web::ServiceConfig;
+
+    pub trait ConfigureActixService {
+        fn configure(self, config: &mut ServiceConfig);
+    }
 }
