@@ -1,5 +1,4 @@
 use super::PageComponent;
-use crate::app::ResponseError;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use yew::{function_component, html::ChildrenProps, BaseComponent, Properties};
@@ -58,9 +57,7 @@ impl PageComponent for ErrorPage {
         BASE: BaseComponent<Properties = ChildrenProps>,
     {
         let err = ctx
-            .request()
-            .extensions()
-            .get::<ResponseError>()
+            .error()
             .expect("expected error");
 
         let status = err.status();

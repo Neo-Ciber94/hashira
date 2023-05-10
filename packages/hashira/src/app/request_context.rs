@@ -64,6 +64,11 @@ impl RequestContext {
         &self.inner.params
     }
 
+    /// Returns an error that ocurred, if any.
+    pub fn error(&self) -> Option<&ResponseError> {
+        self.inner.error.as_ref()
+    }
+
     /// Returns the the data for the given type.
     pub fn app_data<T>(&self) -> Option<&T>
     where
