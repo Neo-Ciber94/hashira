@@ -101,13 +101,41 @@ impl<T: IntoResponse> IntoResponse for Option<T> {
 impl<T, E> IntoResponse for Result<T, E>
 where
     T: IntoResponse,
-    E: Into<Error>,
+    E: IntoResponse,
 {
     fn into_response(self) -> Response {
         match self {
             Ok(x) => x.into_response(),
-            Err(err) => ResponseError::with_error(err).into_response(),
+            Err(err) => {
+                let res = err.into_response();
+
+                if !(res.status().is_client_error() || res.status().is_server_error()) {
+                    log::warn!(
+                        "`{}` expected error to be an error status code, but was {status}",
+                        std::any::type_name::<Result<T, E>>(),
+                        status = res.status()
+                    )
+                }
+
+                res
+            }
         }
+    }
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        if self.is::<ResponseError>() {
+            let err = *self.downcast::<ResponseError>().unwrap();
+            return err.into_response();
+        }
+
+        let msg = self.to_string();
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .header(header::CONTENT_TYPE, mime::TEXT_PLAIN_UTF_8.essence_str())
+            .body(Body::from(msg))
+            .unwrap()
     }
 }
 
