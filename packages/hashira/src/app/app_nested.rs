@@ -1,7 +1,7 @@
 use crate::actions::Action;
 use crate::components::id::PageId;
 use crate::components::PageComponent;
-use crate::routing::{ClientPageRoute, Route};
+use crate::routing::{ClientPageRoute, Route, HandlerKind};
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, marker::PhantomData};
 use yew::html::ChildrenProps;
@@ -12,7 +12,7 @@ use yew::BaseComponent;
 ///
 /// This is just a workaround for allowing to insert actions in specify path.
 #[allow(dead_code)]
-pub(crate) struct IsBaseRoute;
+pub(crate) struct InsertInRootRoute;
 
 /// Represents a nested route in a `App`.
 #[derive(Default)]
@@ -61,6 +61,7 @@ where
         COMP: PageComponent,
         COMP::Properties: DeserializeOwned,
     {
+        // Pages must had a path defined
         let route = COMP::route().unwrap_or_else(|| {
             panic!(
                 "`{}` is not declaring a route",
@@ -74,14 +75,17 @@ where
         {
             use crate::app::{RenderContext, RenderLayout, RequestContext};
 
-            self.route(Route::get(route, move |ctx: RequestContext| {
+            let mut route = Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                 // Returns the future
                 COMP::render::<BASE>(render_ctx)
-            }))
+            });
+
+            route.extensions_mut().insert(HandlerKind::Page);
+            self.route(route)
         }
 
         // In the client we don't add pages, just the component
@@ -110,8 +114,8 @@ where
                 Response::from_parts(parts, body)
             });
 
-            route.extensions_mut().insert(IsBaseRoute);
-
+            route.extensions_mut().insert(InsertInRootRoute);
+            route.extensions_mut().insert(HandlerKind::Action);
             self.route(route)
         }
 

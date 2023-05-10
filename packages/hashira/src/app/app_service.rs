@@ -1,11 +1,10 @@
-use super::{
-    router::PageRouterWrapper,
-    AppData, RequestContext,
-};
+use super::{router::PageRouterWrapper, AppData, RequestContext};
 use crate::{
     error::ResponseError,
-    routing::{Params, ServerRouter, ServerRouterMatchError, ErrorRouter, ServerErrorRouter},
-    web::{Body, IntoResponse, Request, Response, ResponseExt},
+    routing::{
+        ErrorRouter, HandlerKind, Params, ServerErrorRouter, ServerRouter, ServerRouterMatchError,
+    },
+    web::{IntoResponse, Request, Response},
 };
 use http::{HeaderMap, StatusCode};
 use std::sync::Arc;
@@ -145,24 +144,41 @@ impl AppService {
 
                 let res = route.handler().call(ctx).await;
                 let status = res.status();
+
+                // Only component pages render error by default
+                let should_render = route
+                    .extensions()
+                    .get::<HandlerKind>()
+                    .map(|kind| kind == &HandlerKind::Page)
+                    .unwrap_or_default();
+
                 if status.is_client_error() || status.is_server_error() {
-                    return self.handle_error(req, ErrorSource::Response(res)).await;
+                    return self
+                        .handle_error(req, ErrorSource::Response(res), should_render)
+                        .await;
                 }
 
                 res
             }
             Err(ServerRouterMatchError::MethodMismatch) => {
-                Response::with_status(StatusCode::METHOD_NOT_ALLOWED, Body::default())
+                let src =
+                    ErrorSource::Error(ResponseError::from_status(StatusCode::METHOD_NOT_ALLOWED));
+                self.handle_error(req, src, true).await
             }
             Err(_) => {
                 // we treat any other error as 404
                 let src = ErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
-                self.handle_error(req, src).await
+                self.handle_error(req, src, true).await
             }
         }
     }
 
-    async fn handle_error(&self, req: Arc<Request>, src: ErrorSource) -> Response {
+    async fn handle_error(
+        &self,
+        req: Arc<Request>,
+        src: ErrorSource,
+        should_render: bool,
+    ) -> Response {
         let err = match src {
             ErrorSource::Response(res) => {
                 let status = res.status();
@@ -177,6 +193,10 @@ impl AppService {
             }
             ErrorSource::Error(res) => res,
         };
+
+        if !should_render {
+            return err.into_response();
+        }
 
         let status = err.status();
         let mut response = match self.0.server_error_router.find(&status) {

@@ -9,7 +9,7 @@ use crate::{
         id::PageId,
         PageComponent,
     },
-    routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter},
+    routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter, HandlerKind},
     error::Error,
     web::{IntoResponse, Response, Redirect, FromRequest}, types::BoxFuture, actions::Action,
 };
@@ -174,12 +174,12 @@ where
 
         #[cfg(not(feature = "client"))]
         {
-            use super::IsBaseRoute;
+            use super::InsertInRootRoute;
 
             for (sub, route) in scope.server_router {
                 let path = match sub.as_str() {
                     "/" => base_path.to_owned(),
-                    _ if route.extensions().get::<IsBaseRoute>().is_some() => sub.to_owned(),
+                    _ if route.extensions().get::<InsertInRootRoute>().is_some() => sub.to_owned(),
                     _ => format!("{base_path}{sub}")
                 };
                 
@@ -215,14 +215,17 @@ where
         {
             use crate::app::RenderContext;
 
-            self.route(Route::get(route, move |ctx: RequestContext| {
+            let mut route = Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                 // Returns the future
                 COMP::render::<BASE>(render_ctx)
-            }))
+            });
+            
+            route.extensions_mut().insert(HandlerKind::Page);
+            self.route(route)
         }
 
         // We don't add pages in the client
@@ -302,17 +305,19 @@ where
         {
             use crate::web::{Body, IntoJsonResponse};
 
-            let route = A::route().to_string();
+            let path = A::route().to_string();
             let method = A::method();
-
-            self.route(Route::new(&route, method, |ctx: RequestContext| async move {
+            let mut route = Route::new(&path, method, |ctx: RequestContext| async move {
                 let output = crate::try_response!(A::call(ctx).await);
                 let json_res = crate::try_response!(output.into_json_response());
                 let (parts, body) = json_res.into_parts();
                 let bytes = crate::try_response!(serde_json::to_vec(&body));
                 let body = Body::from(bytes);
                 Response::from_parts(parts, body)
-            }))
+            });
+
+            route.extensions_mut().insert(HandlerKind::Action);
+            self.route(route)
         }
 
         #[cfg(feature = "client")]
