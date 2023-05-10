@@ -70,30 +70,31 @@ pub fn MessagesPage(props: &MessagesPageProps) -> yew::Html {
     let messages = use_state(|| props.messages.clone());
     let action = {
         let messages = messages.clone();
-        use_action_with_callback(move |ret: &Result<String, _>| match ret {
-            Ok(x) => {
+        use_action_with_callback(move |ret: &Result<String, _>| {
+            if let Ok(msg) = ret {
                 let mut new_messages = messages.deref().clone();
-                new_messages.push(x.clone());
+                new_messages.push(msg.clone());
                 messages.set(new_messages);
-            }
-            Err(err) => {
-                show_alert(format!("Something went wrong: {err}"));
             }
         })
     };
 
     yew::html! {
         <>
-            if action.is_loading() {
-                <div>{"Creating..."}</div>
-            }
-
-            <ActionForm<CreateMessageAction> action={action}>
+            <ActionForm<CreateMessageAction> action={action.clone()}>
                 <input name="text" />
                 <button>{"Send"}</button>
             </ActionForm<CreateMessageAction>>
 
-            <h4>{"Messages"}</h4>
+            if action.is_loading() {
+                <div>{"Creating..."}</div>
+            }
+
+            if let Some(err) = action.error().map(|e| e.to_string()) {
+                <div style="color: red;">{err}</div>
+            }
+
+            <h4>{"Messages:"}</h4>
             <ul>
                 {for messages.iter().map(|msg| {
                     yew::html_nested! {

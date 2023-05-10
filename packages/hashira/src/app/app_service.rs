@@ -179,6 +179,14 @@ impl AppService {
         src: ErrorSource,
         should_render: bool,
     ) -> Response {
+        // If the response is marked as not render, skip any error handler and return the response
+        if !should_render {
+            return match src {
+                ErrorSource::Response(res) => res,
+                ErrorSource::Error(err) => err.into_response(),
+            };
+        }
+
         let err = match src {
             ErrorSource::Response(res) => {
                 let status = res.status();
@@ -193,10 +201,6 @@ impl AppService {
             }
             ErrorSource::Error(res) => res,
         };
-
-        if !should_render {
-            return err.into_response();
-        }
 
         let status = err.status();
         let mut response = match self.0.server_error_router.find(&status) {
@@ -396,6 +400,8 @@ mod tests {
     #[tokio::test]
     #[cfg(not(feature = "client"))]
     async fn error_route_test() {
+        use crate::routing::HandlerKind;
+
         #[function_component]
         fn NotFoundTest() -> yew::Html {
             yew::html! {
@@ -417,19 +423,31 @@ mod tests {
             }
         }
 
+        #[function_component]
+        fn CompA() -> yew::Html {
+            yew::html! {
+                "test - component (a)"
+            }
+        }
+
         crate::impl_page_component!(NotFoundTest);
         crate::impl_page_component!(NotAllowedTest);
         crate::impl_page_component!(ErrorFallbackTest);
+
+        let mut route = Route::get("/throw_error", |bytes: Bytes| async move {
+            let status_str = String::from_utf8(bytes.to_vec()).unwrap();
+            let status = StatusCode::from_str(&status_str).unwrap();
+            status
+        });
+
+        // Only pages route return error pages
+        route.extensions_mut().insert(HandlerKind::Page);
 
         let service = App::<Base>::new()
             .error_page::<NotFoundTest>(StatusCode::NOT_FOUND)
             .error_page::<NotAllowedTest>(StatusCode::METHOD_NOT_ALLOWED)
             .error_page_fallback::<ErrorFallbackTest>()
-            .route(Route::get("/throw_error", |bytes: Bytes| async move {
-                let status_str = String::from_utf8(bytes.to_vec()).unwrap();
-                let status = StatusCode::from_str(&status_str).unwrap();
-                status
-            }))
+            .route(route)
             .build();
 
         let res1 = send_request_get_text(&service, "/throw_error", "404").await;

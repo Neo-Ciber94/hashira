@@ -20,11 +20,10 @@ opt-level= 's'
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hashira-axum = {  path = "../../adapters/hashira-axum" }
+hashira-warp = {  path = "../../adapters/hashira-warp" }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread", "time"] }
 env_logger = "0.10.0"
-axum = "0.6.15"
-tower-http = { version = "0.4.0", features = ["fs"] }
+warp = "0.3"
 
 [dependencies]
 hashira = { path = "../../packages/hashira", optional = true }
