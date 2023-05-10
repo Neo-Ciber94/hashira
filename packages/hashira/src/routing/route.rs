@@ -8,6 +8,17 @@ use crate::{
     web::{FromRequest, IntoResponse},
 };
 
+/// Type of the handler in a route
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum HandlerKind {
+    /// The route is an action
+    Action,
+
+    /// The route renders a component page.
+    /// If a page return an error an error page will be rendered.
+    Page,
+}
+
 /// Represents a route for a web server request, including the path, HTTP method,
 /// and handler function for the request.
 pub struct Route {

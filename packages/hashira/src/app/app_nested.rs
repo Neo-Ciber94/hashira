@@ -1,7 +1,7 @@
 use crate::actions::Action;
 use crate::components::id::PageId;
 use crate::components::PageComponent;
-use crate::routing::{ClientPageRoute, Route, HandlerKind};
+use crate::routing::{ClientPageRoute, Route};
 use serde::de::DeserializeOwned;
 use std::{collections::HashMap, marker::PhantomData};
 use yew::html::ChildrenProps;
@@ -74,6 +74,7 @@ where
         #[cfg(not(feature = "client"))]
         {
             use crate::app::{RenderContext, RenderLayout, RequestContext};
+            use crate::routing::HandlerKind;
 
             let mut route = Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
@@ -102,7 +103,8 @@ where
         {
             use crate::app::RequestContext;
             use crate::web::{Body, IntoJsonResponse, Response};
-
+            use crate::routing::HandlerKind;
+            
             let route = A::route().to_string();
             let method = A::method();
             let mut route = Route::new(&route, method, |ctx: RequestContext| async move {

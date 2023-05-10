@@ -9,7 +9,7 @@ use crate::{
         id::PageId,
         PageComponent,
     },
-    routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter, HandlerKind},
+    routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter},
     error::Error,
     web::{IntoResponse, Response, Redirect, FromRequest}, types::BoxFuture, actions::Action,
 };
@@ -214,6 +214,7 @@ where
         #[cfg(not(feature = "client"))]
         {
             use crate::app::RenderContext;
+            use crate::routing::HandlerKind;
 
             let mut route = Route::get(route, move |ctx: RequestContext| {
                 let head = super::page_head::PageHead::new();
@@ -304,7 +305,8 @@ where
         #[cfg(not(feature = "client"))]
         {
             use crate::web::{Body, IntoJsonResponse};
-
+            use crate::routing::HandlerKind;
+            
             let path = A::route().to_string();
             let method = A::method();
             let mut route = Route::new(&path, method, |ctx: RequestContext| async move {
