@@ -58,6 +58,7 @@ features = [
     'Headers',
     'Request',
     'RequestInit',
+    'AbortSignal',
     'RequestMode',
     'Response',
     'Window',

@@ -1,6 +1,7 @@
 use http::Method;
 use web_sys::FormData;
-use yew::{function_component, AttrValue, Children, Properties};
+use yew::html::onsubmit::Event;
+use yew::{function_component, AttrValue, Children, Properties, Callback};
 use yew::{Classes, TargetCast};
 
 use crate::actions::{Action, AnyForm, RequestOptions, UseActionHandle};
@@ -33,6 +34,14 @@ where
     #[prop_or(AttrValue::from("application/x-www-form-urlencoded"))]
     pub enc_type: AttrValue,
 
+    /// On submit event.
+    #[prop_or_default]
+    pub onsubmit: Option<Callback<Event>>,
+
+    /// Whether if this is a multipart form
+    #[prop_or_default]
+    pub multipart: bool,
+
     /// Action used to upload the form.
     pub action: UseActionHandle<A, AnyForm>,
 
@@ -59,6 +68,7 @@ where
             && self.class == other.class
             && self.style == other.style
             && self.enc_type == other.enc_type
+            && self.multipart == other.multipart
             && self.action == other.action
             && self.method == other.method
     }
@@ -73,11 +83,20 @@ where
     let action = props.action.clone();
     let loading = action.is_loading();
     let method = props.method.clone();
-    let enc_type = props.enc_type.clone();
     let reload = props.reload;
+    let onsubmit = props.onsubmit.clone();
+    let enc_type = if props.multipart {
+        AttrValue::from("multipart/form-data")
+    } else {
+        props.enc_type.clone()
+    };
 
     let on_submit = move |event: yew::html::onsubmit::Event| {
         event.prevent_default();
+
+        if let Some(onsubmit) = onsubmit.clone() {
+            onsubmit.emit(event.clone());
+        }
 
         if loading {
             return;

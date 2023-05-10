@@ -1,203 +1,15 @@
-use super::Action;
-use crate::{
-    error::{Error, JsError},
-    web::{Form, IntoJsonResponse, Json},
-};
-use http::{
-    header::{self},
-    HeaderMap, HeaderName, HeaderValue, Method,
-};
-use js_sys::Array;
-use serde::Serialize;
+use super::{into_request_params::IntoRequestParameters, Action};
+use crate::{error::Error, web::IntoJsonResponse};
+use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, rc::Rc};
-use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{FormData, Headers, RequestInit, UrlSearchParams};
+use web_sys::AbortSignal;
 use yew::{hook, use_state, Callback, UseStateHandle};
-
-/// Initialization params for a request.
-#[derive(Default, Debug, Clone)]
-pub struct RequestParameters {
-    /// The initial request state.
-    pub init: Option<RequestInit>,
-
-    /// Search params for the url.
-    pub search_params: Option<UrlSearchParams>,
-}
-
-/// Creates an object to initialize a request.
-pub trait IntoRequestInit {
-    /// Returns an object used to initialize a request.
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error>;
-}
-
-impl IntoRequestInit for RequestInit {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
-        Ok(RequestParameters {
-            init: Some(self),
-            search_params: None,
-        })
-    }
-}
-
-impl IntoRequestInit for UrlSearchParams {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
-        Ok(RequestParameters {
-            init: None,
-            search_params: Some(self),
-        })
-    }
-}
-
-impl IntoRequestInit for String {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
-        let mut init = RequestInit::new();
-        let headers = Headers::new().map_err(JsError::new)?;
-        headers
-            .set(
-                header::CONTENT_TYPE.as_str(),
-                mime::TEXT_PLAIN_UTF_8.essence_str(),
-            )
-            .map_err(JsError::new)?;
-
-        init.headers(&headers);
-        init.body(Some(&JsValue::from_str(&self)));
-
-        Ok(RequestParameters {
-            init: Some(init),
-            search_params: None,
-        })
-    }
-}
-
-impl IntoRequestInit for &'static str {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
-        let mut init = RequestInit::new();
-        let headers = Headers::new().map_err(JsError::new)?;
-        headers
-            .set(
-                header::CONTENT_TYPE.as_str(),
-                mime::TEXT_PLAIN_UTF_8.essence_str(),
-            )
-            .map_err(JsError::new)?;
-
-        init.headers(&headers);
-        init.body(Some(&JsValue::from_str(self)));
-
-        Ok(RequestParameters {
-            init: Some(init),
-            search_params: None,
-        })
-    }
-}
-
-impl<T: Serialize> IntoRequestInit for Json<T> {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
-        let mut init = RequestInit::new();
-        let headers = Headers::new().map_err(JsError::new)?;
-        headers
-            .set(
-                header::CONTENT_TYPE.as_str(),
-                mime::APPLICATION_JSON.essence_str(),
-            )
-            .map_err(JsError::new)?;
-
-        let json = serde_json::to_string(&self.0)?;
-
-        init.headers(&headers);
-        init.body(Some(&JsValue::from_str(&json)));
-
-        Ok(RequestParameters {
-            init: Some(init),
-            search_params: None,
-        })
-    }
-}
-
-impl<T: Serialize> IntoRequestInit for Form<T> {
-    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, Error> {
-        let mut init = RequestInit::new();
-        let headers = Headers::new().map_err(JsError::new)?;
-        headers
-            .set(
-                header::CONTENT_TYPE.as_str(),
-                mime::APPLICATION_WWW_FORM_URLENCODED.essence_str(),
-            )
-            .map_err(JsError::new)?;
-
-        init.headers(&headers);
-
-        let params = serde_urlencoded::to_string(&self.0)?;
-
-        if options.method == Method::GET || options.method == Method::HEAD {
-            let search_params = UrlSearchParams::new_with_str(&params).map_err(JsError::new)?;
-
-            Ok(RequestParameters {
-                init: Some(init),
-                search_params: Some(search_params),
-            })
-        } else {
-            init.body(Some(&JsValue::from_str(&params)));
-
-            Ok(RequestParameters {
-                init: Some(init),
-                search_params: None,
-            })
-        }
-    }
-}
-
-impl IntoRequestInit for FormData {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
-        let mut init = RequestInit::new();
-        init.body(Some(&self));
-        Ok(RequestParameters {
-            init: Some(init),
-            search_params: None,
-        })
-    }
-}
-
-/// A form that can be multipart or url-encoded.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AnyForm {
-    /// A multipart form.
-    Multipart(FormData),
-
-    /// An url-encoded form.
-    UrlEncoded(FormData),
-}
-
-impl IntoRequestInit for AnyForm {
-    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, Error> {
-        match self {
-            AnyForm::Multipart(form) => form.into_request_init(options),
-            AnyForm::UrlEncoded(form) => {
-                let iter = js_sys::try_iter(&form).map_err(JsError::new)?;
-                let mut params = Vec::new();
-                if let Some(iter) = iter {
-                    for x in iter {
-                        let x = x.map_err(JsError::new)?;
-                        let arr = x.dyn_into::<Array>().map_err(JsError::new)?;
-                        let key = arr.at(0).as_string().unwrap();
-                        let Some(value) = arr.at(1).as_string() else {
-                            return Err("FormData value was not a string, use a multipart form instead".to_owned().into());
-                        };
-
-                        params.push((key, value));
-                    }
-                }
-
-                Form(params).into_request_init(options)
-            }
-        }
-    }
-}
 
 /// Additional options to set to a client request.
 #[derive(Debug, Clone)]
 pub struct RequestOptions {
-    headers: HeaderMap,
-    method: Method,
+    pub headers: HeaderMap,
+    pub method: Method,
 }
 
 impl RequestOptions {
@@ -277,6 +89,57 @@ impl<A: Action> Deref for UseActionRef<A> {
     }
 }
 
+pub struct UseActionOptions<A: Action> {
+    on_complete: Option<Callback<UseActionRef<A>>>,
+    signal: Option<AbortSignal>,
+}
+
+impl<A: Action> UseActionOptions<A> {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn on_complete<F>(mut self, f: F) -> Self
+    where
+        F: Fn(UseActionRef<A>) + 'static,
+    {
+        self.on_complete = Some(Callback::from(f));
+        self
+    }
+
+    pub fn signal(mut self, signal: AbortSignal) -> Self {
+        self.signal = Some(signal);
+        self
+    }
+}
+
+impl<A: Action> Debug for UseActionOptions<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UseActionOptions")
+            .field("on_complete", &self.on_complete)
+            .field("signal", &self.signal)
+            .finish()
+    }
+}
+
+impl<A: Action> Clone for UseActionOptions<A> {
+    fn clone(&self) -> Self {
+        Self {
+            on_complete: self.on_complete.clone(),
+            signal: self.signal.clone(),
+        }
+    }
+}
+
+impl<A: Action> Default for UseActionOptions<A> {
+    fn default() -> Self {
+        Self {
+            on_complete: Default::default(),
+            signal: Default::default(),
+        }
+    }
+}
+
 /// A handle for a server action.
 pub struct UseActionHandle<A, T>
 where
@@ -284,14 +147,14 @@ where
 {
     loading: UseStateHandle<bool>,
     result: UseStateHandle<Option<Rc<ActionResult<A>>>>,
-    on_complete: Option<Callback<UseActionRef<A>>>,
+    options: UseActionOptions<A>,
     _marker: PhantomData<T>,
 }
 
 impl<A, T> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestInit,
+    T: IntoRequestParameters,
 {
     /// Returns `true` if the action is processing.
     pub fn is_loading(&self) -> bool {
@@ -340,6 +203,10 @@ where
     #[cfg(target_arch = "wasm32")]
     pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), Error> {
         use crate::client::fetch_json;
+        use crate::error::JsError;
+        use crate::actions::into_request_params::RequestParameters;
+        use web_sys::{Headers, RequestInit};
+        use wasm_bindgen::{JsCast, JsValue};
 
         struct OnDrop<F: FnOnce()>(Option<F>);
         impl<F: FnOnce()> Drop for OnDrop<F> {
@@ -385,6 +252,7 @@ where
 
         init.headers(&headers);
         init.method(options.method.as_str());
+        init.signal(self.options.signal.as_ref());
 
         let mut url = A::route().to_owned();
 
@@ -393,7 +261,7 @@ where
         }
 
         let request = web_sys::Request::new_with_str_and_init(&url, &init).map_err(JsError::new)?;
-        let on_complete = self.on_complete.clone();
+        let on_complete = self.options.on_complete.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
             let _guard = _guard;
@@ -418,7 +286,7 @@ where
         Self {
             loading: self.loading.clone(),
             result: self.result.clone(),
-            on_complete: self.on_complete.clone(),
+            options: self.options.clone(),
             _marker: self._marker,
         }
     }
@@ -443,7 +311,7 @@ where
         f.debug_struct("UseActionHandle")
             .field("loading", &self.loading)
             .field("result", &self.result)
-            .field("on_complete", &self.on_complete)
+            .field("options", &self.options)
             .finish()
     }
 }
@@ -453,26 +321,31 @@ where
 pub fn use_action<A, T>() -> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestInit,
+    T: IntoRequestParameters,
 {
-    let result = use_state(|| None);
-    let loading = use_state(|| false);
-
-    UseActionHandle {
-        result,
-        loading,
-        on_complete: None,
-        _marker: PhantomData,
-    }
+    use_action_with_options(Default::default())
 }
 
 /// Returns a handle to execute an action on the server and takes a callback that is called when an action completes.
 #[hook]
-pub fn use_action_with_callback<A, T, F>(on_complete: F) -> UseActionHandle<A, T>
+pub fn use_action_with_callback<'a, A, T, F>(on_complete: F) -> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestInit,
-    F: Fn(UseActionRef<A>) + 'static,
+    T: IntoRequestParameters,
+    F: Fn(&crate::Result<<A::Response as IntoJsonResponse>::Data>) + 'static,
+{
+    let options = UseActionOptions::new().on_complete(move |ret| {
+        on_complete(&*ret);
+    });
+    use_action_with_options(options)
+}
+
+/// Returns a handle to execute an action on the server using the given options.
+#[hook]
+pub fn use_action_with_options<A, T>(options: UseActionOptions<A>) -> UseActionHandle<A, T>
+where
+    A: Action,
+    T: IntoRequestParameters,
 {
     let result = use_state(|| None);
     let loading = use_state(|| false);
@@ -480,7 +353,7 @@ where
     UseActionHandle {
         result,
         loading,
-        on_complete: Some(on_complete.into()),
+        options,
         _marker: PhantomData,
     }
 }

@@ -3,7 +3,7 @@ use wasm_bindgen::{JsValue, JsCast};
 
 /// A javascript error.
 #[derive(Debug, Error)]
-#[error("Javascript error: {0}")]
+#[error("{0}")]
 pub struct JsError(String);
 
 impl JsError {
