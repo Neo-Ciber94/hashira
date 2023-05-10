@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use super::Response;
 use cookie::Cookie;
 use http::{
-    header::{InvalidHeaderValue, COOKIE, SET_COOKIE},
+    header::{self, InvalidHeaderValue, COOKIE, SET_COOKIE},
     HeaderValue, StatusCode,
 };
 
@@ -19,6 +21,9 @@ pub trait ResponseExt<B> {
 
     /// Remove all the cookies in the current request with the given name.
     fn del_cookie(&mut self, name: &str) -> usize;
+
+    /// Returns the content type of this response.
+    fn content_type(&self) -> Option<mime::Mime>;
 }
 
 impl<B> ResponseExt<B> for Response<B> {
@@ -81,5 +86,12 @@ impl<B> ResponseExt<B> for Response<B> {
         }
 
         removed_count
+    }
+
+    fn content_type(&self) -> Option<mime::Mime> {
+        self.headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|h| h.to_str().ok())
+            .and_then(|x| mime::Mime::from_str(x).ok())
     }
 }
