@@ -4,12 +4,12 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, task::Poll};
 
 use crate::{
-    app::{RequestContext, ResponseError},
-    error::Error,
+    app::RequestContext,
+    error::{Error, ServerError},
     web::{parse_body_to_bytes, Body, FromRequest, IntoResponse, ParseBodyOptions, Response},
 };
 
-use super::utils::validate_content_type;
+use super::{unprocessable_entity_error, utils::validate_content_type};
 
 /// Represents form data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -36,7 +36,7 @@ where
                     .body(Body::from(s))
                     .unwrap()
             }
-            Err(err) => ResponseError::with_error(err).into_response(),
+            Err(err) => ServerError::from_error(err).into_response(),
         }
     }
 }
@@ -75,7 +75,7 @@ where
         if let Err(err) =
             validate_content_type(mime::APPLICATION_WWW_FORM_URLENCODED, self.ctx.request())
         {
-            return Poll::Ready(Err(ResponseError::unprocessable_entity(err).into()));
+            return Poll::Ready(Err(unprocessable_entity_error(err)));
         }
 
         let request = self.ctx.request();
@@ -84,15 +84,11 @@ where
             return match request.uri().query() {
                 Some(query) => match serde_urlencoded::from_str::<T>(query) {
                     Ok(x) => Poll::Ready(Ok(Form(x))),
-                    Err(err) => Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
+                    Err(err) => Poll::Ready(Err(unprocessable_entity_error(format!(
                         "failed to deserialize uri query: {err}"
-                    ))
-                    .into())),
+                    )))),
                 },
-                None => Poll::Ready(Err(ResponseError::unprocessable_entity(
-                    "uri query not found",
-                )
-                .into())),
+                None => Poll::Ready(Err(unprocessable_entity_error("uri query not found"))),
             };
         }
 
@@ -104,10 +100,9 @@ where
 
         match serde_urlencoded::from_bytes::<T>(&bytes) {
             Ok(x) => Poll::Ready(Ok(Form(x))),
-            Err(err) => Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
+            Err(err) => Poll::Ready(Err(unprocessable_entity_error(format!(
                 "failed to deserialize form: {err}"
-            ))
-            .into())),
+            )))),
         }
     }
 }
@@ -124,7 +119,7 @@ mod tests {
     };
     use http::{header, Method};
     use serde::Deserialize;
-    use std::{sync::Arc};
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_form_from_request_body() {

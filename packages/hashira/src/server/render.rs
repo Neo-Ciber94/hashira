@@ -1,5 +1,4 @@
 use super::{error::RenderError, Metadata, PageLinks, PageScripts};
-use crate::routing::ErrorRouter;
 use crate::app::page_head::PageHead;
 use crate::app::router::PageRouterWrapper;
 use crate::app::RequestContext;
@@ -10,7 +9,8 @@ use crate::components::{
     HASHIRA_SCRIPTS_MARKER, HASHIRA_TITLE_MARKER,
 };
 use crate::context::ServerContext;
-use crate::error::{Error, ResponseError};
+use crate::error::Error;
+use crate::routing::ErrorRouter;
 use crate::types::TryBoxStream;
 use bytes::Bytes;
 use futures::{stream, StreamExt, TryStreamExt};
@@ -31,9 +31,6 @@ pub(crate) struct RenderPageOptions {
 
     // The context of the current request
     pub request_context: RequestContext,
-
-    // An error that occurred in the route
-    pub error: Option<ResponseError>,
 
     // The router used to render the page
     pub router: PageRouterWrapper,
@@ -64,7 +61,6 @@ where
 {
     let RenderPageOptions {
         head,
-        error,
         index_html,
         router,
         error_router,
@@ -98,12 +94,16 @@ where
 
     let props_json = serde_json::to_value(props).map_err(RenderError::InvalidProps)?;
     let component_id = PageId::of::<COMP>();
-    let page_error = error.map(|e| PageError {
-        status: e.status(),
-        message: e.message().map(|s| s.to_owned()),
-    });
+    let page_error = {
+        match request_context.error() {
+            Some(e) => Some(PageError {
+                status: e.status(),
+                message: e.try_get_message().await,
+            }),
+            None => None,
+        }
+    };
 
-    // TODO: Include page Uri and params?
     // The data inserted in the html
     let page_data = PageData {
         id: component_id,

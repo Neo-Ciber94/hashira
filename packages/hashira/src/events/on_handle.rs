@@ -10,6 +10,7 @@ use crate::{
 /// Resolves the next request and return the response.
 pub type Next = Box<dyn FnOnce(Arc<Request>) -> BoxFuture<Response> + Send + Sync>;
 
+#[doc(hidden)]
 pub trait Cloneable {
     fn clone_handler(&self) -> Box<dyn OnHandle + Send + Sync>;
 }

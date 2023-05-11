@@ -39,7 +39,8 @@ pub async fn CreateMessageAction(
     tokio::time::sleep(Duration::from_millis(700)).await;
 
     if text.trim().is_empty() {
-        return Err(ResponseError::new(StatusCode::BAD_REQUEST, "text cannot be empty").into());
+        //return Err(ResponseError::new(StatusCode::BAD_REQUEST, "text cannot be empty").into());
+        //return responses::bad_request("text cannot be empty")
     }
 
     messages.push(text.clone());

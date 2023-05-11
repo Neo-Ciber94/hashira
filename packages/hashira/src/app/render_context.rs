@@ -3,8 +3,7 @@ use std::ops::Deref;
 use super::RenderLayout;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
-use crate::error::Error;
-pub use crate::error::ResponseError;
+use crate::error::{Error, ServerError};
 use crate::web::{IntoResponse, Redirect};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
@@ -71,7 +70,9 @@ impl RenderContext {
 impl RenderContext {
     /// Returns a `404` error.
     pub fn not_found(self) -> Result<Response, Error> {
-        Err(ResponseError::from_status(StatusCode::NOT_FOUND).into())
+        Err(ServerError::from_status(StatusCode::NOT_FOUND)
+            .unwrap()
+            .into())
     }
 
     /// Returns a redirection.
@@ -102,7 +103,7 @@ impl RenderContext {
         // Return a text/html response
         match self.render_html::<COMP, BASE>().await {
             Ok(html) => Html(html).into_response(),
-            Err(err) => ResponseError::with_error(err).into_response(),
+            Err(err) => ServerError::from_error(err).into_response(),
         }
     }
 
@@ -119,7 +120,7 @@ impl RenderContext {
         // Return a text/html response
         match self.render_html_with_props::<COMP, BASE>(props).await {
             Ok(html) => Html(html).into_response(),
-            Err(err) => ResponseError::with_error(err).into_response(),
+            Err(err) => ServerError::from_error(err).into_response(),
         }
     }
 
@@ -140,7 +141,7 @@ impl RenderContext {
             // Return a stream text/html response
             match self.render_html_stream::<COMP, BASE>().await {
                 Ok(stream) => StreamResponse(stream).into_response(),
-                Err(err) => ResponseError::with_error(err).into_response(),
+                Err(err) => ServerError::from_error(err).into_response(),
             }
         }
     }
@@ -166,7 +167,7 @@ impl RenderContext {
                 .await
             {
                 Ok(stream) => StreamResponse(stream).into_response(),
-                Err(err) => ResponseError::with_error(err).into_response(),
+                Err(err) => ServerError::from_error(err).into_response(),
             }
         }
     }
@@ -262,7 +263,6 @@ impl RenderContext {
         let head = self.head.clone();
         let router = request_context.inner.client_router.clone();
         let error_router = request_context.inner.error_router.clone();
-        let error = request_context.inner.error.clone();
 
         let layout_head = PageHead::new();
         let index_html: String;
@@ -314,7 +314,6 @@ impl RenderContext {
 
         RenderPageOptions {
             head,
-            error,
             index_html,
             router,
             error_router,

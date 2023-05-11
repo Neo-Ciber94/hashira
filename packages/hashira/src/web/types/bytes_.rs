@@ -1,12 +1,13 @@
 use crate::{
-    app::{RequestContext, ResponseError},
+    app::RequestContext,
     error::Error,
     web::{FromRequest, Request},
 };
 use bytes::Bytes;
 use futures::Future;
-use http::StatusCode;
 use std::task::Poll;
+
+use super::unprocessable_entity_error;
 
 impl FromRequest for Bytes {
     type Error = Error;
@@ -30,10 +31,9 @@ impl Future for ExtractBytesFuture {
         let bytes = match body.try_as_bytes() {
             Ok(b) => b,
             Err(err) => {
-                return Poll::Ready(Err(ResponseError::unprocessable_entity(format!(
+                return Poll::Ready(Err(unprocessable_entity_error(format!(
                     "invalid body: {err}"
-                ))
-                .into()))
+                ))));
             }
         };
 
@@ -50,17 +50,11 @@ pub(crate) fn parse_body_to_bytes(req: &Request, opts: ParseBodyOptions) -> Resu
     match body.try_as_bytes().cloned() {
         Ok(bytes) => {
             if !opts.allow_empty && bytes.is_empty() {
-                return Err(
-                    ResponseError::new(StatusCode::UNPROCESSABLE_ENTITY, "body is empty").into(),
-                );
+                return Err(unprocessable_entity_error("body is empty"));
             }
 
             Ok(bytes)
         }
-        Err(err) => Err(ResponseError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            format!("invalid body: {err}"),
-        )
-        .into()),
+        Err(err) => Err(unprocessable_entity_error(format!("invalid body: {err}"))),
     }
 }

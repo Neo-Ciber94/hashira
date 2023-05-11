@@ -1,5 +1,8 @@
 use super::{Body, Response, ResponseExt};
-use crate::{app::ResponseError, error::Error, types::TryBoxStream};
+use crate::{
+    error::{Error, ServerError},
+    types::TryBoxStream,
+};
 use bytes::Bytes;
 use cookie::Cookie;
 use futures::Stream;
@@ -125,16 +128,15 @@ where
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        if self.is::<ResponseError>() {
-            let err = *self.downcast::<ResponseError>().unwrap();
+        if self.is::<ServerError>() {
+            let err = *self.downcast::<ServerError>().unwrap();
             return err.into_response();
         }
 
-        let msg = self.to_string();
         Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .header(header::CONTENT_TYPE, mime::TEXT_PLAIN_UTF_8.essence_str())
-            .body(Body::from(msg))
+            .body(Body::from(self.to_string()))
             .unwrap()
     }
 }

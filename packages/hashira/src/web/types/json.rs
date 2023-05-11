@@ -1,15 +1,15 @@
 use futures::Future;
-use http::{header, StatusCode};
+use http::header;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, task::Poll};
 
 use crate::{
-    app::{RequestContext, ResponseError},
-    error::Error,
+    app::RequestContext,
+    error::{Error, ServerError},
     web::{parse_body_to_bytes, Body, FromRequest, IntoResponse, ParseBodyOptions, Response},
 };
 
-use super::utils::validate_content_type;
+use super::{unprocessable_entity_error, utils::validate_content_type};
 
 /// Represents a JSON.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,7 +26,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
         let json = match serde_json::to_string(&self.0) {
             Ok(s) => s,
             Err(err) => {
-                return ResponseError::with_error(err).into_response();
+                return ServerError::from_error(err).into_response();
             }
         };
 
@@ -72,7 +72,7 @@ where
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         if let Err(err) = validate_content_type(mime::APPLICATION_JSON, self.ctx.request()) {
-            return Poll::Ready(Err(ResponseError::unprocessable_entity(err).into()));
+            return Poll::Ready(Err(unprocessable_entity_error(err)));
         }
 
         let opts = ParseBodyOptions { allow_empty: false };
@@ -83,11 +83,9 @@ where
 
         match serde_json::from_slice::<T>(&bytes) {
             Ok(x) => Poll::Ready(Ok(Json(x))),
-            Err(err) => Poll::Ready(Err(ResponseError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                format!("failed to deserialize json: {err}"),
-            )
-            .into())),
+            Err(err) => Poll::Ready(Err(unprocessable_entity_error(format!(
+                "failed to deserialize json: {err}"
+            )))),
         }
     }
 }
@@ -99,7 +97,7 @@ mod tests {
             router::{PageRouter, PageRouterWrapper},
             AppData, RequestContext,
         },
-        routing::{Params, ErrorRouter},
+        routing::{ErrorRouter, Params},
         web::{Body, FromRequest, Json, Request},
     };
     use http::header;

@@ -16,7 +16,7 @@ use std::{
 };
 
 use super::{Json, Response};
-use crate::{app::ResponseError, error::Error};
+use crate::error::{Error, ServerError};
 use http::{header, response::Parts, HeaderMap, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -84,7 +84,7 @@ where
     fn into_json_response(self) -> crate::Result<Response<Self::Data>> {
         match self {
             Some(x) => x.into_json_response(),
-            None => Err(ResponseError::from(StatusCode::NOT_FOUND).into()),
+            None => Err(ServerError::from(StatusCode::NOT_FOUND).into()),
         }
     }
 }

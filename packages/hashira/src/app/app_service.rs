@@ -1,6 +1,6 @@
 use super::{router::PageRouterWrapper, AppData, RequestContext};
 use crate::{
-    error::ResponseError,
+    error::ServerError,
     routing::{
         ErrorRouter, HandlerKind, Params, ServerErrorRouter, ServerRouter, ServerRouterMatchError,
     },
@@ -21,11 +21,6 @@ pub(crate) struct AppServiceInner {
     pub(crate) hooks: Arc<crate::events::Hooks>,
 }
 
-enum ErrorSource {
-    Response(Response),
-    Error(ResponseError),
-}
-
 /// The root service used for handling the `hashira` application.
 pub struct AppService(Arc<AppServiceInner>);
 
@@ -39,7 +34,7 @@ impl AppService {
         &self,
         request: Arc<Request>,
         params: Params,
-        error: Option<ResponseError>,
+        error: Option<ServerError>,
     ) -> RequestContext {
         let client_router = self.0.client_router.clone();
         let error_router = self.0.client_error_router.clone();
@@ -153,21 +148,20 @@ impl AppService {
                     .unwrap_or_default();
 
                 if status.is_client_error() || status.is_server_error() {
-                    return self
-                        .handle_error(req, ErrorSource::Response(res), should_render)
-                        .await;
+                    // SAFETY: We already check the status is an error
+                    let error = ServerError::from_response(res).unwrap();
+                    return self.handle_error(req, error, should_render).await;
                 }
 
                 res
             }
             Err(ServerRouterMatchError::MethodMismatch) => {
-                let src =
-                    ErrorSource::Error(ResponseError::from_status(StatusCode::METHOD_NOT_ALLOWED));
+                let src = ServerError::from_status(StatusCode::METHOD_NOT_ALLOWED).unwrap();
                 self.handle_error(req, src, true).await
             }
             Err(_) => {
                 // we treat any other error as 404
-                let src = ErrorSource::Error(ResponseError::from_status(StatusCode::NOT_FOUND));
+                let src = ServerError::from_status(StatusCode::NOT_FOUND).unwrap();
                 self.handle_error(req, src, true).await
             }
         }
@@ -176,56 +170,40 @@ impl AppService {
     async fn handle_error(
         &self,
         req: Arc<Request>,
-        src: ErrorSource,
+        error: ServerError,
         should_render: bool,
     ) -> Response {
         // If the response is marked as not render, skip any error handler and return the response
         if !should_render {
-            return match src {
-                ErrorSource::Response(res) => res,
-                ErrorSource::Error(err) => err.into_response(),
-            };
+            return error.into_response();
         }
 
-        let err = match src {
-            ErrorSource::Response(res) => {
-                let status = res.status();
-
-                // We get the message from the error which may be attached to the response
-                let message = res
-                    .extensions()
-                    .get::<ResponseError>()
-                    .and_then(|e| e.message())
-                    .map(|s| s.to_owned());
-                ResponseError::from((status, message))
-            }
-            ErrorSource::Error(res) => res,
-        };
-
-        let status = err.status();
+        let status = error.status();
         let mut response = match self.0.server_error_router.find(&status) {
             Some(error_handler) => {
                 let params = Params::default();
-                let ctx = self.create_context(req, params, Some(err.clone()));
+                let ctx = self.create_context(req, params, Some(error));
 
                 match error_handler.call(ctx, status).await {
                     Ok(res) => res,
-                    Err(err) => match err.downcast::<ResponseError>() {
-                        Ok(err) => (*err).into_response(),
+                    Err(err) => match err.downcast::<ServerError>() {
+                        Ok(err) => err.into_response(),
                         Err(err) => {
-                            (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                            // If an error ocurred in a error handler we only show the error in debug mode
+                            if cfg!(debug_assertions) {
+                                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
+                            } else {
+                                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                            }
                         }
                     },
                 }
             }
-            None => err.clone().into_response(),
+            None => error.into_response(),
         };
 
         // Ensure the status code of the response
         *response.status_mut() = status;
-
-        // Append the error to the response
-        response.extensions_mut().insert(err);
 
         #[cfg(feature = "hooks")]
         {

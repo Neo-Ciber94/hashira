@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    app::{RequestContext, ResponseError},
-    error::Error,
+    app::RequestContext,
+    error::{Error, ServerError},
     routing::Params,
 };
 use futures::Future;
@@ -115,11 +115,15 @@ impl Future for StringFromRequestFuture {
 
         match String::from_utf8(bytes.to_vec()) {
             Ok(s) => Poll::Ready(Ok(s)),
-            Err(err) => Poll::Ready(Err(ResponseError::new(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                format!("failed to parse body: {err}"),
-            )
-            .into())),
+            Err(err) => {
+                let err = ServerError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    format!("failed to parse body: {err}"),
+                )
+                .unwrap()
+                .into();
+                Poll::Ready(Err(err))
+            }
         }
     }
 }

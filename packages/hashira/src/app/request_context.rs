@@ -1,8 +1,7 @@
 use super::{router::PageRouterWrapper, AppData};
-pub use crate::error::ResponseError;
 use crate::{
     routing::{ErrorRouter, Params},
-    web::Request,
+    web::Request, error::ServerError,
 };
 use std::sync::Arc;
 
@@ -13,7 +12,7 @@ pub(crate) struct RequestContextInner {
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) error_router: Arc<ErrorRouter>,
     pub(crate) request: Arc<Request>,
-    pub(crate) error: Option<ResponseError>,
+    pub(crate) error: Option<ServerError>,
 }
 
 /// Contains information about the current request.
@@ -30,7 +29,7 @@ impl RequestContext {
         app_data: Arc<AppData>,
         client_router: PageRouterWrapper,
         error_router: Arc<ErrorRouter>,
-        error: Option<ResponseError>,
+        error: Option<ServerError>,
         params: Params,
     ) -> Self {
         let inner = RequestContextInner {
@@ -65,7 +64,7 @@ impl RequestContext {
     }
 
     /// Returns an error that ocurred, if any.
-    pub fn error(&self) -> Option<&ResponseError> {
+    pub fn error(&self) -> Option<&ServerError> {
         self.inner.error.as_ref()
     }
 

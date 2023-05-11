@@ -76,7 +76,7 @@ macro_rules! try_response {
             Ok(res) => res,
             Err(err) => {
                 return $crate::web::IntoResponse::into_response(
-                    $crate::error::ResponseError::with_error(err),
+                    $crate::error::ServerError::from_error(err),
                 );
             }
         }

@@ -1,7 +1,7 @@
 use super::{
     router::{PageRouter, PageRouterWrapper},
     AppNested, AppService, AppServiceInner, LayoutContext,
-    RequestContext, AppData, DefaultHeaders, Handler, ResponseError,
+    RequestContext, AppData, DefaultHeaders, Handler,
 };
 use crate::{
     components::{
@@ -10,7 +10,7 @@ use crate::{
         PageComponent,
     },
     routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter},
-    error::Error,
+    error::{Error, ServerError},
     web::{IntoResponse, Response, Redirect, FromRequest}, types::BoxFuture, actions::Action,
 };
 
@@ -42,7 +42,7 @@ impl PageHandler {
                 let args = match Args::from_request(&ctx).await {
                     Ok(x) => x,
                     Err(err) => {
-                        return ResponseError::with_error(err).into_response();
+                        return ServerError::from_error(err).into_response();
                     }
                 };
                 let ret = handler.call(args).await;

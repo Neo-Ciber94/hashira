@@ -1,6 +1,8 @@
 pub mod utils;
 
 mod query;
+use std::fmt::Display;
+
 pub use query::*;
 
 mod json;
@@ -29,3 +31,12 @@ pub use data::*;
 
 mod inject;
 pub use inject::*;
+
+#[inline]
+pub(crate) fn unprocessable_entity_error(err: impl Display) -> crate::error::Error {
+    use crate::{error::ServerError, web::status::StatusCode};
+
+    ServerError::new(StatusCode::UNPROCESSABLE_ENTITY, err.to_string())
+        .unwrap()
+        .into()
+}
