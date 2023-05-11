@@ -15,7 +15,7 @@ pub fn bad_request_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::BAD_REQUEST, error).into()
+    ServerError::from_response_and_status(StatusCode::BAD_REQUEST, error).into()
 }
 
 /// Creates a 401 unauthorized response error with the given message.
@@ -28,7 +28,7 @@ pub fn unauthorized_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::UNAUTHORIZED, error).into()
+    ServerError::from_response_and_status(StatusCode::UNAUTHORIZED, error).into()
 }
 
 /// Creates a 403 forbidden response error with the given message.
@@ -41,7 +41,7 @@ pub fn forbidden_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::FORBIDDEN, error).into()
+    ServerError::from_response_and_status(StatusCode::FORBIDDEN, error).into()
 }
 
 /// Creates a 404 not found response error with the given message.
@@ -54,7 +54,7 @@ pub fn not_found_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::NOT_FOUND, error).into()
+    ServerError::from_response_and_status(StatusCode::NOT_FOUND, error).into()
 }
 
 /// Creates a 405 method not allowed response error with the given message.
@@ -67,7 +67,7 @@ pub fn method_not_allowed_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::METHOD_NOT_ALLOWED, error).into()
+    ServerError::from_response_and_status(StatusCode::METHOD_NOT_ALLOWED, error).into()
 }
 
 /// Creates a 409 conflict response error with the given message.
@@ -80,7 +80,7 @@ pub fn conflict_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::CONFLICT, error).into()
+    ServerError::from_response_and_status(StatusCode::CONFLICT, error).into()
 }
 
 /// Creates a 422 unprocessable entity response error with the given message.
@@ -93,7 +93,7 @@ pub fn unprocessable_entity_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::UNPROCESSABLE_ENTITY, error).into()
+    ServerError::from_response_and_status(StatusCode::UNPROCESSABLE_ENTITY, error).into()
 }
 
 /// Creates a 500 internal server error response error with the given message.
@@ -106,5 +106,5 @@ pub fn internal_server_error_with<T>(error: T) -> Error
 where
     T: IntoResponse + Send + Sync + Clone + 'static,
 {
-    ServerError::from_factory(StatusCode::INTERNAL_SERVER_ERROR, error).into()
+    ServerError::from_response_and_status(StatusCode::INTERNAL_SERVER_ERROR, error).into()
 }

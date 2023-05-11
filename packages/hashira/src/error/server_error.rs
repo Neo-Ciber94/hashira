@@ -2,20 +2,10 @@ use super::Error;
 use crate::web::{IntoResponse, Response, ResponseExt};
 use http::StatusCode;
 use std::fmt::{Debug, Display};
-use thiserror::Error;
-
-/// An error produced when a status code is not an error.
-#[derive(Debug, Error)]
-#[non_exhaustive]
-#[error("`{status}` is not a valid error status code")]
-pub struct InvalidErrorStatusCode {
-    pub status: StatusCode,
-}
 
 enum Responder {
     Message(String),
     Response(Response),
-    Factory(Box<dyn Fn() -> Response + Send + Sync>),
 }
 
 /// An error that ocurred in the server.
@@ -27,7 +17,7 @@ pub struct ServerError {
 impl ServerError {
     /// Construct a new error.
     pub fn new(status: StatusCode, msg: impl Display) -> Self {
-        assert_status_code(status).expect("invalid status code");
+        assert_status_code(status);
 
         ServerError {
             status,
@@ -35,35 +25,33 @@ impl ServerError {
         }
     }
 
-    /// Constructs a new error from a response.
-    pub fn from_response(response: Response) -> Self {
-        assert_status_code(response.status()).expect("invalid status code");
-
-        ServerError {
-            status: response.status(),
-            responder: Some(Responder::Response(response)),
-        }
-    }
-
-    /// Construct a new error from the given type that implements `IntoResponse`.
-    pub fn from_factory<R>(status: StatusCode, res: R) -> Self
-    where
-        R: IntoResponse + Clone + Sync + Send + 'static,
-    {
-        assert_status_code(status).expect("invalid status code");
+    fn _from_response(status: StatusCode, response: Response) -> Self {
+        assert_status_code(status);
+        let res = response.into_response();
 
         ServerError {
             status,
-            responder: Some(Responder::Factory(Box::new(move || {
-                res.clone().into_response()
-            }))),
+            responder: Some(Responder::Response(res)),
         }
+    }
+
+    /// Constructs a new error from a response.
+    pub fn from_response<T: IntoResponse>(response: T) -> Self {
+        let response = response.into_response();
+        Self::_from_response(response.status(), response)
+    }
+
+    /// Constructs a new error from a response with the given status,
+    pub fn from_response_and_status<T: IntoResponse>(status: StatusCode, response: T) -> Self {
+        let response = response.into_response();
+        Self::_from_response(status, response)
     }
 
     /// Constructs a new error from a status code.
     pub fn from_status(status: StatusCode) -> Self {
+        assert_status_code(status);
         ServerError {
-            status: assert_status_code(status).expect("invalid status code"),
+            status,
             responder: None,
         }
     }
@@ -93,7 +81,6 @@ impl ServerError {
         match &self.responder {
             Some(res) => match res {
                 Responder::Message(msg) => Some(msg.as_str()),
-                Responder::Factory(_) => None,
                 Responder::Response(_) => None,
             },
             None => None,
@@ -106,9 +93,7 @@ impl ServerError {
         match &self.responder {
             Some(res) => match res {
                 Responder::Message(msg) => Some(msg.to_owned()),
-                Responder::Response(_) => None,
-                Responder::Factory(_) => {
-                    let res = self.as_response();
+                Responder::Response(res) => {
                     let content_type = res.content_type()?;
                     if content_type.essence_str() == mime::TEXT_PLAIN.essence_str() {
                         res.body()
@@ -121,23 +106,6 @@ impl ServerError {
                 }
             },
             None => None,
-        }
-    }
-
-    /// Returns a response for this error.
-    pub fn as_response(&self) -> Response {
-        match &self.responder {
-            Some(responder) => {
-                let mut res = match responder {
-                    Responder::Message(msg) => msg.clone().into_response(),
-                    Responder::Response(res) => res.status().into_response(),
-                    Responder::Factory(factory) => factory(),
-                };
-
-                *res.status_mut() = self.status();
-                res
-            }
-            None => self.status.into_response(),
         }
     }
 }
@@ -164,11 +132,19 @@ impl std::error::Error for ServerError {}
 
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
-        if let Some(Responder::Response(res)) = self.responder {
-            return res;
-        }
+        let status = self.status();
+        match self.responder {
+            Some(responder) => {
+                let mut res = match responder {
+                    Responder::Message(msg) => msg.into_response(),
+                    Responder::Response(res) => res,
+                };
 
-        self.as_response()
+                *res.status_mut() = status;
+                res
+            }
+            None => status.into_response(),
+        }
     }
 }
 
@@ -177,7 +153,6 @@ impl Debug for ServerError {
         match &self.responder {
             Some(res) => match res {
                 Responder::Message(msg) => write!(f, "{:?}", msg),
-                Responder::Factory(_) => write!(f, "{:?}", self.status),
                 Responder::Response(_) => write!(f, "{:?}", self.status),
             },
             None => write!(f, "{:?}", self.status),
@@ -190,7 +165,6 @@ impl Display for ServerError {
         match &self.responder {
             Some(res) => match res {
                 Responder::Message(msg) => write!(f, "{}", msg),
-                Responder::Factory(_) => write!(f, "{}", self.status),
                 Responder::Response(_) => write!(f, "{:?}", self.status),
             },
             None => write!(f, "{}", self.status),
@@ -198,10 +172,8 @@ impl Display for ServerError {
     }
 }
 
-fn assert_status_code(status: StatusCode) -> Result<StatusCode, InvalidErrorStatusCode> {
+fn assert_status_code(status: StatusCode) {
     if !(status.is_client_error() || status.is_server_error()) {
-        return Err(InvalidErrorStatusCode { status });
+        panic!("`{status}` is not a valid error status code");
     }
-
-    Ok(status)
 }

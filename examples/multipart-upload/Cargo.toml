@@ -1,11 +1,11 @@
 [package]
-name = "{{crate_name}}_server"
+name = "multipart_upload_server"
 version = "0.1.0"
 edition = "2021"
-authors = [ "{{authors}}" ]
+authors = ["Freddy L. <neo-ciber_94@hotmail.com>"]
 
 [lib]
-name = "{{crate_name}}"
+name = "multipart_upload"
 crate-type = ["cdylib", "rlib"]
 
 [profile.dev]
@@ -14,15 +14,15 @@ opt-level = 1
 
 [profile.release]
 lto = true
-opt-level= 's'
+opt-level = 's'
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-hashira = { version = "0.0.1-alpha", features = ["client"] }
+hashira = { path = "../../packages/hashira", features = ["client"] }
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hashira = { version = "0.0.1-alpha", features = [] }
-hashira-rocket = { version = "0.0.1-alpha" }
+hashira = { path = "../../packages/hashira", features = [] }
+hashira-rocket = { path = "../../adapters/hashira-rocket" }
 rocket = "0.5.0-rc.3"
 env_logger = "0.10.0"
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
@@ -32,7 +32,8 @@ yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = "0.2.84"
+web-sys = "0.3.62"
+multer-derive = "0.1.1-alpha"
 
 [features]
-default = ["hashira"]
-client = ["hashira/client"]
+client = []

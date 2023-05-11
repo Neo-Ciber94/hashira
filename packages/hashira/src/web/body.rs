@@ -52,7 +52,7 @@ impl Body {
         self.0
     }
 
-    /// Returns a references to the bytes of the body.
+    /// Returns a references to the bytes of the body if possible.
     pub fn try_as_bytes(&self) -> Result<&Bytes, InvalidBodyError> {
         match &self.0 {
             BodyInner::Bytes(bytes) => Ok(bytes),
@@ -74,6 +74,14 @@ impl Body {
 
                 Ok(collector.into())
             }
+        }
+    }
+
+    /// Converts the body into a stream.
+    pub fn into_stream(self) -> TryBoxStream<Bytes> {
+        match self.0 {
+            BodyInner::Bytes(bytes) => Box::pin(futures::stream::once(async move { Ok(bytes) })),
+            BodyInner::Stream(stream) => stream,
         }
     }
 }

@@ -32,6 +32,22 @@ pub use data::*;
 mod inject;
 pub use inject::*;
 
+mod multipart;
+pub use multipart::*;
+
+#[macro_export(local_inner_macros)]
+macro_rules! ready_or_else {
+    ($expr:expr, $ident:ident => $error:expr) => {
+        match $expr {
+            Ok(x) => x,
+            Err($ident) => {
+                return Poll::Ready(Err($error));
+            }
+        }
+    };
+}
+
+
 #[inline]
 pub(crate) fn unprocessable_entity_error(err: impl Display) -> crate::error::Error {
     use crate::{error::ServerError, web::status::StatusCode};

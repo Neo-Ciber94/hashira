@@ -56,6 +56,8 @@ pub use hashira_macros::*;
 mod reexports {
     /// Reexport of `async_trait`
     pub use async_trait::async_trait;
+
+    pub use multer_derive;
 }
 
 pub use reexports::*;

@@ -1,7 +1,7 @@
 use http::Method;
 use web_sys::{window, FormData};
 use yew::html::onsubmit::Event;
-use yew::{function_component, AttrValue, Callback, Children, Properties};
+use yew::{function_component, AttrValue, Callback, Children, NodeRef, Properties};
 use yew::{Classes, TargetCast};
 
 use crate::actions::{Action, AnyForm, RequestOptions, UseActionHandle};
@@ -14,6 +14,10 @@ where
     /// Id of the form.
     #[prop_or_default]
     pub id: Option<AttrValue>,
+
+    /// A reference to pass to the form.
+    #[prop_or_default]
+    pub node_ref: Option<NodeRef>,
 
     /// Children of the form.
     #[prop_or_default]
@@ -70,6 +74,7 @@ where
             && self.multipart == other.multipart
             && self.action == other.action
             && self.method == other.method
+            && self.node_ref == other.node_ref
     }
 }
 
@@ -84,12 +89,14 @@ where
     let method = props.method.clone();
     let reload = props.reload;
     let onsubmit = props.onsubmit.clone();
+    let node_ref = props.node_ref.clone();
     let enc_type = if props.multipart {
         AttrValue::from("multipart/form-data")
     } else {
         props.enc_type.clone()
     };
 
+    let form_enctype = enc_type.clone();
     let on_submit = move |event: yew::html::onsubmit::Event| {
         event.prevent_default();
 
@@ -129,10 +136,11 @@ where
         <form method={props.method.clone().to_string()}
             onsubmit={on_submit}
             id={props.id.clone()}
+            ref={node_ref.unwrap_or_default()}
             class={props.class.clone()}
             style={props.style.clone()}
             action={A::route()}
-            enctype={props.enc_type.clone()} // this is ignored if we had JS, we send the form manually
+            enctype={form_enctype}
         >
             {for props.children.iter()}
         </form>
