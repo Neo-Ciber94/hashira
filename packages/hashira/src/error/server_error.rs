@@ -27,40 +27,40 @@ pub struct ServerError {
 
 impl ServerError {
     /// Construct a new error.
-    pub fn new(status: StatusCode, msg: impl Display) -> Result<Self, InvalidErrorStatusCode> {
-        Ok(ServerError {
-            status: assert_status_code(status)?,
+    pub fn new(status: StatusCode, msg: impl Display) -> Self {
+        ServerError {
+            status: assert_status_code(status).expect("invalid status code"),
             responder: Some(Responder::Message(msg.to_string())),
-        })
+        }
     }
 
     /// Constructs a new error from a response.
-    pub fn from_response(response: Response) -> Result<Self, InvalidErrorStatusCode> {
-        Ok(ServerError {
-            status: assert_status_code(response.status())?,
+    pub fn from_response(response: Response) -> Self {
+        ServerError {
+            status: assert_status_code(response.status()).expect("invalid status code"),
             responder: Some(Responder::Response(response)),
-        })
+        }
     }
 
     /// Construct a new error from the given type that implements `IntoResponse`.
-    pub fn from_factory<R>(status: StatusCode, res: R) -> Result<Self, InvalidErrorStatusCode>
+    pub fn from_factory<R>(status: StatusCode, res: R) -> Self
     where
         R: IntoResponse + Clone + Send + Sync + 'static,
     {
-        Ok(ServerError {
-            status: assert_status_code(status)?,
+        ServerError {
+            status: assert_status_code(status).expect("invalid status code"),
             responder: Some(Responder::Factory(Box::new(move || {
                 res.clone().into_response()
             }))),
-        })
+        }
     }
 
     /// Constructs a new error from a status code.
-    pub fn from_status(status: StatusCode) -> Result<Self, InvalidErrorStatusCode> {
-        Ok(ServerError {
-            status: assert_status_code(status)?,
+    pub fn from_status(status: StatusCode) -> Self {
+        ServerError {
+            status: assert_status_code(status).expect("invalid status code"),
             responder: None,
-        })
+        }
     }
 
     /// Constructs a new error from other.
@@ -139,13 +139,13 @@ impl ServerError {
 
 impl From<StatusCode> for ServerError {
     fn from(status: StatusCode) -> Self {
-        ServerError::from_status(status).expect("invalid status code")
+        ServerError::from_status(status)
     }
 }
 
 impl From<(StatusCode, String)> for ServerError {
     fn from((status, msg): (StatusCode, String)) -> Self {
-        ServerError::new(status, msg).expect("invalid status code")
+        ServerError::new(status, msg)
     }
 }
 

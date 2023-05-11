@@ -120,7 +120,6 @@ impl Future for StringFromRequestFuture {
                     StatusCode::UNPROCESSABLE_ENTITY,
                     format!("failed to parse body: {err}"),
                 )
-                .unwrap()
                 .into();
                 Poll::Ready(Err(err))
             }

@@ -149,19 +149,19 @@ impl AppService {
 
                 if status.is_client_error() || status.is_server_error() {
                     // SAFETY: We already check the status is an error
-                    let error = ServerError::from_response(res).unwrap();
+                    let error = ServerError::from_response(res);
                     return self.handle_error(req, error, should_render).await;
                 }
 
                 res
             }
             Err(ServerRouterMatchError::MethodMismatch) => {
-                let src = ServerError::from_status(StatusCode::METHOD_NOT_ALLOWED).unwrap();
+                let src = ServerError::from_status(StatusCode::METHOD_NOT_ALLOWED);
                 self.handle_error(req, src, true).await
             }
             Err(_) => {
                 // we treat any other error as 404
-                let src = ServerError::from_status(StatusCode::NOT_FOUND).unwrap();
+                let src = ServerError::from_status(StatusCode::NOT_FOUND);
                 self.handle_error(req, src, true).await
             }
         }

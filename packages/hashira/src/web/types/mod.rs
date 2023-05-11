@@ -36,7 +36,5 @@ pub use inject::*;
 pub(crate) fn unprocessable_entity_error(err: impl Display) -> crate::error::Error {
     use crate::{error::ServerError, web::status::StatusCode};
 
-    ServerError::new(StatusCode::UNPROCESSABLE_ENTITY, err.to_string())
-        .unwrap()
-        .into()
+    ServerError::new(StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into()
 }

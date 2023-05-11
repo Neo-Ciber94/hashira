@@ -70,9 +70,7 @@ impl RenderContext {
 impl RenderContext {
     /// Returns a `404` error.
     pub fn not_found(self) -> Result<Response, Error> {
-        Err(ServerError::from_status(StatusCode::NOT_FOUND)
-            .unwrap()
-            .into())
+        Err(ServerError::from_status(StatusCode::NOT_FOUND).into())
     }
 
     /// Returns a redirection.
