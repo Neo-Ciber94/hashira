@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 
 use super::Error;
 use crate::web::{IntoResponse, Response, ResponseExt};
-use http::StatusCode;
+use http::{response, StatusCode};
 use thiserror::Error;
 
 /// An error produced when a status code is not an error.
@@ -28,16 +28,20 @@ pub struct ServerError {
 impl ServerError {
     /// Construct a new error.
     pub fn new(status: StatusCode, msg: impl Display) -> Self {
+        assert_status_code(status).expect("invalid status code");
+
         ServerError {
-            status: assert_status_code(status).expect("invalid status code"),
+            status,
             responder: Some(Responder::Message(msg.to_string())),
         }
     }
 
     /// Constructs a new error from a response.
     pub fn from_response(response: Response) -> Self {
+        assert_status_code(response.status()).expect("invalid status code");
+
         ServerError {
-            status: assert_status_code(response.status()).expect("invalid status code"),
+            status: response.status(),
             responder: Some(Responder::Response(response)),
         }
     }
@@ -47,8 +51,10 @@ impl ServerError {
     where
         R: IntoResponse + Clone + Send + Sync + 'static,
     {
+        assert_status_code(status).expect("invalid status code");
+
         ServerError {
-            status: assert_status_code(status).expect("invalid status code"),
+            status,
             responder: Some(Responder::Factory(Box::new(move || {
                 res.clone().into_response()
             }))),
@@ -134,6 +140,12 @@ impl ServerError {
             }
             None => self.status.into_response(),
         }
+    }
+}
+
+impl From<Response> for ServerError {
+    fn from(response: Response) -> Self {
+        ServerError::from_response(response)
     }
 }
 
