@@ -7,7 +7,6 @@ use hashira::{
     error::{Error, ServerError},
     page_component, responses,
     server::Metadata,
-    utils::show_alert,
     web::{status::StatusCode, Inject, Json, Response},
 };
 use serde::{Deserialize, Serialize};
@@ -45,6 +44,8 @@ pub async fn CreateMessageAction(
     messages.push(text.clone());
     Ok(Json(text))
 }
+
+// LOCATION.reload();
 
 #[hashira::render]
 async fn render(
