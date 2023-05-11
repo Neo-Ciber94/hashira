@@ -5,7 +5,7 @@ use hashira::{
     app::RenderContext,
     components::ActionForm,
     error::{Error, ServerError},
-    page_component,
+    page_component, responses,
     server::Metadata,
     utils::show_alert,
     web::{status::StatusCode, Inject, Json, Response},
@@ -39,7 +39,7 @@ pub async fn CreateMessageAction(
     tokio::time::sleep(Duration::from_millis(700)).await;
 
     if text.trim().is_empty() {
-        return Err(ServerError::new(StatusCode::BAD_REQUEST, "text cannot be empty").into());
+        return Err(responses::bad_request("text cannot be empty"));
     }
 
     messages.push(text.clone());

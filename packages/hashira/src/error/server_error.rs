@@ -1,8 +1,7 @@
-use std::fmt::{Debug, Display};
-
 use super::Error;
 use crate::web::{IntoResponse, Response, ResponseExt};
-use http::{response, StatusCode};
+use http::StatusCode;
+use std::fmt::{Debug, Display};
 use thiserror::Error;
 
 /// An error produced when a status code is not an error.
@@ -49,7 +48,7 @@ impl ServerError {
     /// Construct a new error from the given type that implements `IntoResponse`.
     pub fn from_factory<R>(status: StatusCode, res: R) -> Self
     where
-        R: IntoResponse + Clone + Send + Sync + 'static,
+        R: IntoResponse + Clone + Sync + Send + 'static,
     {
         assert_status_code(status).expect("invalid status code");
 
