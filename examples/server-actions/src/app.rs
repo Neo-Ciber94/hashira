@@ -45,8 +45,6 @@ pub async fn CreateMessageAction(
     Ok(Json(text))
 }
 
-// LOCATION.reload();
-
 #[hashira::render]
 async fn render(
     mut ctx: RenderContext,
