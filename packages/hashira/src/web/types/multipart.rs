@@ -4,9 +4,11 @@ use multer_derive::{Error, FromMultipart, MultipartForm};
 use std::convert::Infallible;
 
 /// Represents a multipart form.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Multipart<T>(T);
 
 impl<T> Multipart<T> {
+    /// Returns the inner value.
     pub fn into_inner(self) -> T {
         self.0
     }

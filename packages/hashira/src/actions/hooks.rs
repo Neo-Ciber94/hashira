@@ -202,11 +202,11 @@ where
 
     #[cfg(target_arch = "wasm32")]
     pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), Error> {
+        use crate::actions::into_request_params::RequestParameters;
         use crate::client::fetch_json;
         use crate::error::JsError;
-        use crate::actions::into_request_params::RequestParameters;
-        use web_sys::{Headers, RequestInit};
         use wasm_bindgen::{JsCast, JsValue};
+        use web_sys::{Headers, RequestInit};
 
         struct OnDrop<F: FnOnce()>(Option<F>);
         impl<F: FnOnce()> Drop for OnDrop<F> {
@@ -231,7 +231,21 @@ where
 
         let mut init = init.unwrap_or_else(|| RequestInit::new());
         let headers = match js_sys::Reflect::get(&init, &JsValue::from("headers")) {
-            Ok(x) => x.dyn_into::<Headers>().map_err(JsError::new)?,
+            Ok(x) => {
+                // If is falsy means it can be null or undefined, so we just create an instance
+                if x.is_falsy() {
+                    Headers::new().map_err(JsError::new)?
+                } else {
+                    // Otherwise we try to convert and return a new header if fail
+                    match x.dyn_into::<Headers>() {
+                        Ok(headers) => headers,
+                        Err(err) => {
+                            log::debug!("failed to cast property `headers` to Headers type: {err:?}");
+                            Headers::new().map_err(JsError::new)?
+                        },
+                    }
+                }
+            }
             Err(err) => {
                 log::debug!("failed to get `RequestInit::headers`: {err:?}");
                 Headers::new().map_err(JsError::new)?

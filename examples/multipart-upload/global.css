@@ -10,4 +10,44 @@
   height: auto;
   box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.5);
   border: 10px solid white;
+  outline: 1px solid rgb(217, 217, 217);
+}
+
+#upload-form {
+  width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 0px;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+#upload-form input {
+  margin: 10px 0;
+}
+
+#upload-form button {
+  padding: 10px;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  background-color: rgb(0, 204, 255);
+  cursor: pointer;
+  border-radius: 10px;
+  border: none;
+  transition: all 400ms;
+  box-shadow: 0 5px 5px rgba(0, 0, 0, 0.1);
+}
+
+#upload-form button:hover {
+  background-color: rgb(0, 139, 204);
+}
+
+#empty {
+  margin: 50px auto;
+  font-family: monospace;
+  font-size: 30px;
+  color: rgba(0, 0, 0, 0.6);
 }

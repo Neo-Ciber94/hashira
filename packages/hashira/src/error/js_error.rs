@@ -17,9 +17,24 @@ impl JsError {
         match err.dyn_into::<js_sys::Error>() {
             Ok(err) => JsError(err.to_string().into()),
             Err(err) => {
-                let mut buf = String::new();
-                write!(buf, "{err:?}").expect("failed to format javascript error");
-                JsError(buf)
+                #[cfg(target_arch = "wasm32")]
+                {
+                    match serde_wasm_bindgen::from_value::<String>(err.clone()) {
+                        Ok(str) => JsError(str),
+                        Err(_) => {
+                            let mut buf = String::new();
+                            write!(buf, "{err:?}").expect("failed to format javascript error");
+                            JsError(buf)
+                        }
+                    }
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let mut buf = String::new();
+                    write!(buf, "{err:?}").expect("failed to format javascript error");
+                    JsError(buf)
+                }
             }
         }
     }
