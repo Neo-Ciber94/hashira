@@ -1,6 +1,6 @@
 use hashira::{
     app::AppService,
-    web::{Body, BodyInner, Bytes, Request, Response},
+    web::{Body, Payload, Bytes, Request, Response},
 };
 use std::fmt::Debug;
 use warp::{path::FullPath, reject::Reject, Filter};
@@ -89,8 +89,8 @@ async fn map_request(req: Request<Bytes>) -> Result<Request, hashira::error::Err
 fn map_response(res: Response) -> warp::hyper::Response<warp::hyper::Body> {
     let (parts, body) = res.into_parts();
     let body = match body.into_inner() {
-        BodyInner::Bytes(bytes) => warp::hyper::Body::from(bytes),
-        BodyInner::Stream(stream) => warp::hyper::Body::wrap_stream(stream),
+        Payload::Bytes(bytes) => warp::hyper::Body::from(bytes),
+        Payload::Stream(stream) => warp::hyper::Body::wrap_stream(stream),
     };
 
     warp::hyper::Response::from_parts(parts, body)

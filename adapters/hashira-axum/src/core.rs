@@ -1,7 +1,7 @@
 use axum::{response::IntoResponse, routing::get_service, Extension, Router};
 use hashira::{
     app::AppService,
-    web::{Body, BodyInner, Request, Response},
+    web::{Body, Payload, Request, Response},
 };
 use hyper::{body::to_bytes, StatusCode};
 use tower_http::services::ServeDir;
@@ -40,8 +40,8 @@ async fn map_request(req: Request<axum::body::Body>) -> Result<Request, axum::Er
 fn map_response(res: Response) -> axum::response::Response {
     let (parts, body) = res.into_parts();
     let body = match body.into_inner() {
-        BodyInner::Bytes(bytes) => axum::body::Body::from(bytes),
-        BodyInner::Stream(stream) => axum::body::Body::wrap_stream(stream),
+        Payload::Bytes(bytes) => axum::body::Body::from(bytes),
+        Payload::Stream(stream) => axum::body::Body::wrap_stream(stream),
     };
 
     axum::response::Response::from_parts(parts, axum::body::boxed(body))

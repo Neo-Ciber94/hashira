@@ -155,12 +155,12 @@ async fn map_response(res: Response) -> rocket::Response<'static> {
 
     // Set the body
     match res.into_body().into_inner() {
-        hashira::web::BodyInner::Bytes(bytes) => {
+        hashira::web::Payload::Bytes(bytes) => {
             let len = bytes.len();
             let buf = std::io::Cursor::new(bytes);
             builder.sized_body(len, buf);
         }
-        hashira::web::BodyInner::Stream(stream) => {
+        hashira::web::Payload::Stream(stream) => {
             let s = stream.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
             let reader = tokio_util::io::StreamReader::new(s);
             let body = rocket::response::stream::ReaderStream::one(reader);

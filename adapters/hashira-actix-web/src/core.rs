@@ -6,7 +6,7 @@ use actix_web::{
 use futures::TryStreamExt;
 use hashira::{
     app::AppService,
-    web::{Body, BodyInner, Request, Response},
+    web::{Body, Payload, Request, Response},
 };
 
 /// Returns a function which adds a configuration to the actix web `App`
@@ -82,8 +82,8 @@ fn map_response(res: Response) -> HttpResponse {
     }
 
     match res.into_body().into_inner() {
-        BodyInner::Bytes(bytes) => builder.body(bytes),
-        BodyInner::Stream(stream) => {
+        Payload::Bytes(bytes) => builder.body(bytes),
+        Payload::Stream(stream) => {
             // We need to wrap the error on a sized type to be passed to `streaming`
             builder.streaming(
                 stream.map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err)),

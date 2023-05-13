@@ -12,8 +12,8 @@ pub enum InvalidBodyError {
     Stream,
 }
 
-/// The inner body representation.
-pub enum BodyInner {
+/// The actual body contents.
+pub enum Payload {
     /// The body bytes.
     Bytes(Bytes),
 
@@ -22,13 +22,13 @@ pub enum BodyInner {
 }
 
 /// The body of a request/response.
-pub struct Body(BodyInner);
+pub struct Body(Payload);
 
 impl Body {
     /// Creates an empty body.
     pub fn empty() -> Self {
         let bytes = Bytes::new();
-        Body(BodyInner::Bytes(bytes))
+        Body(Payload::Bytes(bytes))
     }
 
     /// Creates a stream and returns a sender to add bytes to the body stream.
@@ -39,32 +39,32 @@ impl Body {
             .map(Ok::<_, Infallible>)
             .map_err(|e| e.into());
         let body_stream = Box::pin(stream);
-        (tx, Body(BodyInner::Stream(body_stream)))
+        (tx, Body(Payload::Stream(body_stream)))
     }
 
     /// Returns `true` if the body is a stream.
     pub fn is_stream(&self) -> bool {
-        matches!(&self.0, BodyInner::Stream(_))
+        matches!(&self.0, Payload::Stream(_))
     }
 
     /// Returns the inner body.
-    pub fn into_inner(self) -> BodyInner {
+    pub fn into_inner(self) -> Payload {
         self.0
     }
 
     /// Returns a references to the bytes of the body if possible.
     pub fn try_as_bytes(&self) -> Result<&Bytes, InvalidBodyError> {
         match &self.0 {
-            BodyInner::Bytes(bytes) => Ok(bytes),
-            BodyInner::Stream(_) => Err(InvalidBodyError::Stream),
+            Payload::Bytes(bytes) => Ok(bytes),
+            Payload::Stream(_) => Err(InvalidBodyError::Stream),
         }
     }
 
     /// Returns a future that resolves to the bytes of this body.
     pub async fn into_bytes(self) -> Result<Bytes, Error> {
         match self.0 {
-            BodyInner::Bytes(bytes) => Ok(bytes),
-            BodyInner::Stream(mut stream) => {
+            Payload::Bytes(bytes) => Ok(bytes),
+            Payload::Stream(mut stream) => {
                 let mut collector = BytesMut::new();
 
                 while let Some(ret) = stream.next().await {
@@ -80,8 +80,8 @@ impl Body {
     /// Converts the body into a stream.
     pub fn into_stream(self) -> TryBoxStream<Bytes> {
         match self.0 {
-            BodyInner::Bytes(bytes) => Box::pin(futures::stream::once(async move { Ok(bytes) })),
-            BodyInner::Stream(stream) => stream,
+            Payload::Bytes(bytes) => Box::pin(futures::stream::once(async move { Ok(bytes) })),
+            Payload::Stream(stream) => stream,
         }
     }
 }
@@ -95,27 +95,27 @@ impl Default for Body {
 impl Debug for Body {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.0 {
-            BodyInner::Bytes(bytes) => write!(f, "Body(Bytes({:?}))", bytes),
-            BodyInner::Stream(_) => write!(f, "Body(Stream)"),
+            Payload::Bytes(bytes) => write!(f, "Body(Bytes({:?}))", bytes),
+            Payload::Stream(_) => write!(f, "Body(Stream)"),
         }
     }
 }
 
 impl From<Bytes> for Body {
     fn from(value: Bytes) -> Self {
-        Body(BodyInner::Bytes(value))
+        Body(Payload::Bytes(value))
     }
 }
 
 impl From<BytesMut> for Body {
     fn from(value: BytesMut) -> Self {
-        Body(BodyInner::Bytes(value.into()))
+        Body(Payload::Bytes(value.into()))
     }
 }
 
 impl From<TryBoxStream<Bytes>> for Body {
     fn from(value: TryBoxStream<Bytes>) -> Self {
-        Body(BodyInner::Stream(value))
+        Body(Payload::Stream(value))
     }
 }
 

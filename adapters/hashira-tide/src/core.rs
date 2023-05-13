@@ -1,7 +1,7 @@
 use futures::stream::TryStreamExt;
 use hashira::{
     app::AppService,
-    web::{BodyInner, Request, Response, ResponseExt},
+    web::{Payload, Request, Response, ResponseExt},
 };
 
 // Returns a router for a `Tide` application.
@@ -106,8 +106,8 @@ fn map_response(res: Response) -> Result<tide::Response, tide::Error> {
     let cookies = res.cookies().clone()?;
     let (parts, body) = res.into_parts();
     let body = match body.into_inner() {
-        BodyInner::Bytes(bytes) => tide::Body::from_bytes(bytes.to_vec()),
-        BodyInner::Stream(stream) => {
+        Payload::Bytes(bytes) => tide::Body::from_bytes(bytes.to_vec()),
+        Payload::Stream(stream) => {
             let s = stream.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
             let reader = s.into_async_read();
 
