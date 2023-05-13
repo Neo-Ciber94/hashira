@@ -1,8 +1,10 @@
 .container {
+  columns: auto 350px;
+  column-gap: 1rem;
+  margin: auto 0;
   display: flex;
-  flex-direction: row;
   flex-wrap: wrap;
-  gap: 10px;
+  justify-content: center;
 }
 
 .image-file img {
@@ -11,6 +13,7 @@
   box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.5);
   border: 10px solid white;
   outline: 1px solid rgb(217, 217, 217);
+  margin: 1rem;
 }
 
 #upload-form {

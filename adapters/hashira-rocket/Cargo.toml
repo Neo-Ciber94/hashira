@@ -10,5 +10,6 @@ keywords = ["yew", "ssr", "rocket"]
 
 [dependencies]
 hashira = { path = "../../packages/hashira", version = "0.0.1-alpha" }
+log = "0.4.17"
 rocket = "0.5.0-rc.3"
 tokio-util = { version = "0.7.7", features = ["io"] }

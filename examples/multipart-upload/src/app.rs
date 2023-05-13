@@ -7,7 +7,6 @@ use yew::{function_component, html::ChildrenProps, Properties};
 // server only imports
 cfg_if::cfg_if! {
     if #[cfg(not(feature = "client"))] {
-        use std::path::PathBuf;
         use hashira::{
             app::RenderContext,
             error::Error,
@@ -15,25 +14,6 @@ cfg_if::cfg_if! {
             server::Metadata,
             responses
         };
-
-        static UPLOAD_DIR: &str = "uploads/";
-
-        fn uploads_dir() -> PathBuf {
-            let dir = std::env::current_exe()
-                .expect("failed to get current dir")
-                .parent()
-                .unwrap()
-                .to_path_buf()
-                .join(UPLOAD_DIR);
-
-            if !dir.exists() {
-                log::info!("Creating upload directory: {}", dir.display());
-                std::fs::create_dir_all(&dir).expect("failed to create upload directory");
-            }
-
-            dir
-        }
-
     }
 }
 
@@ -72,7 +52,7 @@ pub async fn UploadFileAction(input: Multipart<NewImage>) -> hashira::Result<()>
         timestamp = SystemTime::UNIX_EPOCH.elapsed()?.as_millis()
     );
 
-    let dir = uploads_dir();
+    let dir = crate::uploads_dir();
     let dest_path = dir.join(new_name);
     let mut file = std::fs::File::create(dest_path)?;
     let mut writer = std::io::BufWriter::new(&mut file);
@@ -84,7 +64,7 @@ pub async fn UploadFileAction(input: Multipart<NewImage>) -> hashira::Result<()>
 async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
     ctx.metadata(Metadata::new().title("Hashira Multipart Upload"));
 
-    let dir = uploads_dir();
+    let dir = crate::uploads_dir();
     let mut files = vec![];
 
     for entry in dir.read_dir()? {
@@ -94,7 +74,7 @@ async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
                 if let Some((name, ext)) = file_name.split_once(".") {
                     match ext {
                         "png" | "jpg" | "jpeg" | "svg" | "gif" | "tiff" | "webp" => {
-                            let url = format!("{UPLOAD_DIR}{file_name}");
+                            let url = format!("{}{file_name}", crate::UPLOAD_DIR);
                             files.push(url);
                         }
                         _ => {}

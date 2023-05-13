@@ -53,7 +53,10 @@ impl Handler for DefaultRequestHandler {
     ) -> rocket::route::Outcome<'r> {
         let req = match RequestWithoutBody::from_request(rocket_req).await {
             outcome::Outcome::Success(req) => req,
-            outcome::Outcome::Failure((status, _)) => return route::Outcome::Failure(status),
+            outcome::Outcome::Failure((status, err)) => {
+                log::error!("{}", err);
+                return route::Outcome::Failure(status);
+            }
             outcome::Outcome::Forward(_) => return route::Outcome::Forward(data),
         };
 
@@ -65,7 +68,10 @@ impl Handler for DefaultRequestHandler {
 
         let bytes = match Vec::<u8>::from_data(rocket_req, data).await {
             outcome::Outcome::Success(b) => b,
-            outcome::Outcome::Failure((status, _)) => return route::Outcome::Failure(status),
+            outcome::Outcome::Failure((status, err)) => {
+                log::error!("{}", err);
+                return route::Outcome::Failure(status);
+            }
             outcome::Outcome::Forward(data) => return route::Outcome::Forward(data),
         };
 
@@ -109,6 +115,7 @@ impl<'r> FromRequest<'r> for RequestWithoutBody {
         let req = match builder.body(()) {
             Ok(x) => x,
             Err(err) => {
+                log::error!("{}", err);
                 return rocket::request::Outcome::Failure((
                     rocket::http::Status::InternalServerError,
                     err,

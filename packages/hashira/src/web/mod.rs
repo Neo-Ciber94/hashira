@@ -10,11 +10,13 @@ mod response_ext;
 mod types;
 
 pub use from_request::*;
+pub use into_json::*;
 pub use into_response::*;
 pub use request_ext::*;
 pub use response_ext::*;
-pub use into_json::*;
 pub use types::*;
+
+pub use bytes::{Bytes, BytesMut};
 
 /// Represents a `http` request.
 pub type Request<T = Body> = http::request::Request<T>;

@@ -1,11 +1,36 @@
 mod app;
 mod components;
 
-use app::{App, UploadsPage, UploadFileAction};
+use app::{App, UploadFileAction, UploadsPage};
 use hashira::{
     app::{App as HashiraApp, AppService, LayoutContext},
+    routing::Route,
     server::{LinkTag, PageLinks},
 };
+
+cfg_if::cfg_if! {
+    if #[cfg(not(feature = "client"))] {
+        use std::path::PathBuf;
+            
+        pub static UPLOAD_DIR: &str = "uploads/";
+    
+        pub fn uploads_dir() -> PathBuf {
+            let dir = std::env::current_exe()
+                .expect("failed to get current dir")
+                .parent()
+                .unwrap()
+                .to_path_buf()
+                .join(UPLOAD_DIR);
+    
+            if !dir.exists() {
+                log::info!("Creating upload directory: {}", dir.display());
+                std::fs::create_dir_all(&dir).expect("failed to create upload directory");
+            }
+    
+            dir
+        }
+    }
+}
 
 // Setup all the components
 pub fn hashira() -> AppService {
@@ -14,6 +39,10 @@ pub fn hashira() -> AppService {
         .layout(root_layout)
         .page::<UploadsPage>()
         .action::<UploadFileAction>()
+        .route(Route::post("/echo", |body: String| async move {
+            let rev = body.chars().rev().collect::<String>();
+            rev
+        }))
         .build()
 }
 

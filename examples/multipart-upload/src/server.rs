@@ -1,7 +1,11 @@
 use hashira::adapter::Adapter;
 use hashira_rocket::HashiraRocket;
 use multipart_upload::hashira;
-use rocket::{fs::NamedFile, get, routes, Build, Rocket};
+use rocket::{
+    data::{Limits, ToByteUnit},
+    fs::NamedFile,
+    get, routes, Build, Config, Rocket,
+};
 
 pub async fn start_server() -> Result<(), hashira::error::Error> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
@@ -12,8 +16,27 @@ pub async fn start_server() -> Result<(), hashira::error::Error> {
 }
 
 fn rocket() -> Rocket<Build> {
-    let uploads = std::env::current_exe().unwrap().parent().unwrap().join("uploads");
+    let uploads = {
+        cfg_if::cfg_if! {
+            if #[cfg(not(feature = "client"))] {
+               multipart_upload::uploads_dir()
+            } else {
+                unreachable!()
+            }
+        }
+    };
+
+    // Update the limits for the files
+    let limits = Limits::new()
+        .limit("bytes", 3.megabytes());
+
+    let config = Config {
+        limits,
+        ..Default::default()
+    };
+
     Rocket::build()
+        .configure(config)
         .mount("/", routes![favicon])
         .mount("/uploads", rocket::fs::FileServer::from(uploads))
 }
@@ -22,35 +45,3 @@ fn rocket() -> Rocket<Build> {
 pub async fn favicon() -> Option<NamedFile> {
     NamedFile::open("./public/favicon.ico").await.ok()
 }
-
-// use axum::Router;
-// use hashira::adapter::Adapter;
-// use hashira_axum::HashiraAxum;
-
-// use multipart_upload::hashira;
-// use tower_http::services::ServeDir;
-
-// pub async fn start_server() -> Result<(), hashira::error::Error> {
-//     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-
-//     let app = hashira();
-//     HashiraAxum::from(axum()).serve(app).await
-// }
-
-// fn axum() -> Router {
-//     let uploads = std::env::current_exe()
-//         .unwrap()
-//         .parent()
-//         .unwrap()
-//         .join("uploads");
-
-//     Router::new()
-//         .nest_service(
-//             "/uploads",
-//             axum::routing::get_service(ServeDir::new(uploads)),
-//         )
-//         .route(
-//             "/favicon.ico",
-//             axum::routing::get_service(ServeDir::new("./public")),
-//         )
-// }

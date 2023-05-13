@@ -27,8 +27,6 @@ hashira-axum = { path = "../../adapters/hashira-axum" }
 rocket = "0.5.0-rc.3"
 env_logger = "0.10.0"
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
-axum = "0.6.15"
-tower-http = { version = "0.4.0", features = ["fs"] }
 
 [dependencies]
 yew = "0.20"
