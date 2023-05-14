@@ -13,7 +13,7 @@ impl FromRequest for Bytes {
     fn from_request(_ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         let body = std::mem::take(body);
         Box::pin(async move {
-            let bytes = body.take_bytes().await?;
+            let bytes = body.into_bytes().await?;
             Ok(bytes)
         })
     }

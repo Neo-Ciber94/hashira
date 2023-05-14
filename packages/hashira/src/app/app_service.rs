@@ -561,7 +561,7 @@ mod tests {
         let body = Body::from(body.to_owned());
         let res = service.handle_request(req, body).await;
         let (parts, body) = res.into_parts();
-        let bytes = body.take_bytes().await.unwrap();
+        let bytes = body.into_bytes().await.unwrap();
         let body = String::from_utf8(bytes.to_vec()).unwrap();
         Response::from_parts(parts, body)
     }
