@@ -125,15 +125,23 @@ impl Payload {
     }
 }
 
+impl FromRequest for Body {
+    type Error = Infallible;
+    type Fut = Ready<Result<Body, Infallible>>;
+
+    fn from_request(_ctx: &crate::app::RequestContext, body: &mut Body) -> Self::Fut {
+        let body = std::mem::take(body);
+        ready(Ok(body))
+    }
+}
+
 impl FromRequest for Payload {
     type Error = BoxError;
     type Fut = Ready<Result<Payload, BoxError>>;
 
-    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+    fn from_request(_ctx: &crate::app::RequestContext, body: &mut Body) -> Self::Fut {
         ready(
-            ctx.request()
-                .body()
-                .take()
+            body.take()
                 .ok_or(responses::unprocessable_entity("body was taken")),
         )
     }

@@ -22,17 +22,21 @@ pub trait PageComponent: BaseComponent {
 pub mod handler {
     use crate::{
         app::RenderContext,
-        web::{FromRequest, IntoResponse, Response},
+        web::{Body, FromRequest, IntoResponse, Response},
     };
     use futures::Future;
 
     /// Calls the render function of a handler.
-    pub async fn call_render<H, Args>(ctx: RenderContext, handler: H) -> crate::Result<Response>
+    pub async fn call_render<H, Args>(
+        ctx: RenderContext,
+        mut body: Body,
+        handler: H,
+    ) -> crate::Result<Response>
     where
         H: RenderHandler<Args>,
         Args: FromRequest,
     {
-        let args = match Args::from_request(&ctx).await {
+        let args = match Args::from_request(&ctx, &mut body).await {
             Ok(x) => x,
             Err(err) => return Err(err.into()),
         };

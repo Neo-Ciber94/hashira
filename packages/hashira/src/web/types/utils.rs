@@ -19,7 +19,7 @@ pub(crate) enum ContentTypeError {
     InvalidContentType(Box<InvalidContentType>),
 }
 
-pub(crate) fn is_content_type(request: &Request, expected: Mime) -> Result<(), ContentTypeError> {
+pub(crate) fn is_content_type<B>(request: &Request<B>, expected: Mime) -> Result<(), ContentTypeError> {
     let content_type = request.content_type();
     let Some(content_type)  = content_type else {
         return Err(ContentTypeError::NoContentType);

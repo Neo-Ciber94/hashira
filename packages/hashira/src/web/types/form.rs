@@ -51,9 +51,9 @@ where
     type Error = BoxError;
     type Fut = FromRequestFormFuture<T>;
 
-    fn from_request(ctx: &RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         FromRequestFormFuture {
-            fut: Bytes::from_request(ctx),
+            fut: Bytes::from_request(ctx, body),
             ctx: ctx.clone(),
             _marker: PhantomData,
         }
@@ -107,7 +107,7 @@ where
     }
 }
 
-fn parse_form_from_uri<T: DeserializeOwned>(request: &Request) -> Result<Form<T>, BoxError> {
+fn parse_form_from_uri<T: DeserializeOwned>(request: &Request<()>) -> Result<Form<T>, BoxError> {
     match request.uri().query() {
         Some(query) => match serde_urlencoded::from_str::<T>(query) {
             Ok(x) => Ok(Form(x)),
@@ -145,11 +145,12 @@ mod tests {
         let req = Request::builder()
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .method(Method::POST)
-            .body(Body::from("name=Homura%20Akemi&age=14&dead=false"))
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let form = Form::<MagicGirl>::from_request(&ctx).await.unwrap();
+        let mut body =Body::from("name=Homura%20Akemi&age=14&dead=false");
+        let form = Form::<MagicGirl>::from_request(&ctx, &mut body).await.unwrap();
 
         assert_eq!(
             form.0,
@@ -174,11 +175,12 @@ mod tests {
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .uri("/path/to/route?name=Homura%20Akemi&age=14&dead=false")
             .method(Method::GET)
-            .body(Body::empty())
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let form = Form::<MagicGirl>::from_request(&ctx).await.unwrap();
+        let mut body = Body::default();
+        let form = Form::<MagicGirl>::from_request(&ctx, &mut body).await.unwrap();
 
         assert_eq!(
             form.0,
@@ -190,7 +192,7 @@ mod tests {
         );
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

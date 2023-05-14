@@ -3,7 +3,11 @@
 
 // Adapted from: https://docs.rs/actix-web/latest/src/actix_web/extract.rs.html#413
 
-use crate::{app::RequestContext, error::BoxError, web::FromRequest};
+use crate::{
+    app::RequestContext,
+    error::BoxError,
+    web::{Body, FromRequest},
+};
 use pin_project_lite::pin_project;
 use std::future::Future;
 use std::pin::Pin;
@@ -18,11 +22,11 @@ macro_rules! tuple_from_req {
             type Error = BoxError;
             type Fut = $fut<$($T),+>;
 
-            fn from_request(ctx: &RequestContext) -> Self::Fut {
+            fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
                 $fut {
                     $(
                         $T: ExtractFuture::Future {
-                            fut: $T::from_request(ctx)
+                            fut: $T::from_request(ctx, body)
                         },
                     )+
                 }

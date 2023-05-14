@@ -107,8 +107,8 @@ where
             
             let route = A::route().to_string();
             let method = A::method();
-            let mut route = Route::new(&route, method, |ctx: RequestContext| async move {
-                let output = crate::try_response!(A::call(ctx).await);
+            let mut route = Route::new(&route, method, |ctx: RequestContext, body: Body| async move {
+                let output = crate::try_response!(A::call(ctx, body).await);
                 let json_res = crate::try_response!(output.into_json_response());
                 let (parts, body) = json_res.into_parts();
                 let bytes = crate::try_response!(serde_json::to_vec(&body));

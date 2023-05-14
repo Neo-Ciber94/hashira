@@ -6,7 +6,10 @@ use std::{
 
 use thiserror::Error;
 
-use crate::web::FromRequest;
+use crate::{
+    app::RequestContext,
+    web::{Body, FromRequest},
+};
 
 /// Wraps data for the application that can be extracted with [`RequestContext::app_data`].
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -64,7 +67,7 @@ where
     type Error = DataNotFoundError;
     type Fut = Ready<Result<Data<T>, Self::Error>>;
 
-    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, _body: &mut Body) -> Self::Fut {
         ready(
             ctx.app_data::<Data<T>>()
                 .cloned()
@@ -80,9 +83,9 @@ mod tests {
     use std::sync::Arc;
 
     use crate::app::router::{PageRouter, PageRouterWrapper};
-    use crate::app::{ AppData, RequestContext};
+    use crate::app::{AppData, RequestContext};
     use crate::routing::{ErrorRouter, Params};
-    use crate::web::{Body, Data, Request, FromRequest};
+    use crate::web::{Body, Data, FromRequest, Request};
 
     #[tokio::test]
     async fn data_from_request_test() {
@@ -92,14 +95,20 @@ mod tests {
 
         let ctx = create_request_context(app_data);
 
-        assert!(Data::<String>::from_request(&ctx).await.is_ok());
-        assert!(Data::<i32>::from_request(&ctx).await.is_ok());
-        assert!(Data::<f64>::from_request(&ctx).await.is_err());
+        assert!(Data::<String>::from_request(&ctx, &mut Body::empty())
+            .await
+            .is_ok());
+        assert!(Data::<i32>::from_request(&ctx, &mut Body::empty())
+            .await
+            .is_ok());
+        assert!(Data::<f64>::from_request(&ctx, &mut Body::empty())
+            .await
+            .is_err());
     }
 
     fn create_request_context(app_data: AppData) -> RequestContext {
         RequestContext::new(
-            Arc::new(Request::new(Body::empty())),
+            Arc::new(Request::new(())),
             Arc::new(app_data),
             PageRouterWrapper::from(PageRouter::new()),
             Arc::new(ErrorRouter::new()),

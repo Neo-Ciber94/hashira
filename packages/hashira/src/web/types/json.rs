@@ -49,9 +49,9 @@ where
     type Error = BoxError;
     type Fut = FromRequestJsonFuture<T>;
 
-    fn from_request(ctx: &RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         FromRequestJsonFuture {
-            fut: Bytes::from_request(ctx),
+            fut: Bytes::from_request(ctx, body),
             ctx: ctx.clone(),
             _marker: PhantomData,
         }
@@ -123,17 +123,19 @@ mod tests {
 
         let req = Request::builder()
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "Homura Akemi",
-                "age": 14,
-                "dead": false 
-            }"#,
-            ))
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let json = Json::<MagicGirl>::from_request(&ctx).await.unwrap();
+        let mut body = Body::from(
+            r#"{
+            "name": "Homura Akemi",
+            "age": 14,
+            "dead": false 
+        }"#);
+        let json = Json::<MagicGirl>::from_request(&ctx, &mut body)
+            .await
+            .unwrap();
 
         assert_eq!(
             json.into_inner(),
@@ -145,7 +147,7 @@ mod tests {
         );
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

@@ -11,7 +11,7 @@ use crate::{
     },
     routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter},
     error::{BoxError, ServerError},
-    web::{IntoResponse, Response, Redirect, FromRequest}, types::BoxFuture, actions::Action,
+    web::{IntoResponse, Response, Redirect, FromRequest, Body}, types::BoxFuture, actions::Action,
 };
 
 use http::{status::StatusCode, HeaderMap};
@@ -25,7 +25,7 @@ type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync + 'static>>;
 pub type RenderLayout = Arc<dyn Fn(LayoutContext) -> BoxedFuture<Html> + Send + Sync>;
 
 /// A handler for a request.
-pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext) -> BoxFuture<Response> + Send + Sync>);
+pub struct PageHandler(pub(crate) Box<dyn Fn(RequestContext, Body) -> BoxFuture<Response> + Send + Sync>);
 
 impl PageHandler {
     pub fn new<H, Args>(handler: H) -> Self
@@ -36,10 +36,10 @@ impl PageHandler {
         H::Output: IntoResponse,
         <Args as FromRequest>::Fut : Send
     {
-        PageHandler(Box::new(move |ctx| {      
+        PageHandler(Box::new(move |ctx, mut body| {      
             let handler = handler.clone();
             Box::pin(async move {
-                let args = match Args::from_request(&ctx).await {
+                let args = match Args::from_request(&ctx, &mut body).await {
                     Ok(x) => x,
                     Err(err) => {
                         return ServerError::from_error(err).into_response();
@@ -51,8 +51,8 @@ impl PageHandler {
         }))
     }
 
-    pub fn call(&self, ctx: RequestContext) -> BoxFuture<Response> {
-        (self.0)(ctx)
+    pub fn call(&self, ctx: RequestContext, body: Body) -> BoxFuture<Response> {
+        (self.0)(ctx, body)
     }
 }
 
@@ -309,8 +309,8 @@ where
             
             let path = A::route().to_string();
             let method = A::method();
-            let mut route = Route::new(&path, method, |ctx: RequestContext| async move {
-                let output = crate::try_response!(A::call(ctx).await);
+            let mut route = Route::new(&path, method, |ctx: RequestContext, body: Body| async move {
+                let output = crate::try_response!(A::call(ctx, body).await);
                 let json_res = crate::try_response!(output.into_json_response());
                 let (parts, body) = json_res.into_parts();
                 let bytes = crate::try_response!(serde_json::to_vec(&body));

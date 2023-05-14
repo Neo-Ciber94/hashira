@@ -4,7 +4,7 @@ use crate::{
     routing::{
         ErrorRouter, HandlerKind, Params, ServerErrorRouter, ServerRouter, ServerRouterMatchError,
     },
-    web::{IntoResponse, Request, Response},
+    web::{Body, IntoResponse, Request, Response},
 };
 use http::{HeaderMap, StatusCode};
 use std::sync::Arc;
@@ -32,7 +32,7 @@ impl AppService {
     /// Create a context to be used in the request.
     pub fn create_context(
         &self,
-        request: Arc<Request>,
+        request: Arc<Request<()>>,
         params: Params,
         error: Option<ServerError>,
     ) -> RequestContext {
@@ -82,10 +82,13 @@ impl AppService {
     }
 
     async fn _handle(&self, req: Request) -> Response {
+        let (parts, body) = req.into_parts();
+        let req = Request::from_parts(parts, ());
+
         // Handle the request normally
         #[cfg(not(feature = "hooks"))]
         {
-            self.handle_request(req).await
+            self.handle_request(req, body).await
         }
 
         #[cfg(feature = "hooks")]
@@ -96,26 +99,28 @@ impl AppService {
 
             // Handle the request normally to avoid any extra allocations
             if hooks.is_empty() {
-                return self.handle_request(req).await;
+                return self.handle_request(req, body).await;
             }
 
             let this = self.clone();
-            let next = Box::new(move |req| {
-                Box::pin(async move { this.handle_request(req).await }) as BoxFuture<Response>
+            let next = Box::new(move |req, body| {
+                Box::pin(async move { this.handle_request(req, body).await }) as BoxFuture<Response>
             }) as Next;
 
             // We execute the hooks in the order they were added
             let handler = hooks.iter().rev().fold(next, move |cur, next_handler| {
                 let next_handler = next_handler.clone_handler();
-                Box::new(move |req| Box::pin(async move { next_handler.call(req, cur).await }))
+                Box::new(move |req, body| {
+                    Box::pin(async move { next_handler.call(req, body, cur).await })
+                })
             }) as Next;
 
             // Handle the request
-            handler(req).await
+            handler(req, body).await
         }
     }
 
-    async fn handle_request(&self, req: Request) -> Response {
+    async fn handle_request(&self, req: Request<()>, body: Body) -> Response {
         // We remove the trailing slash from the path,
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
@@ -137,7 +142,7 @@ impl AppService {
                 let params = mtch.params;
                 let ctx = self.create_context(req.clone(), params, None);
 
-                let res = route.handler().call(ctx).await;
+                let res = route.handler().call(ctx, body).await;
                 let status = res.status();
 
                 // Only component pages render error by default
@@ -169,7 +174,7 @@ impl AppService {
 
     async fn handle_error(
         &self,
-        req: Arc<Request>,
+        req: Arc<Request<()>>,
         error: ServerError,
         should_render: bool,
     ) -> Response {
@@ -262,21 +267,29 @@ mod tests {
             .route(Route::delete("/c", noop))
             .build();
 
-        let res1 = service.handle_request(create_req("/a", Method::GET)).await;
+        let res1 = service
+            .handle_request(create_req("/a", Method::GET), Default::default())
+            .await;
         assert_eq!(res1.status(), StatusCode::OK);
 
-        let res2 = service.handle_request(create_req("/b", Method::POST)).await;
+        let res2 = service
+            .handle_request(create_req("/b", Method::POST), Default::default())
+            .await;
         assert_eq!(res2.status(), StatusCode::OK);
 
         let res3 = service
-            .handle_request(create_req("/c", Method::DELETE))
+            .handle_request(create_req("/c", Method::DELETE), Default::default())
             .await;
         assert_eq!(res3.status(), StatusCode::OK);
 
-        let res4 = service.handle_request(create_req("/d", Method::GET)).await;
+        let res4 = service
+            .handle_request(create_req("/d", Method::GET), Default::default())
+            .await;
         assert_eq!(res4.status(), StatusCode::NOT_FOUND);
 
-        let res5 = service.handle_request(create_req("/a", Method::POST)).await;
+        let res5 = service
+            .handle_request(create_req("/a", Method::POST), Default::default())
+            .await;
         assert_eq!(res5.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
@@ -304,34 +317,34 @@ mod tests {
 
         // Test requests to nested routes
         let res1 = service
-            .handle_request(create_req("/vowels/a", Method::POST))
+            .handle_request(create_req("/vowels/a", Method::POST), Default::default())
             .await;
         assert_eq!(res1.status(), StatusCode::OK);
 
         let res2 = service
-            .handle_request(create_req("/xyz/z", Method::POST))
+            .handle_request(create_req("/xyz/z", Method::POST), Default::default())
             .await;
         assert_eq!(res2.status(), StatusCode::OK);
 
         // Test requests to non-existent nested routes
         let res3 = service
-            .handle_request(create_req("/vowels/d", Method::POST))
+            .handle_request(create_req("/vowels/d", Method::POST), Default::default())
             .await;
         assert_eq!(res3.status(), StatusCode::NOT_FOUND);
 
         let res4 = service
-            .handle_request(create_req("/xyz/w", Method::POST))
+            .handle_request(create_req("/xyz/w", Method::POST), Default::default())
             .await;
         assert_eq!(res4.status(), StatusCode::NOT_FOUND);
 
         // Test requests to nested routes with invalid methods
         let res5 = service
-            .handle_request(create_req("/vowels/b", Method::GET))
+            .handle_request(create_req("/vowels/b", Method::GET), Default::default())
             .await;
         assert_eq!(res5.status(), StatusCode::METHOD_NOT_ALLOWED);
 
         let res6 = service
-            .handle_request(create_req("/xyz/x", Method::DELETE))
+            .handle_request(create_req("/xyz/x", Method::DELETE), Default::default())
             .await;
         assert_eq!(res6.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
@@ -530,11 +543,11 @@ mod tests {
 
     async fn noop() {}
 
-    fn create_req(path: &str, method: Method) -> Request {
+    fn create_req(path: &str, method: Method) -> Request<()> {
         Request::builder()
             .method(method)
             .uri(path)
-            .body(Body::empty())
+            .body(())
             .unwrap()
     }
 
@@ -543,12 +556,10 @@ mod tests {
         path: &str,
         body: &str,
     ) -> Response<String> {
-        let req = Request::builder()
-            .uri(path)
-            .body(Body::from(body.to_owned()))
-            .unwrap();
+        let req = Request::builder().uri(path).body(()).unwrap();
 
-        let res = service.handle_request(req).await;
+        let body = Body::from(body.to_owned());
+        let res = service.handle_request(req, body).await;
         let (parts, body) = res.into_parts();
         let bytes = body.take_bytes().await.unwrap();
         let body = String::from_utf8(bytes.to_vec()).unwrap();

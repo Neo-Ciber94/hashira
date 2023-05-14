@@ -1,7 +1,7 @@
 use futures::Future;
 use pin_project_lite::pin_project;
 
-use crate::{app::RequestContext, error::BoxError, web::FromRequest};
+use crate::{app::RequestContext, error::BoxError, web::{FromRequest, Body}};
 use std::{convert::Infallible, task::Poll};
 
 impl<T> FromRequest for Option<T>
@@ -11,9 +11,9 @@ where
     type Error = Infallible;
     type Fut = FromRequestOptionFuture<T::Fut>;
 
-    fn from_request(ctx: &RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         FromRequestOptionFuture {
-            fut: T::from_request(ctx),
+            fut: T::from_request(ctx, body),
         }
     }
 }
@@ -61,17 +61,18 @@ mod tests {
 
     #[tokio::test]
     async fn option_from_request_test() {
-        let req = Request::builder().body(Body::empty()).unwrap();
+        let req = Request::new(());
 
         let ctx = create_request_context(req);
-        let ret1 = Option::<Inject<String>>::from_request(&ctx).await.unwrap();
-        let ret2 = Option::<Method>::from_request(&ctx).await.unwrap();
+        let mut body = Body::empty();
+        let ret1 = Option::<Inject<String>>::from_request(&ctx, &mut body).await.unwrap();
+        let ret2 = Option::<Method>::from_request(&ctx, &mut body).await.unwrap();
 
         assert!(ret1.is_none());
         assert!(ret2.is_some());
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

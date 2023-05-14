@@ -1,11 +1,11 @@
-use futures::Future;
 use crate::{
     types::BoxFuture,
-    web::{Request, Response},
+    web::{Body, Request, Response},
 };
+use futures::Future;
 
 /// Resolves the next request and return the response.
-pub type Next = Box<dyn FnOnce(Request) -> BoxFuture<Response> + Send + Sync>;
+pub type Next = Box<dyn FnOnce(Request<()>, Body) -> BoxFuture<Response> + Send + Sync>;
 
 #[doc(hidden)]
 pub trait OnHandleClone {
@@ -25,16 +25,16 @@ where
 #[async_trait::async_trait]
 pub trait OnHandle: OnHandleClone {
     /// Called on the next request.
-    async fn call(&self, req: Request, next: Next) -> Response;
+    async fn call(&self, req: Request<()>, body: Body, next: Next) -> Response;
 }
 
 #[async_trait::async_trait]
 impl<F, Fut> OnHandle for F
 where
-    F: Fn(Request, Next) -> Fut + Clone + Send + Sync + 'static,
+    F: Fn(Request<()>, Body, Next) -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = Response> + Send + 'static,
 {
-    async fn call(&self, req: Request, next: Next) -> Response {
-        (self)(req, next).await
+    async fn call(&self, req: Request<()>, body: Body, next: Next) -> Response {
+        (self)(req, body, next).await
     }
 }
