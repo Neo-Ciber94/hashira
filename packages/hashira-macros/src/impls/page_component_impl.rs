@@ -114,7 +114,7 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
             }
 
             fn render<BASE>(ctx: ::hashira::app::RenderContext)
-                -> ::hashira::types::BoxFuture<std::result::Result<::hashira::web::Response, ::hashira::error::Error>>
+                -> ::hashira::types::BoxFuture<std::result::Result<::hashira::web::Response, ::hashira::error::BoxError>>
                 where
                     BASE: yew::BaseComponent<Properties = yew::html::ChildrenProps>,{
                 #render
