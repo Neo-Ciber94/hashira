@@ -1,14 +1,14 @@
+use super::FromRequest;
 use crate::{error::BoxError, responses, types::TryBoxStream};
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::{
     future::{ready, Ready},
-    StreamExt, TryStreamExt,
+    StreamExt,
 };
 use std::{convert::Infallible, fmt::Debug};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use super::FromRequest;
 
 #[derive(Debug, Error)]
 pub enum InvalidBodyError {
@@ -38,13 +38,11 @@ impl Body {
         Body(payload)
     }
 
-    /// Creates a stream and returns a sender to add bytes to the body stream.
-    pub fn stream() -> (UnboundedSender<Bytes>, Self) {
-        let (tx, rx) = unbounded_channel::<Bytes>();
+    /// Creates a channel to create this body.
+    pub fn channel() -> (UnboundedSender<Result<Bytes, BoxError>>, Self) {
+        let (tx, rx) = unbounded_channel();
 
-        let stream = UnboundedReceiverStream::new(rx)
-            .map(Ok::<_, Infallible>)
-            .map_err(|e| e.into());
+        let stream = UnboundedReceiverStream::new(rx);
         let body_stream = Box::pin(stream);
         let payload = Some(Payload::Stream(body_stream));
         (tx, Body(payload))

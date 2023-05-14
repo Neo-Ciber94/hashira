@@ -73,6 +73,11 @@ pub mod consts {
     pub const IS_SERVER: bool = false;
 }
 
+// Yeah, you are not suppose to use this
+#[doc(hidden)]
+#[cfg(feature = "internal")]
+pub mod internal;
+
 /// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
 #[macro_export]
 macro_rules! try_response {

@@ -1,9 +1,11 @@
 use axum::{response::IntoResponse, routing::get_service, Extension, Router};
+use futures::TryStreamExt;
 use hashira::{
     app::AppService,
+    types::TryBoxStream,
     web::{Body, Payload, Request, Response},
 };
-use hyper::{body::to_bytes, StatusCode};
+use hyper::{body::Bytes, StatusCode};
 use tower_http::services::ServeDir;
 
 // Returns a router for a `Axum` application.
@@ -20,9 +22,9 @@ pub fn router(app_service: AppService) -> Router {
 /// Handle a request.
 pub async fn handle_request(
     Extension(service): Extension<AppService>,
-    axum_request: Request<axum::body::Body>,
+    axum_req: Request<axum::body::Body>,
 ) -> impl IntoResponse {
-    match map_request(axum_request).await {
+    match map_request(axum_req).await {
         Ok(req) => {
             let res = service.handle(req).await;
             map_response(res)
@@ -31,9 +33,10 @@ pub async fn handle_request(
     }
 }
 
-async fn map_request(req: Request<axum::body::Body>) -> Result<Request, axum::Error> {
-    let (parts, body) = req.into_parts();
-    let body = Body::from(to_bytes(body).await.map_err(axum::Error::new)?);
+async fn map_request(axum_req: Request<axum::body::Body>) -> Result<Request, axum::Error> {
+    let (parts, body) = axum_req.into_parts();
+    let stream = body.map_err(Into::into);
+    let body = Body::from(Box::pin(stream) as TryBoxStream<Bytes>);
     Ok(Request::from_parts(parts, body))
 }
 

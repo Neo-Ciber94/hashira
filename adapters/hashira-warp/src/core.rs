@@ -1,9 +1,11 @@
+use futures::stream::TryStreamExt;
 use hashira::{
     app::AppService,
-    web::{Body, Payload, Bytes, Request, Response},
+    types::TryBoxStream,
+    web::{Body, Bytes, BytesMut, Payload, Request, Response},
 };
-use std::fmt::Debug;
-use warp::{path::FullPath, reject::Reject, Filter};
+use std::{convert::Infallible, fmt::Debug};
+use warp::{path::FullPath, reject::Reject, Buf, Filter, Stream};
 
 struct HashiraRejection(Box<dyn std::error::Error + Send + Sync>);
 impl Debug for HashiraRejection {
@@ -36,54 +38,78 @@ pub fn router(
         .or(hashira_filter(app_service))
 }
 
+fn with_service(
+    service: AppService,
+) -> impl Filter<Extract = (AppService,), Error = Infallible> + Clone {
+    warp::any().map(move || service.clone())
+}
+
 // Main handler
 fn hashira_filter(
     app_service: AppService,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+    async fn handler(
+        stream: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + 'static,
+        path: FullPath,
+        headers: warp::hyper::HeaderMap,
+        method: warp::http::Method,
+        service: AppService,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        {
+            fn buf_to_stream(
+                stream: impl Stream<Item = Result<impl Buf, warp::Error>> + Send + Sync + 'static,
+            ) -> TryBoxStream<Bytes> {
+                let ret = stream
+                    .map_ok(|mut buf| {
+                        let mut bytes = BytesMut::new();
+                        buf.copy_to_slice(&mut bytes);
+                        bytes.freeze()
+                    })
+                    .map_err(Into::into);
+
+                Box::pin(ret)
+            }
+
+            let stream = buf_to_stream(stream);
+
+            // Construct the incoming request
+            let mut warp_req = try_reject!(Request::builder()
+                .uri(path.as_str())
+                .method(method)
+                .body(Body::from(stream)));
+
+            // Set the headers
+            *warp_req.headers_mut() = headers;
+
+            // Send the request to hashira, and get the warp response
+            let warp_res = try_reject!(handle_request(warp_req, service.clone()).await);
+            Ok(warp_res)
+        }
+    }
+
     warp::any()
-        .and(warp::body::bytes())
+        .and(warp::body::stream())
         .and(warp::path::full())
         .and(warp::filters::header::headers_cloned())
         .and(warp::method())
-        .and_then(
-            move |bytes: Bytes,
-                  path: FullPath,
-                  headers: warp::hyper::HeaderMap,
-                  method: warp::http::Method| {
-                let service = app_service.clone();
-                async move {
-                    // Construct the incoming request
-                    let mut warp_req = try_reject!(Request::builder()
-                        .uri(path.as_str())
-                        .method(method)
-                        .body(bytes));
-
-                    // Set the headers
-                    *warp_req.headers_mut() = headers;
-
-                    // Send the request to hashira, and get the warp response
-                    let warp_res = try_reject!(handle_request(warp_req, service.clone()).await);
-                    Ok(warp_res)
-                }
-            },
-        )
+        .and(with_service(app_service))
+        .and_then(handler)
 }
 
 /// Handles a `warp` request and returns a `warp` response.
 pub async fn handle_request(
-    warp_req: warp::hyper::Request<Bytes>,
+    warp_req: Request<Body>,
     app_service: AppService,
 ) -> Result<warp::hyper::Response<warp::hyper::Body>, hashira::error::BoxError> {
-    let req = map_request(warp_req).await?;
+    let req = map_request(warp_req);
     let res = app_service.handle(req).await;
     let warp_res = map_response(res);
     Ok(warp_res)
 }
 
-async fn map_request(req: Request<Bytes>) -> Result<Request, hashira::error::BoxError> {
-    let (parts, bytes) = req.into_parts();
-    let body = Body::from(bytes);
-    Ok(Request::from_parts(parts, body))
+#[inline(always)]
+fn map_request(req: Request<Body>) -> Request {
+    req
 }
 
 fn map_response(res: Response) -> warp::hyper::Response<warp::hyper::Body> {

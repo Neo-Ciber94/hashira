@@ -1,9 +1,9 @@
 use actix_files::Files;
 use actix_web::{
-    web::{self, Bytes},
+    web::{self},
     HttpRequest, HttpResponse,
 };
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use hashira::{
     app::AppService,
     web::{Body, Payload, Request, Response},
@@ -17,10 +17,12 @@ pub fn router(app_service: AppService) -> impl FnMut(&mut web::ServiceConfig) {
 
         cfg.app_data(app_service.clone())
             .service(Files::new(&static_dir, serve_dir))
-            .default_service(web::to(|req: HttpRequest, body: Bytes| async {
-                // We just forward the request and body to the handler
-                handle_request(req, body).await
-            }));
+            .default_service(web::to(
+                |req: HttpRequest, body: actix_web::web::Payload| async {
+                    // We just forward the request and body to the handler
+                    handle_request(req, body).await
+                },
+            ));
     }
 }
 
@@ -35,17 +37,20 @@ pub fn router_with(path: &str, app_service: AppService) -> impl FnMut(&mut web::
 
         cfg.app_data(app_service.clone())
             .service(Files::new(&static_dir, current_dir))
-            .service(
-                web::resource(&path).to(|req: HttpRequest, body: Bytes| async {
+            .service(web::resource(&path).to(
+                |req: HttpRequest, body: actix_web::web::Payload| async {
                     // We just forward the request and body to the handler
                     handle_request(req, body).await
-                }),
-            );
+                },
+            ));
     }
 }
 
 /// Handle a request.
-pub async fn handle_request(req: HttpRequest, body: Bytes) -> actix_web::Result<HttpResponse> {
+pub async fn handle_request(
+    req: HttpRequest,
+    body: actix_web::web::Payload,
+) -> actix_web::Result<HttpResponse> {
     let service = req
         .app_data::<AppService>()
         .cloned()
@@ -57,18 +62,33 @@ pub async fn handle_request(req: HttpRequest, body: Bytes) -> actix_web::Result<
     Ok(actix_web_response)
 }
 
-async fn map_request(src: HttpRequest, bytes: Bytes) -> actix_web::Result<Request> {
+async fn map_request(
+    actix_req: HttpRequest,
+    mut payload: actix_web::web::Payload,
+) -> actix_web::Result<Request> {
     let mut request = Request::builder()
-        .uri(src.uri())
-        .method(src.method())
-        .version(src.version());
+        .uri(actix_req.uri())
+        .method(actix_req.method())
+        .version(actix_req.version());
 
     let headers = request.headers_mut().unwrap();
-    for (name, value) in src.headers() {
+    for (name, value) in actix_req.headers() {
         headers.append(name, value.into());
     }
 
-    let body = Body::from(bytes);
+    // Sends the body as a stream
+    let (sender, body) = Body::channel();
+
+    actix_web::rt::spawn(async move {
+        while let Some(chunk) = payload.next().await {
+            let data = chunk.map_err(Into::into);
+            if let Err(err) = sender.send(data) {
+                log::error!("{:?}", err);
+                break;
+            }
+        }
+    });
+
     request.body(body).map_err(actix_web::Error::from)
 }
 
