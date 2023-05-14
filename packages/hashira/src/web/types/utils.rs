@@ -1,6 +1,8 @@
-use crate::{error::Error, web::Request};
-use http::header;
-use std::str::FromStr;
+use crate::{
+    error::Error,
+    web::{Request, RequestExt},
+};
+use mime::Mime;
 use thiserror::Error;
 
 #[doc(hidden)]
@@ -18,41 +20,20 @@ pub(crate) enum ContentTypeError {
 
     #[error(transparent)]
     InvalidContentType(Box<InvalidContentType>),
-
-    #[error("failed to parse content type: {0}")]
-    ParseError(Error),
 }
 
-pub(crate) fn validate_content_type(
-    expected: mime::Mime,
-    req: &Request,
-) -> Result<(), ContentTypeError> {
-    let header: Option<&http::HeaderValue> = req.headers().get(header::CONTENT_TYPE);
-    let Some(header)  = header else {
+pub(crate) fn is_content_type(request: &Request, expected: Mime) -> Result<(), ContentTypeError> {
+    let content_type = request.content_type();
+    let Some(content_type)  = content_type else {
         return Err(ContentTypeError::NoContentType);
     };
 
-    let content_type = match header.to_str() {
-        Ok(s) => s,
-        Err(err) => {
-            return Err(ContentTypeError::ParseError(err.into()));
-        }
-    };
-
-    let mime = match mime::Mime::from_str(content_type) {
-        Ok(m) => m,
-        Err(err) => {
-            return Err(ContentTypeError::ParseError(err.into()));
-        }
-    };
-
-    if mime != expected {
-        return Err(ContentTypeError::InvalidContentType(Box::new(
-            InvalidContentType {
-                actual: mime,
-                expected,
-            },
-        )));
+    if content_type.essence_str() != expected.essence_str() {
+        let err = Box::new(InvalidContentType {
+            actual: content_type,
+            expected,
+        });
+        return Err(ContentTypeError::InvalidContentType(err));
     }
 
     Ok(())

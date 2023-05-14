@@ -97,7 +97,7 @@ impl ServerError {
                     let content_type = res.content_type()?;
                     if content_type.essence_str() == mime::TEXT_PLAIN.essence_str() {
                         res.body()
-                            .try_as_bytes()
+                            .try_to_bytes()
                             .ok()
                             .and_then(|x| String::from_utf8(x.to_vec()).ok())
                     } else {

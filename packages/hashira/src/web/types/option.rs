@@ -19,6 +19,7 @@ where
 }
 
 pin_project! {
+    #[doc(hidden)]
     pub struct FromRequestOptionFuture<Fut> {
         #[pin]
         fut: Fut,

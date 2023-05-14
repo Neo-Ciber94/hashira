@@ -36,8 +36,13 @@ where
 
             // TODO: We should be able to take the entire body
             log::debug!("Reading request multipart body");
-            let body = ctx.request().body().try_as_bytes().map_err(Error::new)?;
-            let bytes = body.to_vec();
+            let bytes = ctx
+                .request()
+                .body()
+                .take_bytes()
+                .await
+                .map_err(Error::new)?
+                .to_vec();
 
             let multer = multer_derive::multer::Multipart::new(
                 futures::stream::once(async move { Ok::<_, Infallible>(bytes) }),
