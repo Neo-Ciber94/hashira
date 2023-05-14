@@ -73,14 +73,14 @@ fn hashira_filter(
 pub async fn handle_request(
     warp_req: warp::hyper::Request<Bytes>,
     app_service: AppService,
-) -> Result<warp::hyper::Response<warp::hyper::Body>, hashira::error::Error> {
+) -> Result<warp::hyper::Response<warp::hyper::Body>, hashira::error::BoxError> {
     let req = map_request(warp_req).await?;
     let res = app_service.handle(req).await;
     let warp_res = map_response(res);
     Ok(warp_res)
 }
 
-async fn map_request(req: Request<Bytes>) -> Result<Request, hashira::error::Error> {
+async fn map_request(req: Request<Bytes>) -> Result<Request, hashira::error::BoxError> {
     let (parts, bytes) = req.into_parts();
     let body = Body::from(bytes);
     Ok(Request::from_parts(parts, body))

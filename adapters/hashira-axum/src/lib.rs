@@ -9,7 +9,7 @@ pub struct HashiraAxum(Option<axum::Router>);
 #[hashira::async_trait]
 impl Adapter for HashiraAxum {
     /// Starts the server.
-    async fn serve(self, app: AppService) -> Result<(), hashira::error::Error> {
+    async fn serve(self, app: AppService) -> Result<(), hashira::error::BoxError> {
         let host = hashira::env::get_host().unwrap_or_else(|| String::from("127.0.0.1"));
         let port = hashira::env::get_port().unwrap_or(5000);
         let addr: SocketAddr = format!("{host}:{port}").as_str().parse().unwrap();

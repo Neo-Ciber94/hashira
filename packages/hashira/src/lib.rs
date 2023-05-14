@@ -46,7 +46,7 @@ pub mod events;
 pub mod types;
 
 /// A result type.
-pub type Result<T> = std::result::Result<T, crate::error::Error>;
+pub type Result<T> = std::result::Result<T, crate::error::BoxError>;
 
 /// Macro attribute for declaring [`PageComponent`]s.
 ///

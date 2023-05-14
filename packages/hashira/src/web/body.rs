@@ -1,4 +1,4 @@
-use crate::{error::Error, responses, types::TryBoxStream};
+use crate::{error::BoxError, responses, types::TryBoxStream};
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::{
     future::{ready, Ready},
@@ -72,7 +72,7 @@ impl Body {
     }
 
     /// Returns the contents as bytes, or empty if was taken.
-    pub async fn take_bytes(&self) -> Result<Bytes, Error> {
+    pub async fn take_bytes(&self) -> Result<Bytes, BoxError> {
         match self.take() {
             Some(payload) => payload.into_bytes().await,
             None => Ok(Default::default()),
@@ -100,7 +100,7 @@ impl Body {
 
 impl Payload {
     /// Returns the contents as bytes.
-    pub async fn into_bytes(self) -> Result<Bytes, Error> {
+    pub async fn into_bytes(self) -> Result<Bytes, BoxError> {
         match self {
             Payload::Bytes(bytes) => Ok(bytes),
             Payload::Stream(mut stream) => {
@@ -126,8 +126,8 @@ impl Payload {
 }
 
 impl FromRequest for Payload {
-    type Error = Error;
-    type Fut = Ready<Result<Payload, Error>>;
+    type Error = BoxError;
+    type Fut = Ready<Result<Payload, BoxError>>;
 
     fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
         ready(

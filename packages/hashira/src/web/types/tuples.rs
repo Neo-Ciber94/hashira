@@ -3,7 +3,7 @@
 
 // Adapted from: https://docs.rs/actix-web/latest/src/actix_web/extract.rs.html#413
 
-use crate::{app::RequestContext, error::Error, web::FromRequest};
+use crate::{app::RequestContext, error::BoxError, web::FromRequest};
 use pin_project_lite::pin_project;
 use std::future::Future;
 use std::pin::Pin;

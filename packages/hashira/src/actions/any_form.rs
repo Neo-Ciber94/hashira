@@ -3,7 +3,7 @@ use wasm_bindgen::JsCast;
 use web_sys::FormData;
 
 use crate::{
-    error::{Error, JsError},
+    error::{BoxError, JsError},
     web::Form,
 };
 
@@ -23,7 +23,7 @@ pub enum AnyForm {
 }
 
 impl IntoRequestParameters for AnyForm {
-    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         match self {
             AnyForm::Multipart(form) => form.into_request_init(options),
             AnyForm::UrlEncoded(form) => {

@@ -1,6 +1,6 @@
 use super::{InsertError, MatchError, RouteMatch};
 use crate::{
-    error::Error,
+    error::BoxError,
     routing::{PathRouter, Route, RouteMethod},
 };
 use std::collections::BTreeMap;
@@ -87,7 +87,7 @@ pub enum ServerRouterMatchError {
 
     /// Other match error.
     #[error(transparent)]
-    Other(Error),
+    Other(BoxError),
 }
 
 #[derive(Default)]

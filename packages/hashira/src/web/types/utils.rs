@@ -1,7 +1,4 @@
-use crate::{
-    error::Error,
-    web::{Request, RequestExt},
-};
+use crate::web::{Request, RequestExt};
 use mime::Mime;
 use thiserror::Error;
 

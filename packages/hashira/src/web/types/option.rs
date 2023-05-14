@@ -1,7 +1,7 @@
 use futures::Future;
 use pin_project_lite::pin_project;
 
-use crate::{app::RequestContext, error::Error, web::FromRequest};
+use crate::{app::RequestContext, error::BoxError, web::FromRequest};
 use std::{convert::Infallible, task::Poll};
 
 impl<T> FromRequest for Option<T>
@@ -29,7 +29,7 @@ pin_project! {
 impl<Fut, T, E> Future for FromRequestOptionFuture<Fut>
 where
     Fut: Future<Output = Result<T, E>>,
-    E: Into<Error>,
+    E: Into<BoxError>,
 {
     type Output = Result<Option<T>, Infallible>;
 

@@ -56,7 +56,7 @@ mod tests {
             AppData, RequestContext,
         },
         routing::{ErrorRouter, Params},
-        web::{Body, FromRequest, Inject, Request}, error::Error,
+        web::{Body, FromRequest, Inject, Request}, error::BoxError,
     };
 
     #[tokio::test]
@@ -64,8 +64,8 @@ mod tests {
         let req = Request::builder().body(Body::empty()).unwrap();
 
         let ctx = create_request_context(req);
-        let ret1 = Result::<Inject<String>, Error>::from_request(&ctx).await.unwrap();
-        let ret2 = Result::<Method, Error>::from_request(&ctx).await.unwrap();
+        let ret1 = Result::<Inject<String>, BoxError>::from_request(&ctx).await.unwrap();
+        let ret2 = Result::<Method, BoxError>::from_request(&ctx).await.unwrap();
 
         assert!(ret1.is_err());
         assert!(ret2.is_ok());

@@ -1,5 +1,5 @@
 use thiserror::Error;
-use crate::error::Error;
+use crate::error::BoxError;
 
 /// An error that ocurred while rendering.
 #[derive(Debug, Error)]
@@ -16,5 +16,5 @@ pub enum RenderError {
 
     /// An error ocurred rendering one of the chunks of the html.
     #[error("Failed to render one of the chunks: {0}")]
-    ChunkError(Error),
+    ChunkError(BoxError),
 }

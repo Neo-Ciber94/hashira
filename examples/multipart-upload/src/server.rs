@@ -7,7 +7,7 @@ use rocket::{
     get, routes, Build, Config, Rocket,
 };
 
-pub async fn start_server() -> Result<(), hashira::error::Error> {
+pub async fn start_server() -> Result<(), hashira::error::BoxError> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let app = hashira();

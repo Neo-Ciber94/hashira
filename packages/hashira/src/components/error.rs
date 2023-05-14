@@ -52,7 +52,7 @@ impl PageComponent for ErrorPage {
 
     fn render<BASE>(
         mut ctx: crate::app::RenderContext,
-    ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::Error>>
+    ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::BoxError>>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
     {
@@ -100,7 +100,7 @@ impl PageComponent for NotFoundPage {
 
     fn render<BASE>(
         mut ctx: crate::app::RenderContext,
-    ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::Error>>
+    ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::BoxError>>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
     {

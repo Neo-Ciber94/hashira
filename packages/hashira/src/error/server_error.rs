@@ -1,4 +1,4 @@
-use super::Error;
+use super::BoxError;
 use crate::web::{IntoResponse, Response, ResponseExt};
 use http::StatusCode;
 use std::fmt::{Debug, Display};
@@ -57,7 +57,7 @@ impl ServerError {
     }
 
     /// Constructs a new error from other.
-    pub fn from_error(error: impl Into<Error>) -> Self {
+    pub fn from_error(error: impl Into<BoxError>) -> Self {
         let error = error.into();
 
         if error.is::<ServerError>() {

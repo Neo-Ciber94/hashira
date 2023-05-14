@@ -3,14 +3,14 @@ use std::{
     future::{ready, Ready},
 };
 
-use crate::{app::RequestContext, error::Error, routing::Params};
+use crate::{app::RequestContext, error::BoxError, routing::Params};
 use futures::Future;
 use http::{HeaderMap, Method, Uri, Version};
 
 /// Provides a way for creating a type from a request.
 pub trait FromRequest: Sized {
     /// The returned error on failure.
-    type Error: Into<Error>;
+    type Error: Into<BoxError>;
 
     /// The future that resolves to the type.
     type Fut: Future<Output = Result<Self, Self::Error>>;

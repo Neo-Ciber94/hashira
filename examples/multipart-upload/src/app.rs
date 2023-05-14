@@ -9,7 +9,7 @@ cfg_if::cfg_if! {
     if #[cfg(not(feature = "client"))] {
         use hashira::{
             app::RenderContext,
-            error::Error,
+            error::BoxError,
             web::{Multipart, Response},
             server::Metadata,
             responses
@@ -61,7 +61,7 @@ pub async fn UploadFileAction(input: Multipart<NewImage>) -> hashira::Result<()>
 }
 
 #[hashira::render]
-async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
+async fn render(mut ctx: RenderContext) -> Result<Response, BoxError> {
     ctx.metadata(Metadata::new().title("Hashira Multipart Upload"));
 
     let dir = crate::uploads_dir();

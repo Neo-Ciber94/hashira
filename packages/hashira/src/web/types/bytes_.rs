@@ -1,8 +1,8 @@
-use crate::{app::RequestContext, error::Error, types::BoxFuture, web::FromRequest};
+use crate::{app::RequestContext, error::BoxError, types::BoxFuture, web::FromRequest};
 use bytes::Bytes;
 
 impl FromRequest for Bytes {
-    type Error = Error;
+    type Error = BoxError;
     type Fut = BoxFuture<Result<Bytes, Self::Error>>;
 
     fn from_request(ctx: &RequestContext) -> Self::Fut {

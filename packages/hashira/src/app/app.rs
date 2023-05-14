@@ -10,7 +10,7 @@ use crate::{
         PageComponent,
     },
     routing::{Route, ClientPageRoute, ServerRouter, ErrorRouter, ServerErrorRouter},
-    error::{Error, ServerError},
+    error::{BoxError, ServerError},
     web::{IntoResponse, Response, Redirect, FromRequest}, types::BoxFuture, actions::Action,
 };
 
@@ -59,14 +59,14 @@ impl PageHandler {
 /// A handler for errors.
 #[allow(clippy::type_complexity)]
 pub struct ErrorPageHandler(
-    pub(crate) Box<dyn Fn(RequestContext, StatusCode) -> BoxFuture<Result<Response, Error>> + Send + Sync>,
+    pub(crate) Box<dyn Fn(RequestContext, StatusCode) -> BoxFuture<Result<Response, BoxError>> + Send + Sync>,
 );
 
 impl ErrorPageHandler {
     pub fn new<H, Fut>(handler: H) -> Self
     where
         H: Fn(RequestContext, StatusCode) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response, Error>> + Send + 'static,
+        Fut: Future<Output = Result<Response, BoxError>> + Send + 'static,
     {
         ErrorPageHandler(Box::new(move |ctx, status| {
             let fut = handler(ctx, status);
@@ -78,7 +78,7 @@ impl ErrorPageHandler {
         &self,
         ctx: RequestContext,
         status: StatusCode,
-    ) -> BoxFuture<Result<Response, Error>> {
+    ) -> BoxFuture<Result<Response, BoxError>> {
         (self.0)(ctx, status)
     }
 }

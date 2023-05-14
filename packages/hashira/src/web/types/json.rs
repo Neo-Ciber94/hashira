@@ -1,6 +1,6 @@
 use crate::{
     app::RequestContext,
-    error::{Error, ServerError},
+    error::{BoxError, ServerError},
     responses,
     web::{Body, FromRequest, IntoResponse, Response},
 };
@@ -46,7 +46,7 @@ impl<T> FromRequest for Json<T>
 where
     T: DeserializeOwned,
 {
-    type Error = Error;
+    type Error = BoxError;
     type Fut = FromRequestJsonFuture<T>;
 
     fn from_request(ctx: &RequestContext) -> Self::Fut {
@@ -72,7 +72,7 @@ impl<T> Future for FromRequestJsonFuture<T>
 where
     T: DeserializeOwned,
 {
-    type Output = Result<Json<T>, Error>;
+    type Output = Result<Json<T>, BoxError>;
 
     fn poll(
         mut self: std::pin::Pin<&mut Self>,

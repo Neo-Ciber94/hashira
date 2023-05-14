@@ -1,6 +1,6 @@
 use super::{Body, Response, ResponseExt};
 use crate::{
-    error::{Error, ServerError},
+    error::{BoxError, ServerError},
     types::TryBoxStream,
 };
 use bytes::Bytes;
@@ -126,7 +126,7 @@ where
     }
 }
 
-impl IntoResponse for Error {
+impl IntoResponse for BoxError {
     fn into_response(self) -> Response {
         if self.is::<ServerError>() {
             let err = *self.downcast::<ServerError>().unwrap();
@@ -199,7 +199,7 @@ impl IntoResponse for HeaderMap {
 pub struct StreamResponse<S>(pub S);
 impl<S> IntoResponse for StreamResponse<S>
 where
-    S: Stream<Item = Result<Bytes, Error>> + Send + Sync + 'static,
+    S: Stream<Item = Result<Bytes, BoxError>> + Send + Sync + 'static,
 {
     fn into_response(self) -> Response {
         let stream = Box::pin(self.0) as TryBoxStream<Bytes>;

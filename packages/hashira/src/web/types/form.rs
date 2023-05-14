@@ -7,7 +7,7 @@ use std::{marker::PhantomData, task::Poll};
 
 use crate::{
     app::RequestContext,
-    error::{Error, ServerError},
+    error::{BoxError, ServerError},
     responses,
     web::{Body, FromRequest, IntoResponse, Request, Response},
 };
@@ -48,7 +48,7 @@ impl<T> FromRequest for Form<T>
 where
     T: DeserializeOwned,
 {
-    type Error = Error;
+    type Error = BoxError;
     type Fut = FromRequestFormFuture<T>;
 
     fn from_request(ctx: &RequestContext) -> Self::Fut {
@@ -74,7 +74,7 @@ impl<T> Future for FromRequestFormFuture<T>
 where
     T: DeserializeOwned,
 {
-    type Output = Result<Form<T>, Error>;
+    type Output = Result<Form<T>, BoxError>;
 
     fn poll(
         mut self: std::pin::Pin<&mut Self>,
@@ -107,7 +107,7 @@ where
     }
 }
 
-fn parse_form_from_uri<T: DeserializeOwned>(request: &Request) -> Result<Form<T>, Error> {
+fn parse_form_from_uri<T: DeserializeOwned>(request: &Request) -> Result<Form<T>, BoxError> {
     match request.uri().query() {
         Some(query) => match serde_urlencoded::from_str::<T>(query) {
             Ok(x) => Ok(Form(x)),

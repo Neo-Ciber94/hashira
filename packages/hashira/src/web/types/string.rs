@@ -4,10 +4,10 @@ use bytes::Bytes;
 use futures::{ready, Future, FutureExt};
 use pin_project_lite::pin_project;
 
-use crate::{app::RequestContext, error::Error, responses, web::FromRequest};
+use crate::{app::RequestContext, error::BoxError, responses, web::FromRequest};
 
 impl FromRequest for String {
-    type Error = Error;
+    type Error = BoxError;
     type Fut = StringFromRequestFuture;
 
     fn from_request(ctx: &RequestContext) -> Self::Fut {
@@ -26,7 +26,7 @@ pin_project! {
 }
 
 impl Future for StringFromRequestFuture {
-    type Output = Result<String, Error>;
+    type Output = Result<String, BoxError>;
 
     fn poll(
         mut self: std::pin::Pin<&mut Self>,
