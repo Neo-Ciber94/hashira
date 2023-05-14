@@ -82,8 +82,6 @@ impl AppService {
     }
 
     async fn _handle(&self, req: Request) -> Response {
-        let req = Arc::new(req);
-
         // Handle the request normally
         #[cfg(not(feature = "hooks"))]
         {
@@ -117,12 +115,13 @@ impl AppService {
         }
     }
 
-    async fn handle_request(&self, req: Arc<Request>) -> Response {
+    async fn handle_request(&self, req: Request) -> Response {
         // We remove the trailing slash from the path,
         // when adding a path we ensure it cannot end with a slash
         // and should start with a slash
 
-        let mut path = req.uri().path().trim();
+        let req_path: String = req.uri().path().to_owned();
+        let mut path = req_path.trim();
 
         // We trim the trailing slash or should we redirect?
         if path.len() > 1 && path.ends_with('/') {
@@ -130,6 +129,7 @@ impl AppService {
         }
 
         let method = req.method().into();
+        let req = Arc::new(req);
 
         match self.0.server_router.at(path, method) {
             Ok(mtch) => {
@@ -156,13 +156,13 @@ impl AppService {
                 res
             }
             Err(ServerRouterMatchError::MethodMismatch) => {
-                let src = ServerError::from_status(StatusCode::METHOD_NOT_ALLOWED);
-                self.handle_error(req, src, true).await
+                let error = ServerError::from_status(StatusCode::METHOD_NOT_ALLOWED);
+                self.handle_error(req, error, true).await
             }
             Err(_) => {
                 // we treat any other error as 404
-                let src = ServerError::from_status(StatusCode::NOT_FOUND);
-                self.handle_error(req, src, true).await
+                let error = ServerError::from_status(StatusCode::NOT_FOUND);
+                self.handle_error(req, error, true).await
             }
         }
     }
@@ -530,13 +530,12 @@ mod tests {
 
     async fn noop() {}
 
-    fn create_req(path: &str, method: Method) -> Arc<Request> {
+    fn create_req(path: &str, method: Method) -> Request {
         Request::builder()
             .method(method)
             .uri(path)
             .body(Body::empty())
             .unwrap()
-            .into()
     }
 
     async fn send_request_get_text(
@@ -547,8 +546,7 @@ mod tests {
         let req = Request::builder()
             .uri(path)
             .body(Body::from(body.to_owned()))
-            .unwrap()
-            .into();
+            .unwrap();
 
         let res = service.handle_request(req).await;
         let (parts, body) = res.into_parts();
