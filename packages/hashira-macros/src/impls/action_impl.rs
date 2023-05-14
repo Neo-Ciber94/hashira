@@ -85,7 +85,7 @@ pub fn action_impl(attr: ActionAttr, item_fn: ItemFn) -> syn::Result<TokenStream
                    #route
                 }
 
-                fn call(ctx: ::hashira::app::RequestContext, body: &mut ::hashira::web::Body) -> ::hashira::types::BoxFuture<::hashira::Result<Self::Response>> {
+                fn call(ctx: ::hashira::app::RequestContext, body: ::hashira::web::Body) -> ::hashira::types::BoxFuture<::hashira::Result<Self::Response>> {
                     let fut = ::hashira::actions::call_action(ctx, body, #new_item_fn_ident);
                     ::std::boxed::Box::pin(fut)
                 }

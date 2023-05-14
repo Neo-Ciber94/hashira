@@ -1,6 +1,6 @@
 use yew::{html::ChildrenProps, BaseComponent};
 
-use crate::{app::RenderContext, error::BoxError, types::BoxFuture, web::Response};
+use crate::{app::RenderContext, error::BoxError, types::BoxFuture, web::{Response, Body}};
 
 /// Represents a page of a web app.
 pub trait PageComponent: BaseComponent {
@@ -13,7 +13,7 @@ pub trait PageComponent: BaseComponent {
     fn route() -> Option<&'static str>;
 
     /// A function that renders this page component.
-    fn render<BASE>(ctx: RenderContext) -> BoxFuture<Result<Response, BoxError>>
+    fn render<BASE>(ctx: RenderContext, body: Body) -> BoxFuture<Result<Response, BoxError>>
     where
         BASE: BaseComponent<Properties = ChildrenProps>;
 }
@@ -98,6 +98,7 @@ pub(crate) mod macros {
 
                 fn render<BASE>(
                     ctx: $crate::app::RenderContext,
+                    _body: $crate::web::Body
                 ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::BoxError>>
                 where
                     BASE: ::yew::BaseComponent<Properties = ChildrenProps>,
@@ -118,6 +119,7 @@ pub(crate) mod macros {
 
                 fn render<BASE>(
                     ctx: $crate::app::RenderContext,
+                    _body: $crate::web::Body
                 ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::BoxError>>
                 where
                     BASE: ::yew::BaseComponent<Properties = ChildrenProps>,

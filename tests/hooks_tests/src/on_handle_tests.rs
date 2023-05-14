@@ -13,9 +13,9 @@ async fn on_handle_hook_test() {
     let service = create_app()
         .hooks(Hooks::new().on_handle({
             let count = count.clone();
-            move |req, next: Next| {
+            move |req, body, next: Next| {
                 count.fetch_add(1, Ordering::Relaxed);
-                next(req)
+                next(req, body)
             }
         }))
         .build();
@@ -45,23 +45,23 @@ async fn on_handle_hook_ordered_test() {
             Hooks::new()
                 .on_handle({
                     let values = values.clone();
-                    move |req, next: Next| {
+                    move |req, body, next: Next| {
                         values.lock().unwrap().push(1);
-                        next(req)
+                        next(req, body)
                     }
                 })
                 .on_handle({
                     let values = values.clone();
-                    move |req, next: Next| {
+                    move |req, body, next: Next| {
                         values.lock().unwrap().push(2);
-                        next(req)
+                        next(req, body)
                     }
                 })
                 .on_handle({
                     let values = values.clone();
-                    move |req, next: Next| {
+                    move |req, body, next: Next| {
                         values.lock().unwrap().push(3);
-                        next(req)
+                        next(req, body)
                     }
                 }),
         )

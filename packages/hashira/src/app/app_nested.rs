@@ -76,13 +76,13 @@ where
             use crate::app::{RenderContext, RenderLayout, RequestContext};
             use crate::routing::HandlerKind;
 
-            let mut route = Route::get(route, move |ctx: RequestContext| {
+            let mut route = Route::get(route, move |ctx: RequestContext, body| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                 // Returns the future
-                COMP::render::<BASE>(render_ctx)
+                COMP::render::<BASE>(render_ctx, body)
             });
 
             route.extensions_mut().insert(HandlerKind::Page);

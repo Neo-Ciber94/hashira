@@ -189,7 +189,7 @@ impl AppService {
                 let params = Params::default();
                 let ctx = self.create_context(req, params, Some(error));
 
-                match error_handler.call(ctx, status).await {
+                match error_handler.call(ctx).await {
                     Ok(res) => res,
                     Err(err) => match err.downcast::<ServerError>() {
                         Ok(err) => err.into_response(),

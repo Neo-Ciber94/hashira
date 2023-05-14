@@ -1,3 +1,5 @@
+use crate::web::Body;
+
 use super::PageComponent;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -52,13 +54,12 @@ impl PageComponent for ErrorPage {
 
     fn render<BASE>(
         mut ctx: crate::app::RenderContext,
+        _body: Body, // Errors always received an empty body
     ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::BoxError>>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
     {
-        let err = ctx
-            .error()
-            .expect("expected error");
+        let err = ctx.error().expect("expected error");
 
         let status = err.status();
         let message = err.message().map(|s| s.to_string());
@@ -100,6 +101,7 @@ impl PageComponent for NotFoundPage {
 
     fn render<BASE>(
         mut ctx: crate::app::RenderContext,
+        _body: Body, // Errors always received an empty body
     ) -> crate::types::BoxFuture<Result<crate::web::Response, crate::error::BoxError>>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
