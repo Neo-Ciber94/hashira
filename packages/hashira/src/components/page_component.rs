@@ -68,18 +68,18 @@ pub mod handler {
     });
 
     impl_render_handler_tuple! {}
-    impl_render_handler_tuple! { A }
-    impl_render_handler_tuple! { A B }
-    impl_render_handler_tuple! { A B C }
-    impl_render_handler_tuple! { A B C D }
-    impl_render_handler_tuple! { A B C D E }
-    impl_render_handler_tuple! { A B C D E F }
-    impl_render_handler_tuple! { A B C D E F G }
-    impl_render_handler_tuple! { A B C D E F G H }
-    impl_render_handler_tuple! { A B C D E F G H I }
-    impl_render_handler_tuple! { A B C D E F G H I J }
-    impl_render_handler_tuple! { A B C D E F G H I J K }
-    impl_render_handler_tuple! { A B C D E F G H I J K L }
+    impl_render_handler_tuple! { T1 }
+    impl_render_handler_tuple! { T1 T2 }
+    impl_render_handler_tuple! { T1 T2 T3 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 T7 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 T7 T8 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 T7 T8 T9 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 }
+    impl_render_handler_tuple! { T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 }
 }
 
 pub(crate) mod macros {
@@ -94,7 +94,7 @@ pub(crate) mod macros {
 
                 fn render<BASE>(
                     ctx: $crate::app::RenderContext,
-                ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::Error>>
+                ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::BoxError>>
                 where
                     BASE: ::yew::BaseComponent<Properties = ChildrenProps>,
                 {
@@ -114,7 +114,7 @@ pub(crate) mod macros {
 
                 fn render<BASE>(
                     ctx: $crate::app::RenderContext,
-                ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::Error>>
+                ) -> $crate::types::BoxFuture<Result<$crate::web::Response, $crate::error::BoxError>>
                 where
                     BASE: ::yew::BaseComponent<Properties = ChildrenProps>,
                 {
