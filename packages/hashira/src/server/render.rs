@@ -9,7 +9,7 @@ use crate::components::{
     HASHIRA_SCRIPTS_MARKER, HASHIRA_TITLE_MARKER,
 };
 use crate::context::ServerContext;
-use crate::error::Error;
+use crate::error::BoxError;
 use crate::routing::ErrorRouter;
 use crate::types::TryBoxStream;
 use bytes::Bytes;
@@ -144,7 +144,7 @@ where
 
     // Render the page as a stream
     let renderer = ServerRenderer::<Page<ROOT>>::with_props(move || page_props);
-    let page_html = renderer.render_stream().map(Result::<_, Error>::Ok);
+    let page_html = renderer.render_stream().map(Result::<_, BoxError>::Ok);
 
     // We chain all the produced streams together
     let html_stream = stream::once(async move {

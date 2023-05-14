@@ -15,7 +15,7 @@ macro_rules! tuple_from_req {
         #[allow(unused_parens)]
         impl<$($T: FromRequest + 'static),+> FromRequest for ($($T,)+)
         {
-            type Error = Error;
+            type Error = BoxError;
             type Fut = $fut<$($T),+>;
 
             fn from_request(ctx: &RequestContext) -> Self::Fut {
