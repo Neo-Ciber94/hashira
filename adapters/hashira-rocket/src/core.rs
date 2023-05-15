@@ -75,7 +75,16 @@ impl Handler for DefaultRequestHandler {
             outcome::Outcome::Forward(data) => return route::Outcome::Forward(data),
         };
 
-        let req = req.0.map(|_| Body::from(bytes));
+        // We read the entire stream
+        // FIXME: Not sure if rocket limits apply on this
+        // let data_stream = data.open(ByteUnit::max_value());
+        // let reader = ReaderStream::new(data_stream)
+        //     .map_err(Into::into)
+        //     .map_ok(Bytes::from);
+
+        // let bytes = Box::pin(reader) as TryBoxStream<Bytes>;
+
+        let req = req.0.map(move |_| Body::from(bytes));
         let res = service.handle(req).await;
 
         let rocket_res = map_response(res).await;
@@ -119,7 +128,7 @@ impl<'r> FromRequest<'r> for RequestWithoutBody {
                 return rocket::request::Outcome::Failure((
                     rocket::http::Status::InternalServerError,
                     err,
-                ))
+                ));
             }
         };
         rocket::request::Outcome::Success(RequestWithoutBody(req))
