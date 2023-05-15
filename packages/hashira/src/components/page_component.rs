@@ -88,6 +88,7 @@ pub mod handler {
 
 pub(crate) mod macros {
     /// Helper to implement `PageComponent`
+    #[doc(hidden)]
     #[macro_export]
     macro_rules! impl_page_component {
         ($component:ty) => {

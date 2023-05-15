@@ -34,6 +34,7 @@ console_error_panic_hook = "0.1.7"
 js-sys = "0.3.61"
 wasm-bindgen = "0.2.84"
 multer-derive = "0.1.1-alpha"
+either = { version = "1.8.1", features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 prokio = "0.1.0"

@@ -79,6 +79,7 @@ pub mod consts {
 pub mod internal;
 
 /// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! try_response {
     ($result:expr) => {
