@@ -82,7 +82,7 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
     let render = match attr.render {
         Some(render_fn) => {
             quote::quote! {
-                let fut = ::hashira::components::handler::call_render(ctx, #render_fn);
+                let fut = ::hashira::components::handler::call_render(ctx, body, #render_fn);
                 std::boxed::Box::pin(fut)
             }
         }
@@ -113,8 +113,8 @@ pub fn page_component_impl(attr: PageComponentAttr, item_fn: ItemFn) -> syn::Res
                 #route
             }
 
-            fn render<BASE>(ctx: ::hashira::app::RenderContext)
-                -> ::hashira::types::BoxFuture<std::result::Result<::hashira::web::Response, ::hashira::error::Error>>
+            fn render<BASE>(ctx: ::hashira::app::RenderContext, body: ::hashira::web::Body)
+                -> ::hashira::types::BoxFuture<std::result::Result<::hashira::web::Response, ::hashira::error::BoxError>>
                 where
                     BASE: yew::BaseComponent<Properties = yew::html::ChildrenProps>,{
                 #render

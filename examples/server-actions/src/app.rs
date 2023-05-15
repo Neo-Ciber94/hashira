@@ -4,7 +4,7 @@ use hashira::{
     actions::{use_action, use_action_with_callback},
     app::RenderContext,
     components::ActionForm,
-    error::{Error, ServerError},
+    error::{BoxError, ServerError},
     page_component, responses,
     server::Metadata,
     web::{status::StatusCode, Inject, Json, Response},
@@ -49,7 +49,7 @@ pub async fn CreateMessageAction(
 async fn render(
     mut ctx: RenderContext,
     Inject(messages): Inject<Messages>,
-) -> Result<Response, Error> {
+) -> Result<Response, BoxError> {
     ctx.metadata(Metadata::new().description("Hashira Server Actions"));
     let messages = messages.read().await.clone();
 

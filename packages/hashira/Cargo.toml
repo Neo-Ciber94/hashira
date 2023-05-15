@@ -34,6 +34,7 @@ console_error_panic_hook = "0.1.7"
 js-sys = "0.3.61"
 wasm-bindgen = "0.2.84"
 multer-derive = "0.1.1-alpha"
+either = { version = "1.8.1", features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 prokio = "0.1.0"
@@ -42,11 +43,9 @@ wasm-bindgen-futures = "0.4.34"
 serde-wasm-bindgen = "0.5.0"
 
 [features]
-# Enable hooks to the hashira steps
-hooks = []
-
-# Tells hashira is running on a client side
-client = []
+hooks = []    # Enable hooks to the hashira steps
+client = []   # Tells hashira is running on a client side
+internal = []
 
 [dependencies.web-sys]
 version = "0.3.61"

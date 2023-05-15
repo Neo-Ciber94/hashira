@@ -1,4 +1,4 @@
-use super::Error;
+use super::BoxError;
 use crate::web::{IntoResponse, Response, ResponseExt};
 use http::StatusCode;
 use std::fmt::{Debug, Display};
@@ -57,7 +57,7 @@ impl ServerError {
     }
 
     /// Constructs a new error from other.
-    pub fn from_error(error: impl Into<Error>) -> Self {
+    pub fn from_error(error: impl Into<BoxError>) -> Self {
         let error = error.into();
 
         if error.is::<ServerError>() {
@@ -97,7 +97,7 @@ impl ServerError {
                     let content_type = res.content_type()?;
                     if content_type.essence_str() == mime::TEXT_PLAIN.essence_str() {
                         res.body()
-                            .try_as_bytes()
+                            .try_to_bytes()
                             .ok()
                             .and_then(|x| String::from_utf8(x.to_vec()).ok())
                     } else {

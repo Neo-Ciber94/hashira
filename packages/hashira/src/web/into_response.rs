@@ -1,12 +1,13 @@
 use super::{Body, Response, ResponseExt};
 use crate::{
-    error::{Error, ServerError},
+    error::{BoxError, ServerError},
     types::TryBoxStream,
 };
 use bytes::Bytes;
-use cookie::Cookie;
+use cookie::{Cookie, CookieJar};
 use futures::Stream;
-use http::{header, HeaderMap, StatusCode};
+use http::{header, Extensions, HeaderMap, StatusCode};
+use std::borrow::Cow;
 
 /// Convert an object into a `Response`.
 pub trait IntoResponse {
@@ -29,6 +30,18 @@ impl IntoResponse for String {
 impl<'a> IntoResponse for &'a str {
     fn into_response(self) -> Response {
         self.to_owned().into_response()
+    }
+}
+
+impl<'a> IntoResponse for Cow<'a, str> {
+    fn into_response(self) -> Response {
+        self.into_owned().into_response()
+    }
+}
+
+impl<'a> IntoResponse for Cow<'a, [u8]> {
+    fn into_response(self) -> Response {
+        self.into_owned().into_response()
     }
 }
 
@@ -92,6 +105,24 @@ impl IntoResponse for Response {
     }
 }
 
+impl IntoResponse for http::response::Parts {
+    fn into_response(self) -> Response {
+        Response::from_parts(self, Body::empty())
+    }
+}
+
+impl IntoResponse for http::response::Builder {
+    fn into_response(self) -> Response {
+        match self.body(Body::empty()) {
+            Ok(x) => x,
+            Err(err) => {
+                let err: BoxError = err.into();
+                err.into_response()
+            }
+        }
+    }
+}
+
 impl<T: IntoResponse> IntoResponse for Option<T> {
     fn into_response(self) -> Response {
         match self {
@@ -126,7 +157,7 @@ where
     }
 }
 
-impl IntoResponse for Error {
+impl IntoResponse for BoxError {
     fn into_response(self) -> Response {
         if self.is::<ServerError>() {
             let err = *self.downcast::<ServerError>().unwrap();
@@ -195,11 +226,26 @@ impl IntoResponse for HeaderMap {
     }
 }
 
+impl IntoResponse for Extensions {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.extensions_mut() = self;
+        res
+    }
+}
+
+impl IntoResponse for CookieJar {
+    fn into_response(self) -> Response {
+        let cookies = self.iter().cloned().collect::<Vec<_>>();
+        cookies.into_response()
+    }
+}
+
 /// Represents a streamed response.
 pub struct StreamResponse<S>(pub S);
 impl<S> IntoResponse for StreamResponse<S>
 where
-    S: Stream<Item = Result<Bytes, Error>> + Send + Sync + 'static,
+    S: Stream<Item = Result<Bytes, BoxError>> + Send + Sync + 'static,
 {
     fn into_response(self) -> Response {
         let stream = Box::pin(self.0) as TryBoxStream<Bytes>;

@@ -3,7 +3,7 @@ use std::ops::Deref;
 use super::RenderLayout;
 use super::{page_head::PageHead, RequestContext};
 use crate::components::PageComponent;
-use crate::error::{Error, ServerError};
+use crate::error::{BoxError, ServerError};
 use crate::web::{IntoResponse, Redirect};
 use crate::{
     server::{Metadata, PageLinks, PageScripts},
@@ -69,7 +69,7 @@ impl RenderContext {
 
 impl RenderContext {
     /// Returns a `404` error.
-    pub fn not_found(self) -> Result<Response, Error> {
+    pub fn not_found(self) -> Result<Response, BoxError> {
         Err(ServerError::from_status(StatusCode::NOT_FOUND).into())
     }
 
@@ -78,7 +78,7 @@ impl RenderContext {
     /// # Panic
     /// - If the status is not a valid redirection
     /// - the `to` is no a valid uri
-    pub fn redirect(self, to: &str, status: StatusCode) -> Result<Response, Error> {
+    pub fn redirect(self, to: &str, status: StatusCode) -> Result<Response, BoxError> {
         assert!(
             status.is_redirection(),
             "invalid redirection status code: {status}"
@@ -171,7 +171,7 @@ impl RenderContext {
     }
 
     /// Renders the given component to html.
-    pub async fn render_html<COMP, BASE>(self) -> Result<String, Error>
+    pub async fn render_html<COMP, BASE>(self) -> Result<String, BoxError>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -190,7 +190,7 @@ impl RenderContext {
     pub async fn render_html_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
-    ) -> Result<String, Error>
+    ) -> Result<String, BoxError>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -212,7 +212,7 @@ impl RenderContext {
     /// Renders the given component to html.
     pub async fn render_html_stream<COMP, BASE>(
         self,
-    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, BoxError>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,
@@ -231,7 +231,7 @@ impl RenderContext {
     pub async fn render_html_stream_with_props<COMP, BASE>(
         self,
         props: COMP::Properties,
-    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, Error>
+    ) -> Result<crate::types::TryBoxStream<bytes::Bytes>, BoxError>
     where
         BASE: BaseComponent<Properties = ChildrenProps>,
         COMP: PageComponent,

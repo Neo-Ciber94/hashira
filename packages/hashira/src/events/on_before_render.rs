@@ -1,20 +1,20 @@
 use futures::Future;
 
-use crate::{app::RequestContext, error::Error, types::BoxFuture};
+use crate::{app::RequestContext, error::BoxError, types::BoxFuture};
 
 /// A hook to the application before render event.
 pub trait OnBeforeRender: Sync {
-    type Fut: Future<Output = Result<String, Error>> + Send;
+    type Fut: Future<Output = Result<String, BoxError>> + Send;
     /// Called before render.
     fn call(&self, html: String, ctx: RequestContext) -> Self::Fut;
 }
 
 impl<F, Fut> OnBeforeRender for F
 where
-    Fut: Future<Output = Result<String, Error>> + Send + 'static,
+    Fut: Future<Output = Result<String, BoxError>> + Send + 'static,
     F: Fn(String, RequestContext) -> Fut + Send + Sync + 'static,
 {
-    type Fut = BoxFuture<Result<String, Error>>;
+    type Fut = BoxFuture<Result<String, BoxError>>;
 
     fn call(&self, html: String, ctx: RequestContext) -> Self::Fut {
         Box::pin((self)(html, ctx))
@@ -23,7 +23,7 @@ where
 
 #[allow(clippy::type_complexity)]
 pub struct BoxOnBeforeRender(
-    Box<dyn Fn(String, RequestContext) -> BoxFuture<Result<String, Error>> + Send + Sync>,
+    Box<dyn Fn(String, RequestContext) -> BoxFuture<Result<String, BoxError>> + Send + Sync>,
 );
 
 impl BoxOnBeforeRender {
@@ -34,7 +34,7 @@ impl BoxOnBeforeRender {
     {
         let inner = Box::new(move |html, ctx: RequestContext| {
             let fut = f.call(html, ctx);
-            Box::pin(fut) as BoxFuture<Result<String, Error>>
+            Box::pin(fut) as BoxFuture<Result<String, BoxError>>
         });
 
         BoxOnBeforeRender(inner)
@@ -42,7 +42,7 @@ impl BoxOnBeforeRender {
 }
 
 impl OnBeforeRender for BoxOnBeforeRender {
-    type Fut = BoxFuture<Result<String, Error>>;
+    type Fut = BoxFuture<Result<String, BoxError>>;
 
     fn call(&self, html: String, ctx: RequestContext) -> Self::Fut {
         (self.0)(html, ctx)

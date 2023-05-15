@@ -56,6 +56,7 @@ pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Marks a method as a page component render function.
 #[proc_macro_attribute]
+#[allow(clippy::redundant_clone)]
 pub fn render(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemFn);
 

@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, JsError},
+    error::{BoxError, JsError},
     web::{Form, Json},
 };
 use http::{
@@ -26,11 +26,11 @@ pub struct RequestParameters {
 /// Creates an object to initialize a request.
 pub trait IntoRequestParameters {
     /// Returns an object used to initialize a request.
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error>;
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError>;
 }
 
 impl IntoRequestParameters for RequestInit {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         Ok(RequestParameters {
             init: Some(self),
             search_params: None,
@@ -39,7 +39,7 @@ impl IntoRequestParameters for RequestInit {
 }
 
 impl IntoRequestParameters for UrlSearchParams {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         Ok(RequestParameters {
             init: None,
             search_params: Some(self),
@@ -48,7 +48,7 @@ impl IntoRequestParameters for UrlSearchParams {
 }
 
 impl IntoRequestParameters for String {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -69,7 +69,7 @@ impl IntoRequestParameters for String {
 }
 
 impl IntoRequestParameters for &'static str {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -90,7 +90,7 @@ impl IntoRequestParameters for &'static str {
 }
 
 impl<T: Serialize> IntoRequestParameters for Json<T> {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -113,7 +113,7 @@ impl<T: Serialize> IntoRequestParameters for Json<T> {
 }
 
 impl<T: Serialize> IntoRequestParameters for Form<T> {
-    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -146,7 +146,7 @@ impl<T: Serialize> IntoRequestParameters for Form<T> {
 }
 
 impl IntoRequestParameters for FormData {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, Error> {
+    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
         let mut init = RequestInit::new();
         init.body(Some(&self));
         Ok(RequestParameters {

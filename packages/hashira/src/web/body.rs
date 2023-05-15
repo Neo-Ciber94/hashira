@@ -1,6 +1,11 @@
-use crate::{error::Error, types::TryBoxStream};
+use super::{FromRequest, IntoResponse};
+use crate::{error::BoxError, responses, types::TryBoxStream};
 use bytes::{BufMut, Bytes, BytesMut};
-use futures::{StreamExt, TryStreamExt};
+use futures::{
+    future::{ready, Ready},
+    StreamExt,
+};
+use http::Response;
 use std::{convert::Infallible, fmt::Debug};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -10,6 +15,9 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 pub enum InvalidBodyError {
     #[error("body is a stream")]
     Stream,
+
+    #[error("body is empty")]
+    Empty,
 }
 
 /// The actual body contents.
@@ -22,47 +30,75 @@ pub enum Payload {
 }
 
 /// The body of a request/response.
-pub struct Body(Payload);
+pub struct Body(Option<Payload>);
 
 impl Body {
     /// Creates an empty body.
     pub fn empty() -> Self {
-        let bytes = Bytes::new();
-        Body(Payload::Bytes(bytes))
+        let payload = Some(Payload::Bytes(Bytes::new()));
+        Body(payload)
     }
 
-    /// Creates a stream and returns a sender to add bytes to the body stream.
-    pub fn stream() -> (UnboundedSender<Bytes>, Self) {
-        let (tx, rx) = unbounded_channel::<Bytes>();
+    /// Creates a channel to create this body.
+    pub fn channel() -> (UnboundedSender<Result<Bytes, BoxError>>, Self) {
+        let (tx, rx) = unbounded_channel();
 
-        let stream = UnboundedReceiverStream::new(rx)
-            .map(Ok::<_, Infallible>)
-            .map_err(|e| e.into());
+        let stream = UnboundedReceiverStream::new(rx);
         let body_stream = Box::pin(stream);
-        (tx, Body(Payload::Stream(body_stream)))
+        let payload = Some(Payload::Stream(body_stream));
+        (tx, Body(payload))
     }
 
-    /// Returns `true` if the body is a stream.
-    pub fn is_stream(&self) -> bool {
-        matches!(&self.0, Payload::Stream(_))
+    /// Returns the contents of the body leaving it empty.
+    pub fn take(&mut self) -> Option<Payload> {
+        self.0.take()
     }
 
-    /// Returns the inner body.
-    pub fn into_inner(self) -> Payload {
-        self.0
+    /// Returns contents of the body if available.
+    ///
+    /// # Panics
+    /// If the content was taken.
+    pub fn into_inner(mut self) -> Payload {
+        self.take().expect("body contents was taken")
     }
 
-    /// Returns a references to the bytes of the body if possible.
-    pub fn try_as_bytes(&self) -> Result<&Bytes, InvalidBodyError> {
+    /// Returns the contents as bytes, or empty if was taken.
+    pub async fn into_bytes(self) -> Result<Bytes, BoxError> {
+        match self.0 {
+            Some(payload) => payload.into_bytes().await,
+            None => Ok(Default::default()),
+        }
+    }
+
+    /// Returns the contents as a stream, or empty if was taken.
+    pub fn into_stream(mut self) -> TryBoxStream<Bytes> {
+        match self.take() {
+            Some(payload) => payload.into_stream(),
+            None => Box::pin(futures::stream::empty()),
+        }
+    }
+
+    /// Returns a copy of the bytes of the body if can be read sequentially.
+    pub fn try_to_bytes(&self) -> Result<Bytes, InvalidBodyError> {
         match &self.0 {
-            Payload::Bytes(bytes) => Ok(bytes),
+            Some(payload) => payload.try_as_bytes(),
+            None => Err(InvalidBodyError::Empty),
+        }
+    }
+}
+
+impl Payload {
+    /// Returns a copy of the bytes of the body if can be read sequentially.
+    pub fn try_as_bytes(&self) -> Result<Bytes, InvalidBodyError> {
+        match self {
+            Payload::Bytes(bytes) => Ok(bytes.clone()),
             Payload::Stream(_) => Err(InvalidBodyError::Stream),
         }
     }
 
-    /// Returns a future that resolves to the bytes of this body.
-    pub async fn into_bytes(self) -> Result<Bytes, Error> {
-        match self.0 {
+    /// Returns the contents as bytes.
+    pub async fn into_bytes(self) -> Result<Bytes, BoxError> {
+        match self {
             Payload::Bytes(bytes) => Ok(bytes),
             Payload::Stream(mut stream) => {
                 let mut collector = BytesMut::new();
@@ -77,12 +113,46 @@ impl Body {
         }
     }
 
-    /// Converts the body into a stream.
+    /// Returns the contents as a bytes stream.
     pub fn into_stream(self) -> TryBoxStream<Bytes> {
-        match self.0 {
+        match self {
             Payload::Bytes(bytes) => Box::pin(futures::stream::once(async move { Ok(bytes) })),
             Payload::Stream(stream) => stream,
         }
+    }
+}
+
+impl FromRequest for Body {
+    type Error = Infallible;
+    type Fut = Ready<Result<Body, Infallible>>;
+
+    fn from_request(_ctx: &crate::app::RequestContext, body: &mut Body) -> Self::Fut {
+        let body = std::mem::take(body);
+        ready(Ok(body))
+    }
+}
+
+impl FromRequest for Payload {
+    type Error = BoxError;
+    type Fut = Ready<Result<Payload, BoxError>>;
+
+    fn from_request(_ctx: &crate::app::RequestContext, body: &mut Body) -> Self::Fut {
+        ready(
+            body.take()
+                .ok_or(responses::unprocessable_entity("body was taken")),
+        )
+    }
+}
+
+impl IntoResponse for Body {
+    fn into_response(self) -> super::Response {
+        Response::new(self)
+    }
+}
+
+impl IntoResponse for Payload {
+    fn into_response(self) -> super::Response {
+        Response::new(Body(Some(self)))
     }
 }
 
@@ -94,28 +164,27 @@ impl Default for Body {
 
 impl Debug for Body {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.0 {
-            Payload::Bytes(bytes) => write!(f, "Body(Bytes({:?}))", bytes),
-            Payload::Stream(_) => write!(f, "Body(Stream)"),
-        }
+        write!(f, "Body")
     }
 }
 
 impl From<Bytes> for Body {
     fn from(value: Bytes) -> Self {
-        Body(Payload::Bytes(value))
+        let payload = Some(Payload::Bytes(value));
+        Body(payload)
     }
 }
 
 impl From<BytesMut> for Body {
     fn from(value: BytesMut) -> Self {
-        Body(Payload::Bytes(value.into()))
+        value.freeze().into()
     }
 }
 
 impl From<TryBoxStream<Bytes>> for Body {
     fn from(value: TryBoxStream<Bytes>) -> Self {
-        Body(Payload::Stream(value))
+        let payload = Some(Payload::Stream(value));
+        Body(payload)
     }
 }
 

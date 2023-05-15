@@ -3,7 +3,7 @@ use hashira_warp::HashiraWarp;
 use warp::Filter;
 use server_actions::hashira;
 
-pub async fn start_server() -> Result<(), hashira::error::Error> {
+pub async fn start_server() -> Result<(), hashira::error::BoxError> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let app = hashira();

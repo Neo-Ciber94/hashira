@@ -5,4 +5,4 @@ mod server_error;
 pub use server_error::*;
 
 /// A boxed error.
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type BoxError = Box<dyn std::error::Error + Send + Sync>;

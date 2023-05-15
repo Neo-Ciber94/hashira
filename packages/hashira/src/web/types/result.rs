@@ -1,7 +1,10 @@
 use futures::Future;
 use pin_project_lite::pin_project;
 
-use crate::{app::RequestContext, web::FromRequest};
+use crate::{
+    app::RequestContext,
+    web::{Body, FromRequest},
+};
 use std::{convert::Infallible, marker::PhantomData, task::Poll};
 
 impl<T, E> FromRequest for Result<T, E>
@@ -12,15 +15,16 @@ where
     type Error = Infallible;
     type Fut = FromRequestResultFuture<T::Fut, E>;
 
-    fn from_request(ctx: &RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         FromRequestResultFuture {
-            fut: T::from_request(ctx),
+            fut: T::from_request(ctx, body),
             _marker: PhantomData,
         }
     }
 }
 
 pin_project! {
+    #[doc(hidden)]
     pub struct FromRequestResultFuture<Fut, E> {
         #[pin]
         fut: Fut,
@@ -47,30 +51,35 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use http::Method;
     use crate::{
         app::{
             router::{PageRouter, PageRouterWrapper},
             AppData, RequestContext,
         },
+        error::BoxError,
         routing::{ErrorRouter, Params},
-        web::{Body, FromRequest, Inject, Request}, error::Error,
+        web::{Body, FromRequest, Inject, Request},
     };
+    use http::Method;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn result_from_request_test() {
-        let req = Request::builder().body(Body::empty()).unwrap();
+        let req = Request::new(());
 
         let ctx = create_request_context(req);
-        let ret1 = Result::<Inject<String>, Error>::from_request(&ctx).await.unwrap();
-        let ret2 = Result::<Method, Error>::from_request(&ctx).await.unwrap();
+        let ret1 = Result::<Inject<String>, BoxError>::from_request(&ctx, &mut Body::empty())
+            .await
+            .unwrap();
+        let ret2 = Result::<Method, BoxError>::from_request(&ctx, &mut Body::empty())
+            .await
+            .unwrap();
 
         assert!(ret1.is_err());
         assert!(ret2.is_ok());
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

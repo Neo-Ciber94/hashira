@@ -76,13 +76,13 @@ where
             use crate::app::{RenderContext, RenderLayout, RequestContext};
             use crate::routing::HandlerKind;
 
-            let mut route = Route::get(route, move |ctx: RequestContext| {
+            let mut route = Route::get(route, move |ctx: RequestContext, body| {
                 let head = super::page_head::PageHead::new();
                 let render_layout = ctx.app_data::<RenderLayout>().cloned().unwrap();
                 let render_ctx = RenderContext::new(ctx, head, render_layout);
 
                 // Returns the future
-                COMP::render::<BASE>(render_ctx)
+                COMP::render::<BASE>(render_ctx, body)
             });
 
             route.extensions_mut().insert(HandlerKind::Page);
@@ -107,8 +107,8 @@ where
             
             let route = A::route().to_string();
             let method = A::method();
-            let mut route = Route::new(&route, method, |ctx: RequestContext| async move {
-                let output = crate::try_response!(A::call(ctx).await);
+            let mut route = Route::new(&route, method, |ctx: RequestContext, body: Body| async move {
+                let output = crate::try_response!(A::call(ctx, body).await);
                 let json_res = crate::try_response!(output.into_json_response());
                 let (parts, body) = json_res.into_parts();
                 let bytes = crate::try_response!(serde_json::to_vec(&body));

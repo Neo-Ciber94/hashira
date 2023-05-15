@@ -1,5 +1,5 @@
 use super::{into_request_params::IntoRequestParameters, Action};
-use crate::{error::Error, web::IntoJsonResponse};
+use crate::{error::BoxError, web::IntoJsonResponse};
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, rc::Rc};
 use web_sys::AbortSignal;
@@ -28,9 +28,9 @@ impl RequestOptions {
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
-        <HeaderName as TryFrom<K>>::Error: Into<Error>,
+        <HeaderName as TryFrom<K>>::Error: Into<BoxError>,
         HeaderValue: TryFrom<V>,
-        <HeaderValue as TryFrom<V>>::Error: Into<Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<BoxError>,
     {
         let name = <HeaderName as TryFrom<K>>::try_from(key)
             .map_err(Into::into)
@@ -46,12 +46,12 @@ impl RequestOptions {
     ///
     /// # Returns
     /// An error if the header name or value are invalid.
-    pub fn try_header<K, V>(mut self, key: K, value: V) -> Result<Self, Error>
+    pub fn try_header<K, V>(mut self, key: K, value: V) -> Result<Self, BoxError>
     where
         HeaderName: TryFrom<K>,
-        <HeaderName as TryFrom<K>>::Error: Into<Error>,
+        <HeaderName as TryFrom<K>>::Error: Into<BoxError>,
         HeaderValue: TryFrom<V>,
-        <HeaderValue as TryFrom<V>>::Error: Into<Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<BoxError>,
     {
         let name = <HeaderName as TryFrom<K>>::try_from(key).map_err(Into::into)?;
         let value = <HeaderValue as TryFrom<V>>::try_from(value).map_err(Into::into)?;
@@ -175,33 +175,33 @@ where
     }
 
     /// Returns the response error if any.
-    pub fn error(&self) -> Option<&Error> {
+    pub fn error(&self) -> Option<&BoxError> {
         self.result.as_deref().and_then(|x| x.as_ref().err())
     }
 
     /// Sends a request to the server.
     #[cfg(not(target_arch = "wasm32"))]
     #[allow(unused_variables)]
-    pub fn send(&self, obj: T) -> Result<(), Error> {
+    pub fn send(&self, obj: T) -> Result<(), BoxError> {
         unreachable!("client only function")
     }
 
     /// Sends a request to the server using the given method.
     #[cfg(target_arch = "wasm32")]
     #[allow(unused_variables)]
-    pub fn send(&self, obj: T) -> Result<(), Error> {
+    pub fn send(&self, obj: T) -> Result<(), BoxError> {
         self.send_with_options(obj, RequestOptions::new())
     }
 
     /// Sends a request to the server using the given options.
     #[cfg(not(target_arch = "wasm32"))]
     #[allow(unused_variables)]
-    pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), Error> {
+    pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), BoxError> {
         unreachable!("client only function")
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), Error> {
+    pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), BoxError> {
         use crate::actions::into_request_params::RequestParameters;
         use crate::client::fetch_json;
         use crate::error::JsError;

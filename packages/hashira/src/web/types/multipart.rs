@@ -1,4 +1,8 @@
-use crate::{types::BoxFuture, web::FromRequest};
+use crate::{
+    app::RequestContext,
+    types::BoxFuture,
+    web::{Body, FromRequest},
+};
 use http::header;
 use multer_derive::{Error, FromMultipart, MultipartForm};
 use std::convert::Infallible;
@@ -21,8 +25,10 @@ where
     type Error = Error;
     type Fut = BoxFuture<Result<Multipart<T>, Self::Error>>;
 
-    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         let ctx = ctx.clone();
+        let body = std::mem::take(body);
+
         Box::pin(async move {
             let Some(header_value) = ctx.request().headers().get(header::CONTENT_TYPE) else {
                 return Err(Error::new("content type was not specified"));
@@ -36,8 +42,7 @@ where
 
             // TODO: We should be able to take the entire body
             log::debug!("Reading request multipart body");
-            let body = ctx.request().body().try_as_bytes().map_err(Error::new)?;
-            let bytes = body.to_vec();
+            let bytes = body.into_bytes().await.map_err(Error::new)?.to_vec();
 
             let multer = multer_derive::multer::Multipart::new(
                 futures::stream::once(async move { Ok::<_, Infallible>(bytes) }),

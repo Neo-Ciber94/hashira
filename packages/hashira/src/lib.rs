@@ -46,7 +46,7 @@ pub mod events;
 pub mod types;
 
 /// A result type.
-pub type Result<T> = std::result::Result<T, crate::error::Error>;
+pub type Result<T> = std::result::Result<T, crate::error::BoxError>;
 
 /// Macro attribute for declaring [`PageComponent`]s.
 ///
@@ -73,7 +73,13 @@ pub mod consts {
     pub const IS_SERVER: bool = false;
 }
 
+// Yeah, you are not suppose to use this
+#[doc(hidden)]
+#[cfg(feature = "internal")]
+pub mod internal;
+
 /// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
+#[doc(hidden)]
 #[macro_export]
 macro_rules! try_response {
     ($result:expr) => {

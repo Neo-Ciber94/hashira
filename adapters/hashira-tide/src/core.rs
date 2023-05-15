@@ -1,4 +1,5 @@
 use futures::stream::TryStreamExt;
+
 use hashira::{
     app::AppService,
     web::{Payload, Request, Response, ResponseExt},
@@ -72,8 +73,8 @@ pub async fn handle_request<S>(
 }
 
 async fn map_request<S>(mut tide_req: tide::Request<S>) -> Result<Request, tide::Error> {
-    let bytes = tide_req.body_bytes().await?;
-
+    let body = tide_req.take_body();
+    let stream = hashira::internal::reader_stream::to_stream(body);
     let mut req = Request::builder().uri(tide_req.url().as_str());
 
     if let Some(v) = tide_req.version() {
@@ -97,7 +98,7 @@ async fn map_request<S>(mut tide_req: tide::Request<S>) -> Result<Request, tide:
         }
     }
 
-    let req = req.body(hashira::web::Body::from(bytes))?;
+    let req = req.body(hashira::web::Body::from(stream))?;
 
     Ok(req)
 }

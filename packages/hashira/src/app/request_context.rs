@@ -11,7 +11,7 @@ pub(crate) struct RequestContextInner {
     app_data: Arc<AppData>,
     pub(crate) client_router: PageRouterWrapper,
     pub(crate) error_router: Arc<ErrorRouter>,
-    pub(crate) request: Arc<Request>,
+    pub(crate) request: Arc<Request<()>>,
     pub(crate) error: Option<ServerError>,
 }
 
@@ -25,7 +25,7 @@ pub struct RequestContext {
 #[cfg_attr(feature = "client", allow(dead_code))]
 impl RequestContext {
     pub fn new(
-        request: Arc<Request>,
+        request: Arc<Request<()>>,
         app_data: Arc<AppData>,
         client_router: PageRouterWrapper,
         error_router: Arc<ErrorRouter>,
@@ -54,7 +54,7 @@ impl RequestContext {
     }
 
     /// Returns the current request.
-    pub fn request(&self) -> &Request {
+    pub fn request(&self) -> &Request<()> {
         self.inner.request.as_ref()
     }
 

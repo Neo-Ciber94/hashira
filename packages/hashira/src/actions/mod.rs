@@ -3,7 +3,12 @@ mod handler;
 mod hooks;
 pub mod into_request_params;
 
-use crate::{app::RequestContext, routing::RouteMethod, types::BoxFuture, web::IntoJsonResponse};
+use crate::{
+    app::RequestContext,
+    routing::RouteMethod,
+    types::BoxFuture,
+    web::{Body, IntoJsonResponse},
+};
 pub use any_form::*;
 pub use handler::*;
 pub use hooks::*;
@@ -26,5 +31,5 @@ pub trait Action: 'static {
     }
 
     /// Call this action and returns a response.
-    fn call(ctx: RequestContext) -> BoxFuture<crate::Result<Self::Response>>;
+    fn call(ctx: RequestContext, body: Body) -> BoxFuture<crate::Result<Self::Response>>;
 }

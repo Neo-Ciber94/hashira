@@ -1,4 +1,4 @@
-use crate::web::FromRequest;
+use crate::{web::{FromRequest, Body}, app::RequestContext};
 use std::future::{ready, Ready};
 
 use super::DataNotFoundError;
@@ -20,7 +20,7 @@ where
     type Error = DataNotFoundError;
     type Fut = Ready<Result<Self, Self::Error>>;
 
-    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, _body: &mut Body) -> Self::Fut {
         match ctx.app_data::<T>().cloned() {
             Some(x) => ready(Ok(Inject(x))),
             None => {
@@ -55,15 +55,15 @@ mod tests {
         app_data.insert(Number(65));
 
         let ctx = create_request_context(app_data);
-
-        assert!(Inject::<String>::from_request(&ctx).await.is_ok());
-        assert!(Inject::<Number>::from_request(&ctx).await.is_ok());
-        assert!(Inject::<f64>::from_request(&ctx).await.is_err());
+        let mut body = Body::empty();
+        assert!(Inject::<String>::from_request(&ctx, &mut body).await.is_ok());
+        assert!(Inject::<Number>::from_request(&ctx, &mut body).await.is_ok());
+        assert!(Inject::<f64>::from_request(&ctx, &mut body).await.is_err());
     }
 
     fn create_request_context(app_data: AppData) -> RequestContext {
         RequestContext::new(
-            Arc::new(Request::new(Body::empty())),
+            Arc::new(Request::new(())),
             Arc::new(app_data),
             PageRouterWrapper::from(PageRouter::new()),
             Arc::new(ErrorRouter::new()),

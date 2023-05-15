@@ -16,7 +16,7 @@ use std::{
 };
 
 use super::{Json, Response};
-use crate::error::{Error, ServerError};
+use crate::error::{BoxError, ServerError};
 use http::{header, response::Parts, HeaderMap, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -92,7 +92,7 @@ where
 impl<T, E> IntoJsonResponse for Result<T, E>
 where
     T: IntoJsonResponse,
-    E: Into<Error>,
+    E: Into<BoxError>,
 {
     type Data = T::Data;
 

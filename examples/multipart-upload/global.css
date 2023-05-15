@@ -1,10 +1,7 @@
 .container {
   columns: auto 350px;
   column-gap: 1rem;
-  margin: auto 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  text-align: center;
 }
 
 .image-file img {

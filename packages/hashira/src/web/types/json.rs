@@ -1,15 +1,17 @@
-use futures::Future;
+use crate::{
+    app::RequestContext,
+    error::{BoxError, ServerError},
+    responses,
+    web::{Body, FromRequest, IntoResponse, Response},
+};
+use bytes::Bytes;
+use futures::{ready, Future, FutureExt};
 use http::header;
+use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, task::Poll};
 
-use crate::{
-    app::RequestContext,
-    error::{Error, ServerError},
-    web::{parse_body_to_bytes, Body, FromRequest, IntoResponse, ParseBodyOptions, Response},
-};
-
-use super::{unprocessable_entity_error, utils::validate_content_type};
+use super::utils::is_content_type;
 
 /// Represents a JSON.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -34,7 +36,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
         let mut res = Response::new(body);
         res.headers_mut().append(
             header::CONTENT_TYPE,
-            header::HeaderValue::from_static("application/json; charset=utf-8"),
+            header::HeaderValue::from_static("application/json"),
         );
         res
     }
@@ -44,48 +46,54 @@ impl<T> FromRequest for Json<T>
 where
     T: DeserializeOwned,
 {
-    type Error = Error;
+    type Error = BoxError;
     type Fut = FromRequestJsonFuture<T>;
 
-    fn from_request(ctx: &RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         FromRequestJsonFuture {
+            fut: Bytes::from_request(ctx, body),
             ctx: ctx.clone(),
             _marker: PhantomData,
         }
     }
 }
 
-#[doc(hidden)]
-pub struct FromRequestJsonFuture<T> {
-    ctx: RequestContext,
-    _marker: PhantomData<T>,
+pin_project! {
+    #[doc(hidden)]
+    pub struct FromRequestJsonFuture<T> {
+        #[pin]
+        fut: <Bytes as FromRequest>::Fut,
+        ctx: RequestContext,
+        _marker: PhantomData<T>,
+    }
 }
 
 impl<T> Future for FromRequestJsonFuture<T>
 where
     T: DeserializeOwned,
 {
-    type Output = Result<Json<T>, Error>;
+    type Output = Result<Json<T>, BoxError>;
 
     fn poll(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Err(err) = validate_content_type(mime::APPLICATION_JSON, self.ctx.request()) {
-            return Poll::Ready(Err(unprocessable_entity_error(err)));
+        let req = self.ctx.request();
+        if let Err(err) = is_content_type(req, mime::APPLICATION_JSON) {
+            return Poll::Ready(Err(responses::unprocessable_entity(err)));
         }
 
-        let opts = ParseBodyOptions { allow_empty: false };
-        let bytes = match parse_body_to_bytes(self.ctx.request(), opts) {
-            Ok(bytes) => bytes,
-            Err(err) => return Poll::Ready(Err(err)),
-        };
+        let mut this = self.as_mut();
+        let ret = ready!(this.fut.poll_unpin(cx));
 
-        match serde_json::from_slice::<T>(&bytes) {
-            Ok(x) => Poll::Ready(Ok(Json(x))),
-            Err(err) => Poll::Ready(Err(unprocessable_entity_error(format!(
-                "failed to deserialize json: {err}"
-            )))),
+        match ret {
+            Ok(bytes) => match serde_json::from_slice::<T>(&bytes) {
+                Ok(x) => Poll::Ready(Ok(Json(x))),
+                Err(err) => Poll::Ready(Err(responses::unprocessable_entity(format!(
+                    "failed to deserialize json: {err}"
+                )))),
+            },
+            Err(err) => Poll::Ready(Err(responses::unprocessable_entity(err))),
         }
     }
 }
@@ -115,17 +123,19 @@ mod tests {
 
         let req = Request::builder()
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(
-                r#"{
-                "name": "Homura Akemi",
-                "age": 14,
-                "dead": false 
-            }"#,
-            ))
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let json = Json::<MagicGirl>::from_request(&ctx).await.unwrap();
+        let mut body = Body::from(
+            r#"{
+            "name": "Homura Akemi",
+            "age": 14,
+            "dead": false 
+        }"#);
+        let json = Json::<MagicGirl>::from_request(&ctx, &mut body)
+            .await
+            .unwrap();
 
         assert_eq!(
             json.into_inner(),
@@ -137,7 +147,7 @@ mod tests {
         );
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

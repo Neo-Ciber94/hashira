@@ -1,4 +1,7 @@
-use crate::web::FromRequest;
+use crate::{
+    app::RequestContext,
+    web::{Body, FromRequest},
+};
 use serde::de::DeserializeOwned;
 use std::future::{ready, Ready};
 
@@ -16,7 +19,7 @@ impl<Q: DeserializeOwned> FromRequest for Query<Q> {
     type Error = serde_qs::Error;
     type Fut = Ready<Result<Query<Q>, Self::Error>>;
 
-    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, _body: &mut Body) -> Self::Fut {
         match ctx.request().uri().query() {
             Some(s) => ready(serde_qs::from_str(s).map(Query)),
             None => ready(Err(serde_qs::Error::Custom(
@@ -51,11 +54,11 @@ mod tests {
 
         let req = Request::builder()
             .uri("/path/to/route?text=hello-world&number=999")
-            .body(Body::empty())
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let query = Query::<MyStruct>::from_request(&ctx)
+        let query = Query::<MyStruct>::from_request(&ctx, &mut Body::empty())
             .await
             .unwrap()
             .into_inner();
@@ -64,7 +67,7 @@ mod tests {
         assert_eq!(query.number, 999);
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

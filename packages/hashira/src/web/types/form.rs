@@ -1,15 +1,18 @@
-use futures::Future;
+use bytes::Bytes;
+use futures::{ready, Future, FutureExt};
 use http::{header, HeaderValue, Method};
+use pin_project_lite::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{marker::PhantomData, task::Poll};
 
 use crate::{
     app::RequestContext,
-    error::{Error, ServerError},
-    web::{parse_body_to_bytes, Body, FromRequest, IntoResponse, ParseBodyOptions, Response},
+    error::{BoxError, ServerError},
+    responses,
+    web::{Body, FromRequest, IntoResponse, Request, Response},
 };
 
-use super::{unprocessable_entity_error, utils::validate_content_type};
+use super::utils::is_content_type;
 
 /// Represents form data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,65 +48,74 @@ impl<T> FromRequest for Form<T>
 where
     T: DeserializeOwned,
 {
-    type Error = Error;
+    type Error = BoxError;
     type Fut = FromRequestFormFuture<T>;
 
-    fn from_request(ctx: &crate::app::RequestContext) -> Self::Fut {
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut {
         FromRequestFormFuture {
+            fut: Bytes::from_request(ctx, body),
             ctx: ctx.clone(),
             _marker: PhantomData,
         }
     }
 }
 
-#[doc(hidden)]
-pub struct FromRequestFormFuture<T> {
-    ctx: RequestContext,
-    _marker: PhantomData<T>,
+pin_project! {
+    #[doc(hidden)]
+    pub struct FromRequestFormFuture<T> {
+        #[pin]
+        fut: <Bytes as FromRequest>::Fut,
+        ctx: RequestContext,
+        _marker: PhantomData<T>,
+    }
 }
 
 impl<T> Future for FromRequestFormFuture<T>
 where
     T: DeserializeOwned,
 {
-    type Output = Result<Form<T>, Error>;
+    type Output = Result<Form<T>, BoxError>;
 
     fn poll(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        if let Err(err) =
-            validate_content_type(mime::APPLICATION_WWW_FORM_URLENCODED, self.ctx.request())
-        {
-            return Poll::Ready(Err(unprocessable_entity_error(err)));
+        let req = self.ctx.request();
+        if let Err(err) = is_content_type(req, mime::APPLICATION_WWW_FORM_URLENCODED) {
+            return Poll::Ready(Err(responses::unprocessable_entity(err)));
         }
 
         let request = self.ctx.request();
         let method = request.method();
+
         if method == Method::GET || method == Method::HEAD {
-            return match request.uri().query() {
-                Some(query) => match serde_urlencoded::from_str::<T>(query) {
-                    Ok(x) => Poll::Ready(Ok(Form(x))),
-                    Err(err) => Poll::Ready(Err(unprocessable_entity_error(format!(
-                        "failed to deserialize uri query: {err}"
-                    )))),
-                },
-                None => Poll::Ready(Err(unprocessable_entity_error("uri query not found"))),
-            };
+            return Poll::Ready(parse_form_from_uri(request));
         }
 
-        let opts = ParseBodyOptions { allow_empty: false };
-        let bytes = match parse_body_to_bytes(self.ctx.request(), opts) {
-            Ok(bytes) => bytes,
-            Err(err) => return Poll::Ready(Err(err)),
-        };
-
-        match serde_urlencoded::from_bytes::<T>(&bytes) {
-            Ok(x) => Poll::Ready(Ok(Form(x))),
-            Err(err) => Poll::Ready(Err(unprocessable_entity_error(format!(
-                "failed to deserialize form: {err}"
-            )))),
+        let mut this = self.as_mut();
+        let ret = ready!(this.fut.poll_unpin(cx));
+        
+        match ret {
+            Ok(bytes) => match serde_urlencoded::from_bytes::<T>(&bytes) {
+                Ok(x) => Poll::Ready(Ok(Form(x))),
+                Err(err) => Poll::Ready(Err(responses::unprocessable_entity(format!(
+                    "failed to deserialize form: {err}"
+                )))),
+            },
+            Err(err) => Poll::Ready(Err(responses::unprocessable_entity(err))),
         }
+    }
+}
+
+fn parse_form_from_uri<T: DeserializeOwned>(request: &Request<()>) -> Result<Form<T>, BoxError> {
+    match request.uri().query() {
+        Some(query) => match serde_urlencoded::from_str::<T>(query) {
+            Ok(x) => Ok(Form(x)),
+            Err(err) => Err(responses::unprocessable_entity(format!(
+                "failed to deserialize uri query: {err}"
+            ))),
+        },
+        None => Err(responses::unprocessable_entity("uri query not found")),
     }
 }
 
@@ -133,11 +145,12 @@ mod tests {
         let req = Request::builder()
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .method(Method::POST)
-            .body(Body::from("name=Homura%20Akemi&age=14&dead=false"))
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let form = Form::<MagicGirl>::from_request(&ctx).await.unwrap();
+        let mut body =Body::from("name=Homura%20Akemi&age=14&dead=false");
+        let form = Form::<MagicGirl>::from_request(&ctx, &mut body).await.unwrap();
 
         assert_eq!(
             form.0,
@@ -162,11 +175,12 @@ mod tests {
             .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .uri("/path/to/route?name=Homura%20Akemi&age=14&dead=false")
             .method(Method::GET)
-            .body(Body::empty())
+            .body(())
             .unwrap();
 
         let ctx = create_request_context(req);
-        let form = Form::<MagicGirl>::from_request(&ctx).await.unwrap();
+        let mut body = Body::default();
+        let form = Form::<MagicGirl>::from_request(&ctx, &mut body).await.unwrap();
 
         assert_eq!(
             form.0,
@@ -178,7 +192,7 @@ mod tests {
         );
     }
 
-    fn create_request_context(req: Request) -> RequestContext {
+    fn create_request_context(req: Request<()>) -> RequestContext {
         RequestContext::new(
             Arc::new(req),
             Arc::new(AppData::default()),

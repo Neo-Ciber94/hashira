@@ -1,5 +1,3 @@
-use std::{collections::HashMap, str::FromStr};
-
 use futures::StreamExt;
 use hashira::{
     app::AppService,
@@ -7,10 +5,11 @@ use hashira::{
         header::{HeaderName, HeaderValue},
         method::Method,
         uri::Uri,
-        Body, Request, Response,
+        Body, Bytes, Request, Response,
     },
 };
-use wasm_bindgen::{JsCast, JsError, JsValue, UnwrapThrowExt};
+use std::{collections::HashMap, str::FromStr};
+use wasm_bindgen::{JsCast, JsError, JsValue};
 use web_sys::ResponseInit;
 
 /// Handle a request.
@@ -71,18 +70,29 @@ async fn map_request(web_req: web_sys::Request) -> Result<Request, JsError> {
         Some(s) => {
             let readable = s.dyn_into().unwrap(); // SAFETY: Is already a stream
             let mut stream = wasm_streams::ReadableStream::from_raw(readable).into_stream();
+            let (sender, body) = Body::channel();
 
-            let mut bytes = vec![];
-            while let Some(js) = stream.next().await {
-                let chunk = js.map_err(map_js_error("invalid chunk"))?;
-                let chunk_str = chunk
+            fn value_to_string(value: JsValue) -> hashira::Result<String> {
+                value
                     .as_string()
-                    .expect_throw("failed to convert chunk to string");
-
-                bytes.extend(chunk_str.as_bytes());
+                    .ok_or_else(|| format!("failed to convert chunk to string").into())
             }
 
-            Body::from(bytes)
+            wasm_bindgen_futures::spawn_local(async move {
+                while let Some(js) = stream.next().await {
+                    let chunk = js
+                        .map_err(js_to_error)
+                        .and_then(value_to_string)
+                        .map(Bytes::from);
+
+                    if let Err(err) = sender.send(chunk) {
+                        log::error!("{:?}", err);
+                        break;
+                    }
+                }
+            });
+
+            body
         }
         None => Body::empty(),
     };
@@ -142,4 +152,21 @@ fn map_js_error(details: impl Into<String>) -> impl FnOnce(JsValue) -> JsError {
         let s = details.as_str();
         js_error(s, err)
     }
+}
+
+fn js_to_error(js: JsValue) -> hashira::error::BoxError {
+    use std::fmt::Write;
+
+    if let Some(str) = js.as_string() {
+        return str.into();
+    }
+
+    if let Some(err) = js.dyn_ref::<js_sys::Error>() {
+        let msg = err.message();
+        return msg.as_string().unwrap().into(); // SAFETY: The value is an string
+    }
+
+    let mut buf = String::new();
+    write!(buf, "{js:?}").expect("failed to write error message");
+    buf.into()
 }

@@ -1,8 +1,12 @@
 pub mod utils;
 
-mod query;
-use std::fmt::Display;
+mod tuples;
+pub use tuples::*;
 
+mod string;
+pub use string::*;
+
+mod query;
 pub use query::*;
 
 mod json;
@@ -35,22 +39,5 @@ pub use inject::*;
 mod multipart;
 pub use multipart::*;
 
-#[macro_export(local_inner_macros)]
-macro_rules! ready_or_else {
-    ($expr:expr, $ident:ident => $error:expr) => {
-        match $expr {
-            Ok(x) => x,
-            Err($ident) => {
-                return Poll::Ready(Err($error));
-            }
-        }
-    };
-}
-
-
-#[inline]
-pub(crate) fn unprocessable_entity_error(err: impl Display) -> crate::error::Error {
-    use crate::{error::ServerError, web::status::StatusCode};
-
-    ServerError::new(StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into()
-}
+mod either_;
+pub use either_::*;
