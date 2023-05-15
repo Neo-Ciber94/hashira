@@ -1,10 +1,11 @@
-use super::FromRequest;
+use super::{FromRequest, IntoResponse};
 use crate::{error::BoxError, responses, types::TryBoxStream};
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::{
     future::{ready, Ready},
     StreamExt,
 };
+use http::Response;
 use std::{convert::Infallible, fmt::Debug};
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -140,6 +141,18 @@ impl FromRequest for Payload {
             body.take()
                 .ok_or(responses::unprocessable_entity("body was taken")),
         )
+    }
+}
+
+impl IntoResponse for Body {
+    fn into_response(self) -> super::Response {
+        Response::new(self)
+    }
+}
+
+impl IntoResponse for Payload {
+    fn into_response(self) -> super::Response {
+        Response::new(Body(Some(self)))
     }
 }
 

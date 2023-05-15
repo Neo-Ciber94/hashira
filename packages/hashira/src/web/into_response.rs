@@ -4,9 +4,10 @@ use crate::{
     types::TryBoxStream,
 };
 use bytes::Bytes;
-use cookie::Cookie;
+use cookie::{Cookie, CookieJar};
 use futures::Stream;
-use http::{header, HeaderMap, StatusCode};
+use http::{header, Extensions, HeaderMap, StatusCode};
+use std::borrow::Cow;
 
 /// Convert an object into a `Response`.
 pub trait IntoResponse {
@@ -29,6 +30,18 @@ impl IntoResponse for String {
 impl<'a> IntoResponse for &'a str {
     fn into_response(self) -> Response {
         self.to_owned().into_response()
+    }
+}
+
+impl<'a> IntoResponse for Cow<'a, str> {
+    fn into_response(self) -> Response {
+        self.into_owned().into_response()
+    }
+}
+
+impl<'a> IntoResponse for Cow<'a, [u8]> {
+    fn into_response(self) -> Response {
+        self.into_owned().into_response()
     }
 }
 
@@ -89,6 +102,24 @@ impl IntoResponse for () {
 impl IntoResponse for Response {
     fn into_response(self) -> Response {
         self
+    }
+}
+
+impl IntoResponse for http::response::Parts {
+    fn into_response(self) -> Response {
+        Response::from_parts(self, Body::empty())
+    }
+}
+
+impl IntoResponse for http::response::Builder {
+    fn into_response(self) -> Response {
+        match self.body(Body::empty()) {
+            Ok(x) => x,
+            Err(err) => {
+                let err: BoxError = err.into();
+                err.into_response()
+            }
+        }
     }
 }
 
@@ -192,6 +223,21 @@ impl IntoResponse for HeaderMap {
         }
 
         response
+    }
+}
+
+impl IntoResponse for Extensions {
+    fn into_response(self) -> Response {
+        let mut res = ().into_response();
+        *res.extensions_mut() = self;
+        res
+    }
+}
+
+impl IntoResponse for CookieJar {
+    fn into_response(self) -> Response {
+        let cookies = self.iter().cloned().collect::<Vec<_>>();
+        cookies.into_response()
     }
 }
 
