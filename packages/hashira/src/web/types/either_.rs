@@ -94,7 +94,7 @@ where
                                 buf: bytes,
                             });
                         }
-                        Err(err) => break Err(err.into()),
+                        Err(err) => break Err(err),
                     }
                 }
                 EitherExtractProj::Left { fut, buf } => {
