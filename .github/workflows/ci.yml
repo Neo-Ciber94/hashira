@@ -73,7 +73,7 @@ jobs:
       - run: cargo install --path ./packages/hashira-cli
       - run: cargo install cargo-generate
       - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/${{ matrix.template }} -d use_local=true --name ${{ matrix.template }}-template
-      - run: cd ${{ matrix.template }}-template && hashira build
+      - run: cd examples/${{ matrix.template }}-template && hashira build
       
   cli-deno:
     strategy:
@@ -100,4 +100,4 @@ jobs:
       - run: cargo install cargo-make
       - run: cargo install deno
       - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/with-deno -d use_local=true --name with-deno-template
-      - run: cd with-deno-template && cargo make build
+      - run: cd examples/with-deno-template && cargo make build
