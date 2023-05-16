@@ -30,14 +30,16 @@ jobs:
     name: Test | ${{ matrix.os }}
     steps:
       # Cache cargo dependencies
-      - name: Cache Cargo dependencies
+      - name: Cache Cargo
         id: cache-test-cargo
-        uses: actions/cache@v3
+        uses: actions/cache@v2
         with:
-          path: ./target
-          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          
       - if: ${{ steps.cache-test-cargo.outputs.cache-hit != 'true' }}
         name: List dependencies
         continue-on-error: true

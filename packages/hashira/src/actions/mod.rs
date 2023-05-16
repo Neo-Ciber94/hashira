@@ -1,7 +1,7 @@
 mod any_form;
 mod handler;
 mod hooks;
-pub mod into_request_params;
+pub mod into_request_config;
 
 use crate::{
     app::RequestContext,

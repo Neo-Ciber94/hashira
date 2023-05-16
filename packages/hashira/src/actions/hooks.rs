@@ -1,4 +1,4 @@
-use super::{into_request_params::IntoRequestParameters, Action};
+use super::{into_request_config::IntoRequestConfig, Action};
 use crate::{error::BoxError, web::IntoJsonResponse};
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, rc::Rc};
@@ -154,7 +154,7 @@ where
 impl<A, T> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestParameters,
+    T: IntoRequestConfig,
 {
     /// Returns `true` if the action is processing.
     pub fn is_loading(&self) -> bool {
@@ -202,7 +202,7 @@ where
 
     #[cfg(target_arch = "wasm32")]
     pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), BoxError> {
-        use crate::actions::into_request_params::RequestParameters;
+        use crate::actions::into_request_config::RequestInitConfig;
         use crate::client::fetch_json;
         use crate::error::JsError;
         use wasm_bindgen::{JsCast, JsValue};
@@ -335,7 +335,7 @@ where
 pub fn use_action<A, T>() -> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestParameters,
+    T: IntoRequestConfig,
 {
     use_action_with_options(Default::default())
 }
@@ -345,7 +345,7 @@ where
 pub fn use_action_with_callback<'a, A, T, F>(on_complete: F) -> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestParameters,
+    T: IntoRequestConfig,
     F: Fn(&crate::Result<<A::Response as IntoJsonResponse>::Data>) + 'static,
 {
     let options = UseActionOptions::new().on_complete(move |ret| {
@@ -359,7 +359,7 @@ where
 pub fn use_action_with_options<A, T>(options: UseActionOptions<A>) -> UseActionHandle<A, T>
 where
     A: Action,
-    T: IntoRequestParameters,
+    T: IntoRequestConfig,
 {
     let result = use_state(|| None);
     let loading = use_state(|| false);

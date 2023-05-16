@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{
-    into_request_params::{IntoRequestParameters, RequestParameters},
+    into_request_config::{IntoRequestConfig, RequestInitConfig},
     RequestOptions,
 };
 
@@ -22,10 +22,10 @@ pub enum AnyForm {
     UrlEncoded(FormData),
 }
 
-impl IntoRequestParameters for AnyForm {
-    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, BoxError> {
+impl IntoRequestConfig for AnyForm {
+    fn into_request_config(self, options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
         match self {
-            AnyForm::Multipart(form) => form.into_request_init(options),
+            AnyForm::Multipart(form) => form.into_request_config(options),
             AnyForm::UrlEncoded(form) => {
                 let iter = js_sys::try_iter(&form).map_err(JsError::new)?;
                 let mut params = Vec::new();
@@ -42,7 +42,7 @@ impl IntoRequestParameters for AnyForm {
                     }
                 }
 
-                Form(params).into_request_init(options)
+                Form(params).into_request_config(options)
             }
         }
     }

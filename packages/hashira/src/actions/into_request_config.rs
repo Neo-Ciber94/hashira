@@ -15,7 +15,7 @@ use super::RequestOptions;
 
 /// Initialization params for a request.
 #[derive(Default, Debug, Clone)]
-pub struct RequestParameters {
+pub struct RequestInitConfig {
     /// The initial request state.
     pub init: Option<RequestInit>,
 
@@ -24,31 +24,31 @@ pub struct RequestParameters {
 }
 
 /// Creates an object to initialize a request.
-pub trait IntoRequestParameters {
+pub trait IntoRequestConfig {
     /// Returns an object used to initialize a request.
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError>;
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError>;
 }
 
-impl IntoRequestParameters for RequestInit {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
-        Ok(RequestParameters {
+impl IntoRequestConfig for RequestInit {
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
+        Ok(RequestInitConfig {
             init: Some(self),
             search_params: None,
         })
     }
 }
 
-impl IntoRequestParameters for UrlSearchParams {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
-        Ok(RequestParameters {
+impl IntoRequestConfig for UrlSearchParams {
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
+        Ok(RequestInitConfig {
             init: None,
             search_params: Some(self),
         })
     }
 }
 
-impl IntoRequestParameters for String {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
+impl IntoRequestConfig for String {
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -61,15 +61,15 @@ impl IntoRequestParameters for String {
         init.headers(&headers);
         init.body(Some(&JsValue::from_str(&self)));
 
-        Ok(RequestParameters {
+        Ok(RequestInitConfig {
             init: Some(init),
             search_params: None,
         })
     }
 }
 
-impl IntoRequestParameters for &'static str {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
+impl IntoRequestConfig for &'static str {
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -82,15 +82,15 @@ impl IntoRequestParameters for &'static str {
         init.headers(&headers);
         init.body(Some(&JsValue::from_str(self)));
 
-        Ok(RequestParameters {
+        Ok(RequestInitConfig {
             init: Some(init),
             search_params: None,
         })
     }
 }
 
-impl<T: Serialize> IntoRequestParameters for Json<T> {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
+impl<T: Serialize> IntoRequestConfig for Json<T> {
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -105,15 +105,15 @@ impl<T: Serialize> IntoRequestParameters for Json<T> {
         init.headers(&headers);
         init.body(Some(&JsValue::from_str(&json)));
 
-        Ok(RequestParameters {
+        Ok(RequestInitConfig {
             init: Some(init),
             search_params: None,
         })
     }
 }
 
-impl<T: Serialize> IntoRequestParameters for Form<T> {
-    fn into_request_init(self, options: &RequestOptions) -> Result<RequestParameters, BoxError> {
+impl<T: Serialize> IntoRequestConfig for Form<T> {
+    fn into_request_config(self, options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
         let mut init = RequestInit::new();
         let headers = Headers::new().map_err(JsError::new)?;
         headers
@@ -130,14 +130,14 @@ impl<T: Serialize> IntoRequestParameters for Form<T> {
         if options.method == Method::GET || options.method == Method::HEAD {
             let search_params = UrlSearchParams::new_with_str(&params).map_err(JsError::new)?;
 
-            Ok(RequestParameters {
+            Ok(RequestInitConfig {
                 init: Some(init),
                 search_params: Some(search_params),
             })
         } else {
             init.body(Some(&JsValue::from_str(&params)));
 
-            Ok(RequestParameters {
+            Ok(RequestInitConfig {
                 init: Some(init),
                 search_params: None,
             })
@@ -145,11 +145,11 @@ impl<T: Serialize> IntoRequestParameters for Form<T> {
     }
 }
 
-impl IntoRequestParameters for FormData {
-    fn into_request_init(self, _options: &RequestOptions) -> Result<RequestParameters, BoxError> {
+impl IntoRequestConfig for FormData {
+    fn into_request_config(self, _options: &RequestOptions) -> Result<RequestInitConfig, BoxError> {
         let mut init = RequestInit::new();
         init.body(Some(&self));
-        Ok(RequestParameters {
+        Ok(RequestInitConfig {
             init: Some(init),
             search_params: None,
         })
