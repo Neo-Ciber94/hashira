@@ -27,7 +27,7 @@ impl Tool for WasmBindgen {
     }
 
     fn default_version() -> Version {
-        Version::new(0, 2, Some(84))
+        Version::new(0, 2, Some(86))
     }
 
     fn test_version_args() -> &'static [&'static str] {

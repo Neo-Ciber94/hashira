@@ -54,12 +54,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        template: ['with-actix-web', 'with-axum', 'with-rocket', 'with-tide', 'with-warp']
+        template: ['with-actix-web', 'with-axum', 'with-rocket', 'with-tide', 'with-warp', 'with-deno']
     runs-on: ${{ matrix.os }}
     name: Template (${{ matrix.template }}) | ${{ matrix.os }}
     steps:
       # Cache cargo dependencies
       - name: Cache Cargo
+        id: cache-cargo
         uses: actions/cache@v2
         with:
           path: |
@@ -67,39 +68,26 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          
-      # Install CLI and Build
-      - uses: actions/checkout@v3
-      - run: rustup target add wasm32-unknown-unknown
-      - run: cargo install --path ./packages/hashira-cli
-      - run: cargo install cargo-generate
-      - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/${{ matrix.template }} -d use_local=true --name ${{ matrix.template }}-template
-      - run: cd examples/${{ matrix.template }}-template && hashira build
-      
-  cli-deno:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    name: Template (with-deno) | ${{ matrix.os }}
-    steps:
-      # Cache cargo dependencies
-      - name: Cache Cargo
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        
+      # Install binaries
+      - name: Install binaries
+        if: steps.cache-cargo.outputs.cache-hit != 'true'
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install --path ./packages/hashira-cli
+          cargo install cargo-generate
+          cargo install deno
 
-      # Install CLI and Build
+      # Create templates
       - uses: actions/checkout@v3
-      - run: cargo install --path ./packages/hashira-cli
-      - run: cargo install cargo-generate
-      - run: rustup target add wasm32-unknown-unknown
-      - run: cargo install cargo-make
-      - run: cargo install deno
-      - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/with-deno -d use_local=true --name with-deno-template
-      - run: cd examples/with-deno-template && cargo make build
+      - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/${{ matrix.template }} -d use_local=true --name ${{ matrix.template }}-template
+
+      # Run others
+      - name: Build ${{ matrix.template }} template
+        if: ${{ matrix.template }} != 'with-deno'
+        run: cd examples/${{ matrix.template }}-template && hashira build
+
+      # Run deno
+      - name: Build ${{ matrix.template }} template
+        if: ${{ matrix.template }} == 'with-deno'
+        run: cd examples/${{ matrix.template }}-template && cargo make build
