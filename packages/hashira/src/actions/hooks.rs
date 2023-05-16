@@ -223,11 +223,11 @@ where
         let _guard = OnDrop(Some(move || loading.set(false)));
         let result = self.result.clone();
 
-        let request_parameters = obj.into_request_init(&options)?;
-        let RequestParameters {
+        let request_config = obj.into_request_config(&options)?;
+        let RequestInitConfig {
             init,
             search_params,
-        } = request_parameters;
+        } = request_config;
 
         let mut init = init.unwrap_or_else(|| RequestInit::new());
         let headers = match js_sys::Reflect::get(&init, &JsValue::from("headers")) {

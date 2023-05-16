@@ -4,7 +4,7 @@ mod server;
 // Starts the server
 #[cfg(not(feature = "client"))]
 #[actix_web::main]
-async fn main() -> Result<(), hashira::error::Error> {
+async fn main() -> Result<(), hashira::error::BoxError> {
     crate::server::start_server().await
 }
 

@@ -4,7 +4,7 @@ mod server;
 // Starts the server
 #[cfg(not(feature = "client"))]
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() -> Result<(), hashira::error::BoxError> {
     crate::server::start_server().await
 }
 

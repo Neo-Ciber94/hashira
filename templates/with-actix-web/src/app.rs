@@ -1,4 +1,4 @@
-use hashira::{app::RenderContext, error::Error, page_component, server::Metadata, web::Response};
+use hashira::{app::RenderContext, error::BoxError, page_component, server::Metadata, web::Response};
 use yew::{function_component, html::ChildrenProps, use_state};
 
 #[function_component]
@@ -8,7 +8,7 @@ pub fn App(props: &ChildrenProps) -> yew::Html {
     }
 }
 
-async fn render(mut ctx: RenderContext) -> Result<Response, Error> {
+async fn render(mut ctx: RenderContext) -> Result<Response, BoxError> {
     ctx.metadata(Metadata::new().description("Hashira x Actix Web example"));
     let res = ctx.render::<HomePage, App>().await;
     Ok(res)
