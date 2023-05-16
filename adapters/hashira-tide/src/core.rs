@@ -1,8 +1,10 @@
+use std::{net::SocketAddr, str::FromStr};
+
 use futures::stream::TryStreamExt;
 
 use hashira::{
     app::AppService,
-    web::{Payload, Request, Response, ResponseExt},
+    web::{Payload, RemoteAddr, Request, Response, ResponseExt},
 };
 
 // Returns a router for a `Tide` application.
@@ -96,6 +98,16 @@ async fn map_request<S>(mut tide_req: tide::Request<S>) -> Result<Request, tide:
             let value = value.as_str();
             req = req.header(name, value);
         }
+    }
+
+    // Add additional extensions
+    let remote_addr = tide_req
+        .remote()
+        .and_then(|s| SocketAddr::from_str(s).ok())
+        .map(RemoteAddr::from);
+
+    if let Some(remote_addr) = remote_addr {
+        req = req.extension(remote_addr);
     }
 
     let req = req.body(hashira::web::Body::from(stream))?;

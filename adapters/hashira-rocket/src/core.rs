@@ -1,6 +1,6 @@
 use hashira::{
     app::AppService,
-    web::{Body, Response},
+    web::{Body, RemoteAddr, Response},
 };
 use rocket::{
     data::FromData,
@@ -97,7 +97,7 @@ impl<'r> FromRequest<'r> for RequestWithoutBody {
     type Error = hashira::web::Error;
 
     async fn from_request(
-        req: &'r rocket::Request<'_>,
+        rocket_req: &'r rocket::Request<'_>,
     ) -> rocket::request::Outcome<Self, Self::Error> {
         fn method_from_rocket(req: &rocket::Request) -> hashira::web::method::Method {
             match req.method() {
@@ -114,14 +114,14 @@ impl<'r> FromRequest<'r> for RequestWithoutBody {
         }
 
         let mut builder = hashira::web::Request::builder()
-            .method(method_from_rocket(req))
-            .uri(req.uri().to_string());
+            .method(method_from_rocket(rocket_req))
+            .uri(rocket_req.uri().to_string());
 
-        for header in req.headers().iter() {
+        for header in rocket_req.headers().iter() {
             builder = builder.header(header.name.as_str(), header.value.into_owned());
         }
 
-        let req = match builder.body(()) {
+        let mut req = match builder.body(()) {
             Ok(x) => x,
             Err(err) => {
                 log::error!("{}", err);
@@ -131,6 +131,13 @@ impl<'r> FromRequest<'r> for RequestWithoutBody {
                 ));
             }
         };
+
+        // Add additional extensions
+        if let Some(addr) = rocket_req.remote() {
+            let remote_addr = RemoteAddr::from(addr);
+            req.extensions_mut().insert(remote_addr);
+        }
+
         rocket::request::Outcome::Success(RequestWithoutBody(req))
     }
 }

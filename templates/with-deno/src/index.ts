@@ -1,5 +1,9 @@
-import { handler, set_envs } from "../build/{{crate_name}}_server.js";
-import { serve } from "https://deno.land/std@0.184.0/http/mod.ts";
+import {
+  handler,
+  set_envs,
+  setHashiraRemoteAddr,
+} from "../build/{{crate_name}}_server.js";
+import { ConnInfo, serve } from "https://deno.land/std@0.184.0/http/mod.ts";
 import { contentType } from "https://deno.land/std@0.184.0/media_types/mod.ts";
 import * as denoPath from "https://deno.land/std@0.183.0/path/mod.ts";
 import * as denoFs from "https://deno.land/std@0.183.0/fs/mod.ts";
@@ -18,8 +22,15 @@ const PUBLIC_DIR = denoPath.join(Deno.cwd(), "public");
 const envs = Deno.env.toObject();
 set_envs(envs);
 
-async function handleRequest(request: Request): Promise<Response> {
+async function handleRequest(
+  request: Request,
+  conn: ConnInfo
+): Promise<Response> {
   try {
+    // Sets the remote address to the request before passing to hashira
+    setRemoteAddr(request, conn);
+
+    //
     const { pathname } = new URL(request.url);
     if (pathname.startsWith(STATIC_PATH) || pathname === "/favicon.ico") {
       return await serveStaticFile(request);
@@ -116,3 +127,21 @@ await serve(handleRequest, {
     console.log(`⚡ Server started at: http://${hostname}:${port}`);
   },
 });
+
+function setRemoteAddr(request: Request, conn: ConnInfo) {
+  const remote = conn.remoteAddr;
+  if (remote.transport == "tcp" || remote.transport == "udp") {
+    const { hostname, port } = remote;
+    const addr = isIpV6(hostname)
+      ? `[${hostname}]:${port}`
+      : `${hostname}:${port}`;
+
+    setHashiraRemoteAddr(request, addr);
+  }
+}
+
+function isIpV6(s: string) {
+  const regex =
+    /(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))/gi;
+  return regex.test(s);
+}

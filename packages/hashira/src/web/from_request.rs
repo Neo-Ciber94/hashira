@@ -18,7 +18,7 @@ pub trait FromRequest: Sized {
     type Fut: Future<Output = Result<Self, Self::Error>>;
 
     /// Returns a future that resolves to the type or error.
-    fn from_request(ctx: &RequestContext, _body: &mut Body) -> Self::Fut;
+    fn from_request(ctx: &RequestContext, body: &mut Body) -> Self::Fut;
 }
 
 impl FromRequest for RequestContext {

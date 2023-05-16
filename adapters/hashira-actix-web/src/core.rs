@@ -1,3 +1,5 @@
+use std::{net::SocketAddr, str::FromStr};
+
 use actix_files::Files;
 use actix_web::{
     web::{self},
@@ -6,7 +8,7 @@ use actix_web::{
 use futures::{StreamExt, TryStreamExt};
 use hashira::{
     app::AppService,
-    web::{Body, Payload, Request, Response},
+    web::{Body, Payload, RemoteAddr, Request, Response},
 };
 
 /// Returns a function which adds a configuration to the actix web `App`
@@ -88,6 +90,17 @@ async fn map_request(
             }
         }
     });
+
+    // Add additional extensions
+    let remote_addr = actix_req
+        .connection_info()
+        .realip_remote_addr()
+        .and_then(|s| SocketAddr::from_str(s).ok())
+        .map(RemoteAddr::from);
+
+    if let Some(remote_addr) = remote_addr {
+        request = request.extension(remote_addr);
+    }
 
     request.body(body).map_err(actix_web::Error::from)
 }

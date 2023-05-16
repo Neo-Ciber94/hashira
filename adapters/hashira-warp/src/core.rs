@@ -2,9 +2,9 @@ use futures::stream::TryStreamExt;
 use hashira::{
     app::AppService,
     types::TryBoxStream,
-    web::{Body, Bytes, BytesMut, Payload, Request, Response},
+    web::{Body, Bytes, BytesMut, Payload, RemoteAddr, Request, Response},
 };
-use std::{convert::Infallible, fmt::Debug};
+use std::{convert::Infallible, fmt::Debug, net::SocketAddr};
 use warp::{path::FullPath, reject::Reject, Buf, Filter, Stream};
 
 struct HashiraRejection(Box<dyn std::error::Error + Send + Sync>);
@@ -53,6 +53,7 @@ fn hashira_filter(
         path: FullPath,
         headers: warp::hyper::HeaderMap,
         method: warp::http::Method,
+        remote_addr: Option<SocketAddr>,
         service: AppService,
     ) -> Result<impl warp::Reply, warp::Rejection> {
         {
@@ -81,6 +82,11 @@ fn hashira_filter(
             // Set the headers
             *warp_req.headers_mut() = headers;
 
+            // Add remote address to the request
+            if let Some(addr) = remote_addr {
+                warp_req.extensions_mut().insert(RemoteAddr::from(addr));
+            }
+
             // Send the request to hashira, and get the warp response
             let warp_res = try_reject!(handle_request(warp_req, service.clone()).await);
             Ok(warp_res)
@@ -92,6 +98,7 @@ fn hashira_filter(
         .and(warp::path::full())
         .and(warp::filters::header::headers_cloned())
         .and(warp::method())
+        .and(warp::filters::addr::remote())
         .and(with_service(app_service))
         .and_then(handler)
 }
@@ -109,6 +116,8 @@ pub async fn handle_request(
 
 #[inline(always)]
 fn map_request(req: Request<Body>) -> Request {
+    // Because the types are teh same we don't need to change anything,
+    // the remote address extension is passed
     req
 }
 

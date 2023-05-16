@@ -5,12 +5,15 @@ use hashira::{
         header::{HeaderName, HeaderValue},
         method::Method,
         uri::Uri,
-        Body, Bytes, Request, Response,
+        Body, Bytes, RemoteAddr, Request, Response,
     },
 };
-use std::{collections::HashMap, str::FromStr};
-use wasm_bindgen::{JsCast, JsError, JsValue};
+use js_sys::Reflect;
+use std::{collections::HashMap, net::SocketAddr, str::FromStr};
+use wasm_bindgen::{prelude::wasm_bindgen, JsCast, JsError, JsValue};
 use web_sys::ResponseInit;
+
+const REMOTE_ADDR_PROP: &str = "__hashira_remote_address";
 
 /// Handle a request.
 #[allow(clippy::let_and_return)]
@@ -29,6 +32,24 @@ pub async fn handle_request(
 
     // Return the response
     Ok(web_res)
+}
+
+/// Sets the remote address of a request.
+#[wasm_bindgen(js_name = setHashiraRemoteAddr)]
+#[allow(unused_variables)]
+pub fn set_remote_addr(
+    web_req: web_sys::Request,
+    remote_addr: Option<String>,
+) -> Result<(), JsValue> {
+    if let Some(addr) = remote_addr {
+        Reflect::set(
+            &web_req,
+            &JsValue::from_str(REMOTE_ADDR_PROP),
+            &JsValue::from_str(&addr),
+        )?;
+    }
+
+    Ok(())
 }
 
 async fn map_request(web_req: web_sys::Request) -> Result<Request, JsError> {
@@ -96,6 +117,19 @@ async fn map_request(web_req: web_sys::Request) -> Result<Request, JsError> {
         }
         None => Body::empty(),
     };
+
+    // Set additional extensions
+    // If the caller set the remote address before, we get it through here
+    if let Ok(js) = Reflect::get(&web_req, &JsValue::from_str(REMOTE_ADDR_PROP)) {
+        let addr = js
+            .as_string()
+            .and_then(|s| SocketAddr::from_str(&s).ok())
+            .map(RemoteAddr::from);
+
+        if let Some(remote_addr) = addr {
+            builder = builder.extension(remote_addr);
+        }
+    }
 
     let req = builder.body(bytes)?;
     Ok(req)

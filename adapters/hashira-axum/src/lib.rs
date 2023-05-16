@@ -19,7 +19,7 @@ impl Adapter for HashiraAxum {
         let router = self.0.unwrap_or_default().merge(core::router(app));
 
         axum::Server::bind(&addr)
-            .serve(router.into_make_service())
+            .serve(router.into_make_service_with_connect_info::<SocketAddr>())
             .await?;
 
         Ok(())
