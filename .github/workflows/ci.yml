@@ -59,6 +59,7 @@ jobs:
     name: Template (${{ matrix.template }}) | ${{ matrix.os }}
     steps:
       # Cache cargo dependencies
+      - uses: actions/checkout@v3
       - name: Cache Cargo
         id: cache-cargo
         uses: actions/cache@v2
@@ -80,7 +81,6 @@ jobs:
           cargo install deno
 
       # Create templates
-      - uses: actions/checkout@v3
       - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/${{ matrix.template }} -d use_local=true --name ${{ matrix.template }}-template
 
       # Run others
