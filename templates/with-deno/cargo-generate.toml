@@ -1,3 +1,9 @@
 [template]
 cargo_generate_version = ">=0.10.0"
 include = ["Makefile.toml", "src/index.ts", "Cargo.toml"]
+
+# We use this mainly for testing purposes
+[placeholders.use_local]
+type = "bool"
+prompt = "Use hashira local path?"
+default = false

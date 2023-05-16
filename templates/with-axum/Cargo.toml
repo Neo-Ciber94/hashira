@@ -20,14 +20,22 @@ opt-level= 's'
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+{% if use_local %}
+hashira-axum = { path = "../../adapters/hashira-axum" }
+{% else %}
 hashira-axum = { version = "0.0.1-alpha" }
+{% endif %}
 env_logger = "0.10.0"
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
 axum = "0.6.15"
 tower-http = { version = "0.4.0", features = ["fs"] }
 
 [dependencies]
+{% if use_local %}
+hashira = { path = "../../packages/hashira", optional = true }
+{% else %}
 hashira = { version = "0.0.1-alpha", optional = true }
+{% endif %}
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }

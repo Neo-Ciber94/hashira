@@ -17,8 +17,13 @@ lto = true
 opt-level= 's'
 
 [dependencies]
-hashira = { version = "0.0.1-alpha" }
+{% if use_local %}
+hashira = { path = "../../packages/hashira", optional = true }
+hashira-wasm = { path = "../../adapters/hashira-wasm" }
+{% else %}
+hashira = { version = "0.0.1-alpha", optional = true }
 hashira-wasm = { version = "0.0.1-alpha" }
+{% endif %}
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }
