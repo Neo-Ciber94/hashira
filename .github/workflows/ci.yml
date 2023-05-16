@@ -78,6 +78,7 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo install --path ./packages/hashira-cli
           cargo install cargo-generate
+          cargo install cargo-make
           cargo install deno
 
       # Create templates
