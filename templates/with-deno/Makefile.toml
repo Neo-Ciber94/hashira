@@ -1,6 +1,5 @@
 [env]
 BUILD_CMD = "build"
-CARGO_TARGET_DIR="target/"
 
 [env.prod]
 BUILD_CMD = "build --release"
