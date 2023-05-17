@@ -18,10 +18,10 @@ opt-level= 's'
 
 [dependencies]
 {% if use_local -%}
-hashira = { path = "../../packages/hashira", optional = true }
+hashira = { path = "../../packages/hashira" }
 hashira-wasm = { path = "../../adapters/hashira-wasm" }
 {% else -%}
-hashira = { version = "0.0.1-alpha", optional = true }
+hashira = { version = "0.0.1-alpha" }
 hashira-wasm = { version = "0.0.1-alpha" }
 {% endif -%}
 yew = "0.20"
