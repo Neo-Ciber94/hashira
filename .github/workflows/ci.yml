@@ -113,5 +113,3 @@ jobs:
         run: |
           cd examples/${{ matrix.template }}-template
           cargo make build
-        env:
-          CARGO_TARGET_DIR: ./target
