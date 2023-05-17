@@ -203,7 +203,7 @@ where
     #[cfg(target_arch = "wasm32")]
     pub fn send_with_options(&self, obj: T, options: RequestOptions) -> Result<(), BoxError> {
         use crate::actions::into_request_config::RequestInitConfig;
-        use crate::client::fetch_json;
+        use crate::utils::wasm::fetch_json;
         use crate::error::JsError;
         use wasm_bindgen::{JsCast, JsValue};
         use web_sys::{Headers, RequestInit};

@@ -78,6 +78,9 @@ pub mod consts {
 #[cfg(feature = "internal")]
 pub mod internal;
 
+#[doc(hidden)]
+pub mod utils;
+
 /// Extracts the `Ok(x)` value from a result, otherwise return an error `Response`.
 #[doc(hidden)]
 #[macro_export]

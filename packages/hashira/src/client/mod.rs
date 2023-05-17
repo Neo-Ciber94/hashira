@@ -1,6 +1,3 @@
-mod fetch_json;
-pub use fetch_json::*;
-
 use wasm_bindgen::JsCast;
 use crate::app::AppService;
 use crate::components::{PageData, PageProps, HASHIRA_WASM_LOADER};
