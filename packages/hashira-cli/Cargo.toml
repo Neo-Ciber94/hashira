@@ -2,7 +2,7 @@
 name = "hashira-cli"
 description = "A command line utility for building hashira applications"
 repository = "https://github.com/Neo-Ciber94/hashira"
-version = "0.0.1-alpha"
+version = "0.0.2-alpha"
 edition = "2021"
 keywords = ["cli", "web", "web-framework", "ssr", "yew"]
 license = "MIT"

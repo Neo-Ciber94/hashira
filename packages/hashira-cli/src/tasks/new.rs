@@ -39,6 +39,11 @@ impl NewTask {
             .arg(REPOSITORY_URL)
             .arg(template.git_path());
 
+        // This is mainly used for CI, we use the local files
+        // instead of the crates.io version
+        let dev = self.options.dev;
+        cmd.arg("--define").arg(format!("use_local={dev}"));
+
         if let Some(name) = self.options.name {
             cmd.arg("--name").arg(name);
         }
@@ -69,7 +74,10 @@ impl NewTask {
 
     async fn create_example(self) -> anyhow::Result<()> {
         tracing::info!("{}Generating example...", emojis::CONSTRUCTION);
-        tracing::info!("{}Examples don't change the name of the crate", emojis::WARN);
+        tracing::info!(
+            "{}Examples don't change the name of the crate",
+            emojis::WARN
+        );
 
         let name = self.options.name.as_deref();
         let cargo_generate = CargoGenerate::load().await?;

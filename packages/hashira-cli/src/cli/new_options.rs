@@ -48,6 +48,14 @@ pub struct NewOptions {
         help = "Whether if not emit nothing in console"
     )]
     pub quiet: bool,
+
+    #[arg(
+        long,
+        default_value_t = false,
+        hide = true,
+        help = "Use local files for the template, this is only for testing purposes"
+    )]
+    pub dev: bool,
 }
 
 impl NewOptions {

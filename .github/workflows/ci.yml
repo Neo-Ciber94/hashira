@@ -54,7 +54,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        template: ['with-actix-web', 'with-axum', 'with-rocket', 'with-tide', 'with-warp', 'with-deno']
+        template: ['actix-web', 'axum', 'rocket', 'tide', 'warp', 'deno']
     runs-on: ${{ matrix.os }}
     name: Template (${{ matrix.template }}) | ${{ matrix.os }}
     steps:
@@ -77,19 +77,18 @@ jobs:
         run: |
           rustup target add wasm32-unknown-unknown
           cargo install --path ./packages/hashira-cli
-          cargo install cargo-generate
           cargo install cargo-make
           cargo install deno
 
-      # Create templates
-      - run: cd examples && cargo generate --git https://github.com/Neo-Ciber94/hashira.git templates/${{ matrix.template }} -d use_local=true --name ${{ matrix.template }}-template
+      # Create template
+      - run: cd examples && hashira new --${{ matrix.template }} --dev --name ${{ matrix.template }}-template
 
       # Run others
       - name: Build ${{ matrix.template }} template
-        if: matrix.template!= 'with-deno'
+        if: matrix.template!= 'deno'
         run: cd examples/${{ matrix.template }}-template && hashira build
 
       # Run deno
       - name: Build ${{ matrix.template }} template
-        if: matrix.template == 'with-deno'
+        if: matrix.template == 'deno'
         run: cd examples/${{ matrix.template }}-template && cargo make build
