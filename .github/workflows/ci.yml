@@ -86,10 +86,10 @@ jobs:
 
       # Run others
       - name: Build ${{ matrix.template }} template
-        if: ${{ matrix.template }} != 'with-deno'
+        if: matrix.template!= 'with-deno'
         run: cd examples/${{ matrix.template }}-template && hashira build
 
       # Run deno
       - name: Build ${{ matrix.template }} template
-        if: ${{ matrix.template }} == 'with-deno'
+        if: matrix.template == 'with-deno'
         run: cd examples/${{ matrix.template }}-template && cargo make build
