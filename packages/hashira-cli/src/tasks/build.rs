@@ -118,7 +118,7 @@ impl BuildTask {
 main_path.exists(),
 "`src/main.rs` was not found. Ensure you are in the correct directory.
 
-If you are trying to run a non-rust server, currently not possible with the hashira CLI, try other method instead:
+If you are trying to run a non-rust server, currently is not possible with the hashira CLI, try other method instead:
     - Checkout the README.md for more information
     - Check if the project provide a Makefile.toml or other method to execute the project"
         );

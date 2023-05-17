@@ -130,7 +130,7 @@ impl FromStr for UseExample {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.trim().len() == 0 {
+        if s.trim().is_empty() {
             Ok(UseExample::Select)
         } else {
             Ok(UseExample::Template(s.to_owned()))
