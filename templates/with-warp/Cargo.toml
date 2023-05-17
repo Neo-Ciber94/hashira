@@ -20,21 +20,21 @@ opt-level = 's'
 wasm-logger = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-{% if use_local %}
+{%- if use_local -%}
 hashira-warp = { path = "../../adapters/hashira-warp" }
-{% else %}
+{%- else -%}
 hashira-warp = { version = "0.0.2-alpha" }
-{% endif %}
+{%- endif -%}
 env_logger = "0.10.0"
 warp = "0.3"
 tokio = { version = "1", features = ["full"] }
 
 [dependencies]
-{% if use_local %}
+{%- if use_local -%}
 hashira = { path = "../../packages/hashira", optional = true }
-{% else %}
+{%- else -%}
 hashira = { version = "0.0.1-alpha", optional = true }
-{% endif %}
+{%- endif -%}
 yew = "0.20"
 log = "0.4.17"
 serde = { version = "1.0", features = ["derive"] }
