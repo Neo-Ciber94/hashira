@@ -1,5 +1,6 @@
 [package]
 name = "hello_server"
+description = "A simple hello world example"
 version = "0.1.0"
 edition = "2021"
 authors = ["Freddy L. <neo-ciber_94@hotmail.com>"]

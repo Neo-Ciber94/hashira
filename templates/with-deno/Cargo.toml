@@ -47,7 +47,3 @@ serde-wasm-bindgen = "0.5.0"
 
 [features]
 client = ["hashira/client"]
-
-{% if use_local -%}
-[workspace]
-{% endif -%}

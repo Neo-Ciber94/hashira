@@ -1,5 +1,6 @@
 [package]
 name = "multipart_upload_server"
+description = "A photo gallery to upload photos to the server"
 version = "0.1.0"
 edition = "2021"
 authors = ["Freddy L. <neo-ciber_94@hotmail.com>"]

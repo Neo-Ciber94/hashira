@@ -1,5 +1,6 @@
 [package]
 name = "server_actions_server"
+description = "Example about calling functions on the server"
 version = "0.1.0"
 edition = "2021"
 authors = [ "Freddy L. <neo-ciber_94@hotmail.com>" ]
