@@ -10,3 +10,4 @@ pub static BYE: Emoji<'_, '_> = Emoji("👋 ", "");
 pub static SEMAPHORE: Emoji<'_, '_> = Emoji("🚦 ", "");
 pub static RESTART: Emoji<'_, '_> = Emoji("🔃 ", "");
 pub static DOWNLOAD: Emoji<'_, '_> = Emoji("⏬ ", "");
+pub static WARN: Emoji<'_, '_> = Emoji("⚠️ ", "");

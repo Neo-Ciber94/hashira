@@ -69,7 +69,7 @@ impl NewTask {
 
     async fn create_example(self) -> anyhow::Result<()> {
         tracing::info!("{}Generating example...", emojis::CONSTRUCTION);
-        // TODO: Allow to navigate over all the examples available
+        tracing::info!("{}Examples don't change the name of the crate", emojis::WARN);
 
         let name = self.options.name.as_deref();
         let cargo_generate = CargoGenerate::load().await?;
