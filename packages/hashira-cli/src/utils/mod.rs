@@ -1,6 +1,9 @@
 mod helpers;
 pub use helpers::*;
 
+mod fetch_examples;
+pub use fetch_examples::*;
+
 /// Executes a function when this object is drop.
 #[must_use]
 #[doc(hidden)]

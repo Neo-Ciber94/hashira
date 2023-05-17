@@ -1,12 +1,13 @@
+use crate::{emojis, utils::list_repository_examples};
 use anyhow::Context;
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
-use crate::emojis;
 
 use crate::{
     cli::{NewOptions, ProjectTemplate},
     tools::{cargo_generate::CargoGenerate, Tool, ToolExt},
 };
 
+// Repository of this project
 const REPOSITORY_URL: &str = "https://github.com/Neo-Ciber94/hashira.git";
 
 pub struct NewTask {
@@ -72,12 +73,29 @@ impl NewTask {
 
         let name = self.options.name.as_deref();
         let cargo_generate = CargoGenerate::load().await?;
-        let example = self
+        let use_example = self
             .options
             .example
-            .as_deref()
+            .as_ref()
             .context("no example provided")?;
 
+        let example_template = match use_example {
+            crate::cli::UseExample::Template(s) => s.to_owned(),
+            crate::cli::UseExample::Select => {
+                let templates = list_repository_examples().await?;
+                let selection = Select::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Select an example")
+                    .items(&templates)
+                    .interact_on_opt(&Term::stderr())?;
+
+                match selection {
+                    Some(index) => templates[index].name.to_owned(),
+                    None => anyhow::bail!("You must selected a example"),
+                }
+            }
+        };
+
+        let example = example_template.as_str();
         let mut cmd = cargo_generate.async_cmd();
 
         cmd.arg("generate")

@@ -1,6 +1,6 @@
 [template]
 cargo_generate_version = ">=0.10.0"
-include = ["Cargo.toml"]
+include = ["Cargo.toml", "src/*"]
 
 # We use this mainly for testing purposes
 [placeholders.use_local]

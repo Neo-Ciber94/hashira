@@ -1,6 +1,6 @@
 use clap::Args;
 use enum_iterator::Sequence;
-use std::{fmt::Display, path::PathBuf};
+use std::{fmt::Display, path::PathBuf, str::FromStr};
 
 #[derive(Args, Debug, Clone)]
 pub struct NewOptions {
@@ -28,8 +28,12 @@ pub struct NewOptions {
     #[arg(long, help = "Use the deno template", conflicts_with_all = &["actix_web", "axum", "rocket", "warp", "tide","example"])]
     pub deno: bool,
 
-    #[arg(long, help = "Use one of the examples", conflicts_with_all = &["actix_web", "axum", "rocket", "warp", "tide", "deno"])]
-    pub example: Option<String>,
+    #[arg(long, help = "Use one of the examples", 
+        conflicts_with_all = &["actix_web", "axum", "rocket", "warp", "tide", "deno"],
+        num_args=0..=1, 
+        require_equals = true,
+        default_missing_value = "")]
+    pub example: Option<UseExample>,
 
     #[arg(
         long,
@@ -112,6 +116,24 @@ impl Display for ProjectTemplate {
             ProjectTemplate::Warp => write!(f, "Warp"),
             ProjectTemplate::Tide => write!(f, "Tide"),
             ProjectTemplate::Deno => write!(f, "Deno"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum UseExample {
+    Template(String),
+    Select,
+}
+
+impl FromStr for UseExample {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.trim().len() == 0 {
+            Ok(UseExample::Select)
+        } else {
+            Ok(UseExample::Template(s.to_owned()))
         }
     }
 }
