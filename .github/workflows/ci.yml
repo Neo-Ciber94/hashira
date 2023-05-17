@@ -38,7 +38,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           
       - if: ${{ steps.cache-test-cargo.outputs.cache-hit != 'true' }}
         name: List dependencies
@@ -57,19 +57,28 @@ jobs:
     runs-on: ubuntu-latest
     name: Template (${{ matrix.template }})
     steps:
+      - name: Get Rust version
+        id: rust-version
+        run: echo "::set-output name=version::$(rustc --version)"
+
       # Cache cargo dependencies
       - uses: actions/checkout@v3
-      - name: Cache Cargo
-        id: cache-cargo
+      - name: Cache binaries
+        id: cache-binaries
         uses: actions/cache@v2
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
             ~/.cargo/bin
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      
+          key: ${{ runner.os }}-cargo-bin-${{ hashFiles('packages/hashira-cli/**') }}
+
+      - name: Cache rustup toolchains
+        id: rustup-toolchains
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.rustup/toolchains
+          key: ${{ runner.os }}-toolchain-${{ steps.rust-version.outputs.version }}
+
       # Install and cache binaries
       - name: Install cargo-make
         uses: baptiste0928/cargo-install@v2
@@ -81,12 +90,14 @@ jobs:
         with:
           crate: deno
 
-      # Install other binaries
-      - name: Install binaries
-        if: steps.cache-cargo.outputs.cache-hit != 'true'
-        run: |
-          rustup target add wasm32-unknown-unknown
-          cargo install --path ./packages/hashira-cli
+      # Install wasm toolchain
+      - name: Install wasm32 toolchain
+        if: steps.rustup-toolchains.outputs.cache-hit != 'true'
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install hashira-cli
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: cargo install --path ./packages/hashira-cli
 
       # Create template
       - run: cd examples && hashira new --${{ matrix.template }} --dev --name ${{ matrix.template }}-template
@@ -99,4 +110,7 @@ jobs:
       # Run deno
       - name: Build ${{ matrix.template }} template
         if: matrix.template == 'deno'
-        run: cd examples/${{ matrix.template }}-template && cargo make build
+        run: |
+          cd examples/${{ matrix.template }}-template
+          export CARGO_TARGET_DIR=./target
+          cargo make build
