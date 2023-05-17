@@ -112,5 +112,4 @@ jobs:
         if: matrix.template == 'deno'
         run: |
           cd examples/${{ matrix.template }}-template
-          export CARGO_TARGET_DIR=./target
-          cargo make build
+          export CARGO_TARGET_DIR=./target && cargo make build
