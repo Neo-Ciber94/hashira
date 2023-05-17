@@ -100,10 +100,8 @@ pub async fn list_repository_examples() -> anyhow::Result<Vec<ExampleTemplate>> 
     let results = futures::future::join_all(tasks).await;
     let mut examples = vec![];
 
-    for result in results {
-        if let Ok(example) = result {
-            examples.push(example);
-        }
+    for result in results.into_iter().flatten() {
+        examples.push(result);
     }
 
     tracing::debug!("{} examples were found", examples.len());
