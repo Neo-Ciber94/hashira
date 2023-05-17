@@ -112,4 +112,5 @@ jobs:
         if: matrix.template == 'deno'
         run: |
           cd examples/${{ matrix.template }}-template
+          ls -l
           cargo make build
