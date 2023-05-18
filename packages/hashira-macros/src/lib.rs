@@ -19,12 +19,12 @@ use syn::spanned::Spanned;
 /// # Example
 ///
 /// ```rs,no_run
-/// async fn render(ctx: RenderContext) -> Result<Response, Error> {
+/// async fn render_page(ctx: RenderContext) -> Result<Response, Error> {
 ///     let res = ctx.render::<HelloPage, App>().await;
 ///     Ok(res)
 /// }
 ///
-/// #[page_component("/hello", loader = "render")]
+/// #[page_component("/hello", render = "render_page")]
 /// fn HelloPage() -> yew::Html {
 ///     yew::html! {
 ///         "Hello World!"
@@ -43,6 +43,20 @@ pub fn page_component(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 /// Mark a function as a server action.
+/// 
+/// # Usage
+/// You can decorate a function using any:
+/// - `[action]` to create a server action with a generated route
+/// - `[action("/route/to/action")]` to create a server action with an explicit route.
+///
+/// # Example
+/// ```rs,no_run
+///
+///  #[action]
+///  fn ExampleServerAction(data: Json<Data>) {
+///     todo!()   
+///  }
+/// ```
 #[proc_macro_attribute]
 pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item_fn = syn::parse_macro_input!(item as syn::ItemFn);
@@ -55,6 +69,10 @@ pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 /// Marks a method as a page component render function.
+/// 
+/// # Remarks
+/// When compiling for the `client` all the parameters will be striped from the function
+/// except the `RenderContext` and the body will be replaced by `unreachable!()`.
 #[proc_macro_attribute]
 #[allow(clippy::redundant_clone)]
 pub fn render(_attr: TokenStream, item: TokenStream) -> TokenStream {
