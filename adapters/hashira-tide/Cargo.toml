@@ -9,7 +9,7 @@ readme = "../../README.md"
 keywords = ["yew", "ssr", "tide"]
 
 [dependencies]
-hashira = { path = "../../packages/hashira", features = ["internal"] }
+hashira = { path = "../../packages/hashira", version = "0.0.2-alpha", features = ["internal"] }
 tide = "0.16.0"
 serde = { version = "1.0", features = ["derive"] }
 futures = "0.3.28"
