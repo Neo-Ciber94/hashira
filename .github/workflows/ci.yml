@@ -54,7 +54,7 @@ jobs:
       fail-fast: false
       matrix:
         template: ['actix-web', 'axum', 'rocket', 'tide', 'warp', 'deno']
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     name: Template (${{ matrix.template }})
     steps:
       - name: Get Rust version
@@ -89,6 +89,11 @@ jobs:
         uses: baptiste0928/cargo-install@v2
         with:
           crate: deno
+
+      - name: Install wasm-bindgen
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: wasm-bindgen-cli
 
       # Install wasm toolchain
       - name: Install wasm32 toolchain
