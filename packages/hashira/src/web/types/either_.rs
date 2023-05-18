@@ -1,4 +1,4 @@
-pub use either::*;
+use crate::web::either::Either;
 use futures::{ready, Future};
 use pin_project_lite::pin_project;
 use std::task::Poll;
@@ -16,8 +16,8 @@ where
 {
     fn into_response(self) -> crate::web::Response {
         match self {
-            Left(left) => left.into_response(),
-            Right(right) => right.into_response(),
+            Either::Left(left) => left.into_response(),
+            Either::Right(right) => right.into_response(),
         }
     }
 }
@@ -133,7 +133,7 @@ mod tests {
             AppData, RequestContext,
         },
         routing::{ErrorRouter, Params},
-        web::{Body, Data, Either, FromRequest, Request},
+        web::{either::Either, Body, Data, FromRequest, Request},
     };
     use std::sync::Arc;
 
@@ -170,12 +170,11 @@ mod tests {
         let app_data = AppData::default();
 
         let ctx = create_request_context(app_data);
-        let data = Either::<Data<String>, Data<State>>::from_request(&ctx, &mut Body::empty())
-            .await;
+        let data =
+            Either::<Data<String>, Data<State>>::from_request(&ctx, &mut Body::empty()).await;
 
         assert!(data.is_err());
     }
-
 
     fn create_request_context(app_data: AppData) -> RequestContext {
         RequestContext::new(

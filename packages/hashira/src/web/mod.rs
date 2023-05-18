@@ -26,7 +26,6 @@ pub type Response<T = Body> = http::response::Response<T>;
 
 pub use body::*;
 pub use bytes::*;
-pub use cookie::*;
 pub use http::header;
 pub use http::method;
 pub use http::status;
@@ -34,3 +33,7 @@ pub use http::uri;
 pub use http::version;
 pub use http::Error;
 pub use http::Extensions;
+
+// Reexports
+pub use cookie;
+pub use either;
