@@ -21,8 +21,8 @@ opt-level= 's'
 hashira = { path = "../../packages/hashira" }
 hashira-wasm = { path = "../../adapters/hashira-wasm" }
 {% else -%}
-hashira = { version = "0.0.1-alpha" }
-hashira-wasm = { version = "0.0.1-alpha" }
+hashira = { version = "0.0.2-alpha" }
+hashira-wasm = { version = "0.0.2-alpha" }
 {% endif -%}
 yew = "0.20"
 log = "0.4.17"

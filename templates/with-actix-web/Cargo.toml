@@ -23,7 +23,7 @@ wasm-logger = "0.2.0"
 {% if use_local -%}
 hashira-actix-web = { path = "../../adapters/hashira-actix-web" }
 {% else -%}
-hashira-actix-web = { version = "0.0.1-alpha" }
+hashira-actix-web = { version = "0.0.2-alpha" }
 {% endif -%}
 env_logger = "0.10.0"
 actix-web = "4.3.1"
@@ -34,7 +34,7 @@ tokio = { version = "1.27.0", features = ["macros"] }
 {% if use_local -%}
 hashira = { path = "../../packages/hashira", optional = true }
 {% else -%}
-hashira = { version = "0.0.1-alpha", optional = true }
+hashira = { version = "0.0.2-alpha", optional = true }
 {% endif -%}
 yew = "0.20"
 log = "0.4.17"
